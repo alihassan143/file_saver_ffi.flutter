@@ -1,0 +1,78 @@
+import '../exceptions/file_saver_exceptions.dart';
+
+/// Base sealed class for save progress events.
+///
+/// Use pattern matching to handle different event types:
+/// ```dart
+/// await for (final event in FileSaver.instance.saveBytes(...)) {
+///   switch (event) {
+///     case SaveProgressStarted():
+///       showLoadingIndicator();
+///     case SaveProgressUpdate(:final progress):
+///       updateProgressBar(progress);
+///     case SaveProgressComplete(:final uri):
+///       handleSuccess(uri);
+///     case SaveProgressError(:final exception):
+///       handleError(exception);
+///     case SaveProgressCancelled():
+///       handleCancel();
+///   }
+/// }
+/// ```
+sealed class SaveProgress {
+  const SaveProgress();
+}
+
+/// Emitted immediately when save operation starts.
+///
+/// Useful for UI feedback before actual progress begins,
+/// especially when saving from file or path which takes time to open.
+final class SaveProgressStarted extends SaveProgress {
+  const SaveProgressStarted();
+
+  @override
+  String toString() => 'SaveProgressStarted()';
+}
+
+/// Progress update during save operation.
+///
+/// [progress] is a value from 0.0 to 1.0 representing completion percentage.
+final class SaveProgressUpdate extends SaveProgress {
+  const SaveProgressUpdate(this.progress);
+
+  /// Progress value from 0.0 (0%) to 1.0 (100%)
+  final double progress;
+
+  @override
+  String toString() => 'SaveProgressUpdate($progress)';
+}
+
+/// Save completed successfully.
+final class SaveProgressComplete extends SaveProgress {
+  const SaveProgressComplete(this.uri);
+
+  /// URI of the saved file
+  final Uri uri;
+
+  @override
+  String toString() => 'SaveProgressComplete($uri)';
+}
+
+/// Save failed with error.
+final class SaveProgressError extends SaveProgress {
+  const SaveProgressError(this.exception);
+
+  /// The exception that caused the failure
+  final FileSaverException exception;
+
+  @override
+  String toString() => 'SaveProgressError($exception)';
+}
+
+/// User cancelled the save operation.
+final class SaveProgressCancelled extends SaveProgress {
+  const SaveProgressCancelled();
+
+  @override
+  String toString() => 'SaveProgressCancelled()';
+}

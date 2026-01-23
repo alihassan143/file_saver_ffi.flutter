@@ -31,24 +31,47 @@ abstract class FileSaverPlatform {
   /// Disposes resources
   void dispose();
 
-  /// Saves a file bytes to device storage.
+  /// Saves file bytes to device storage with progress streaming.
   ///
   /// Parameters:
   /// - [fileBytes]: The file data to save
-  /// - [fileType]: The type of file being saved (determines extension and MIME type)
-  /// - [fileName]: The name of the file (without extension, extension is determined by [fileType])
-  /// - [subDir]: Optional subdirectory within the standard save location
+  /// - [fileType]: The type of file being saved
+  /// - [fileName]: The name of the file (without extension)
   /// - [saveLocation]: Where to save the file (platform-specific, optional)
+  /// - [subDir]: Optional subdirectory within the standard save location
   /// - [conflictResolution]: How to handle filename conflicts
   ///
-  /// Returns the [Uri] where the file was saved.
-  ///
-  Future<Uri> saveBytes({
+  /// Yields [SaveProgress] events during save operation.
+  Stream<SaveProgress> saveBytes({
     required Uint8List fileBytes,
     required FileType fileType,
     required String fileName,
     SaveLocation? saveLocation,
     String? subDir,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  });
+
+  /// Saves file bytes to device storage with optional progress callback.
+  ///
+  /// Convenience method that returns [Future<Uri>].
+  ///
+  /// Parameters:
+  /// - [fileBytes]: The file data to save
+  /// - [fileType]: The type of file being saved
+  /// - [fileName]: The name of the file (without extension)
+  /// - [saveLocation]: Where to save the file (platform-specific, optional)
+  /// - [subDir]: Optional subdirectory within the standard save location
+  /// - [conflictResolution]: How to handle filename conflicts
+  /// - [onProgress]: Optional callback receiving progress from 0.0 to 1.0
+  ///
+  /// Returns the [Uri] where the file was saved.
+  Future<Uri> saveBytesAsync({
+    required Uint8List fileBytes,
+    required FileType fileType,
+    required String fileName,
+    SaveLocation? saveLocation,
+    String? subDir,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+    void Function(double progress)? onProgress,
   });
 }
