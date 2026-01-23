@@ -12,8 +12,8 @@ classes:
   # Main saver classes
   - 'com.vanvixi.file_saver_ffi.FileSaver'
 
-  # Data classes / models
-  - 'com.vanvixi.file_saver_ffi.models.SaveResult'
+  # Callback interface
+  - 'com.vanvixi.file_saver_ffi.models.ProgressCallback'
 
 class_path:
   - android/build/tmp/kotlin-classes/release

@@ -92,13 +92,13 @@ class FileSaver extends jni$_.JObject {
 
   static final _id_saveBytes = _class.instanceMethodId(
     r'saveBytes',
-    r'([BLjava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;ILkotlin/coroutines/Continuation;)Ljava/lang/Object;',
+    r'([BLjava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;ILcom/vanvixi/file_saver_ffi/models/ProgressCallback;)V',
   );
 
   static final _saveBytes =
       jni$_.ProtectedJniExtensions.lookup<
             jni$_.NativeFunction<
-              jni$_.JniResult Function(
+              jni$_.JThrowablePtr Function(
                 jni$_.Pointer<jni$_.Void>,
                 jni$_.JMethodIDPtr,
                 jni$_.VarArgs<
@@ -115,9 +115,9 @@ class FileSaver extends jni$_.JObject {
                 >,
               )
             >
-          >('globalEnv_CallObjectMethod')
+          >('globalEnv_CallVoidMethod')
           .asFunction<
-            jni$_.JniResult Function(
+            jni$_.JThrowablePtr Function(
               jni$_.Pointer<jni$_.Void>,
               jni$_.JMethodIDPtr,
               jni$_.Pointer<jni$_.Void>,
@@ -131,9 +131,8 @@ class FileSaver extends jni$_.JObject {
             )
           >();
 
-  /// from: `public suspend fun saveBytes(fileData: kotlin.ByteArray, baseFileName: kotlin.String, extension: kotlin.String, mimeType: kotlin.String, saveLocationIndex: kotlin.Int, subDir: kotlin.String?, conflictMode: kotlin.Int): com.vanvixi.file_saver_ffi.models.SaveResult`
-  /// The returned object must be released after use, by calling the [release] method.
-  core$_.Future<SaveResult> saveBytes(
+  /// from: `public fun saveBytes(fileData: kotlin.ByteArray, baseFileName: kotlin.String, extension: kotlin.String, mimeType: kotlin.String, saveLocationIndex: kotlin.Int, subDir: kotlin.String?, conflictMode: kotlin.Int, callback: com.vanvixi.file_saver_ffi.models.ProgressCallback): kotlin.Unit`
+  void saveBytes(
     jni$_.JByteArray bs,
     jni$_.JString string,
     jni$_.JString string1,
@@ -141,15 +140,15 @@ class FileSaver extends jni$_.JObject {
     int i,
     jni$_.JString? string3,
     int i1,
-  ) async {
-    final $p = jni$_.ReceivePort();
-    final _$continuation = jni$_.ProtectedJniExtensions.newPortContinuation($p);
+    ProgressCallback progressCallback,
+  ) {
     final _$bs = bs.reference;
     final _$string = string.reference;
     final _$string1 = string1.reference;
     final _$string2 = string2.reference;
     final _$string3 = string3?.reference ?? jni$_.jNullReference;
-    final $r = _saveBytes(
+    final _$progressCallback = progressCallback.reference;
+    _saveBytes(
       reference.pointer,
       _id_saveBytes as jni$_.JMethodIDPtr,
       _$bs.pointer,
@@ -159,28 +158,8 @@ class FileSaver extends jni$_.JObject {
       i,
       _$string3.pointer,
       i1,
-      _$continuation.pointer,
-    ).object<jni$_.JObject>(const jni$_.$JObject$Type$());
-    _$continuation.release();
-    final jni$_.JObject $o;
-    if ($r.isInstanceOf(jni$_.coroutineSingletonsClass)) {
-      $r.release();
-      final $a = await $p.first;
-      $o = jni$_.JObject.fromReference(
-        jni$_.JGlobalReference(jni$_.JObjectPtr.fromAddress($a)),
-      );
-      if ($o.isInstanceOf(jni$_.result$FailureClass)) {
-        final $e = jni$_.failureExceptionField.get(
-          $o,
-          const jni$_.$JObject$Type$(),
-        );
-        $o.release();
-        jni$_.Jni.throwException($e.reference.toPointer());
-      }
-    } else {
-      $o = $r;
-    }
-    return $o.as<SaveResult>(const $SaveResult$Type$(), releaseOriginal: true);
+      _$progressCallback.pointer,
+    ).check();
   }
 }
 
@@ -251,883 +230,265 @@ final class $FileSaver$Type$ extends jni$_.JType<FileSaver> {
   }
 }
 
-/// from: `com.vanvixi.file_saver_ffi.models.SaveResult$Companion`
-class SaveResult$Companion extends jni$_.JObject {
+/// from: `com.vanvixi.file_saver_ffi.models.ProgressCallback`
+class ProgressCallback extends jni$_.JObject {
   @jni$_.internal
   @core$_.override
-  final jni$_.JType<SaveResult$Companion> $type;
+  final jni$_.JType<ProgressCallback> $type;
 
   @jni$_.internal
-  SaveResult$Companion.fromReference(jni$_.JReference reference)
+  ProgressCallback.fromReference(jni$_.JReference reference)
     : $type = type,
       super.fromReference(reference);
 
   static final _class = jni$_.JClass.forName(
-    r'com/vanvixi/file_saver_ffi/models/SaveResult$Companion',
+    r'com/vanvixi/file_saver_ffi/models/ProgressCallback',
   );
 
   /// The type which includes information such as the signature of this class.
-  static const jni$_.JType<SaveResult$Companion?> nullableType =
-      $SaveResult$Companion$NullableType$();
+  static const jni$_.JType<ProgressCallback?> nullableType =
+      $ProgressCallback$NullableType$();
 
   /// The type which includes information such as the signature of this class.
-  static const jni$_.JType<SaveResult$Companion> type =
-      $SaveResult$Companion$Type$();
-  static final _id_success = _class.instanceMethodId(
-    r'success',
-    r'(Ljava/lang/String;Ljava/lang/String;)Lcom/vanvixi/file_saver_ffi/models/SaveResult;',
+  static const jni$_.JType<ProgressCallback> type = $ProgressCallback$Type$();
+  static final _id_onEvent = _class.instanceMethodId(
+    r'onEvent',
+    r'(IDLjava/lang/String;Ljava/lang/String;)V',
   );
 
-  static final _success =
+  static final _onEvent =
       jni$_.ProtectedJniExtensions.lookup<
             jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-                jni$_.VarArgs<
-                  (jni$_.Pointer<jni$_.Void>, jni$_.Pointer<jni$_.Void>)
-                >,
-              )
-            >
-          >('globalEnv_CallObjectMethod')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.Pointer<jni$_.Void>,
-            )
-          >();
-
-  /// from: `public fun success(filePath: kotlin.String, uri: kotlin.String): com.vanvixi.file_saver_ffi.models.SaveResult`
-  /// The returned object must be released after use, by calling the [release] method.
-  SaveResult success(jni$_.JString string, jni$_.JString string1) {
-    final _$string = string.reference;
-    final _$string1 = string1.reference;
-    return _success(
-      reference.pointer,
-      _id_success as jni$_.JMethodIDPtr,
-      _$string.pointer,
-      _$string1.pointer,
-    ).object<SaveResult>(const $SaveResult$Type$());
-  }
-
-  static final _id_failure = _class.instanceMethodId(
-    r'failure',
-    r'(Ljava/lang/String;Ljava/lang/String;)Lcom/vanvixi/file_saver_ffi/models/SaveResult;',
-  );
-
-  static final _failure =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-                jni$_.VarArgs<
-                  (jni$_.Pointer<jni$_.Void>, jni$_.Pointer<jni$_.Void>)
-                >,
-              )
-            >
-          >('globalEnv_CallObjectMethod')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.Pointer<jni$_.Void>,
-            )
-          >();
-
-  /// from: `public fun failure(errorCode: kotlin.String, errorMessage: kotlin.String): com.vanvixi.file_saver_ffi.models.SaveResult`
-  /// The returned object must be released after use, by calling the [release] method.
-  SaveResult failure(jni$_.JString string, jni$_.JString string1) {
-    final _$string = string.reference;
-    final _$string1 = string1.reference;
-    return _failure(
-      reference.pointer,
-      _id_failure as jni$_.JMethodIDPtr,
-      _$string.pointer,
-      _$string1.pointer,
-    ).object<SaveResult>(const $SaveResult$Type$());
-  }
-
-  static final _id_new$ = _class.constructorId(
-    r'(Lkotlin/jvm/internal/DefaultConstructorMarker;)V',
-  );
-
-  static final _new$ =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-                jni$_.VarArgs<(jni$_.Pointer<jni$_.Void>,)>,
-              )
-            >
-          >('globalEnv_NewObject')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-              jni$_.Pointer<jni$_.Void>,
-            )
-          >();
-
-  /// from: `synthetic public void <init>(kotlin.jvm.internal.DefaultConstructorMarker defaultConstructorMarker)`
-  /// The returned object must be released after use, by calling the [release] method.
-  factory SaveResult$Companion(jni$_.JObject? defaultConstructorMarker) {
-    final _$defaultConstructorMarker =
-        defaultConstructorMarker?.reference ?? jni$_.jNullReference;
-    return SaveResult$Companion.fromReference(
-      _new$(
-        _class.reference.pointer,
-        _id_new$ as jni$_.JMethodIDPtr,
-        _$defaultConstructorMarker.pointer,
-      ).reference,
-    );
-  }
-}
-
-final class $SaveResult$Companion$NullableType$
-    extends jni$_.JType<SaveResult$Companion?> {
-  @jni$_.internal
-  const $SaveResult$Companion$NullableType$();
-
-  @jni$_.internal
-  @core$_.override
-  String get signature =>
-      r'Lcom/vanvixi/file_saver_ffi/models/SaveResult$Companion;';
-
-  @jni$_.internal
-  @core$_.override
-  SaveResult$Companion? fromReference(jni$_.JReference reference) =>
-      reference.isNull ? null : SaveResult$Companion.fromReference(reference);
-  @jni$_.internal
-  @core$_.override
-  jni$_.JType get superType => const jni$_.$JObject$Type$();
-
-  @jni$_.internal
-  @core$_.override
-  jni$_.JType<SaveResult$Companion?> get nullableType => this;
-
-  @jni$_.internal
-  @core$_.override
-  final superCount = 1;
-
-  @core$_.override
-  int get hashCode => ($SaveResult$Companion$NullableType$).hashCode;
-
-  @core$_.override
-  bool operator ==(Object other) {
-    return other.runtimeType == ($SaveResult$Companion$NullableType$) &&
-        other is $SaveResult$Companion$NullableType$;
-  }
-}
-
-final class $SaveResult$Companion$Type$
-    extends jni$_.JType<SaveResult$Companion> {
-  @jni$_.internal
-  const $SaveResult$Companion$Type$();
-
-  @jni$_.internal
-  @core$_.override
-  String get signature =>
-      r'Lcom/vanvixi/file_saver_ffi/models/SaveResult$Companion;';
-
-  @jni$_.internal
-  @core$_.override
-  SaveResult$Companion fromReference(jni$_.JReference reference) =>
-      SaveResult$Companion.fromReference(reference);
-  @jni$_.internal
-  @core$_.override
-  jni$_.JType get superType => const jni$_.$JObject$Type$();
-
-  @jni$_.internal
-  @core$_.override
-  jni$_.JType<SaveResult$Companion?> get nullableType =>
-      const $SaveResult$Companion$NullableType$();
-
-  @jni$_.internal
-  @core$_.override
-  final superCount = 1;
-
-  @core$_.override
-  int get hashCode => ($SaveResult$Companion$Type$).hashCode;
-
-  @core$_.override
-  bool operator ==(Object other) {
-    return other.runtimeType == ($SaveResult$Companion$Type$) &&
-        other is $SaveResult$Companion$Type$;
-  }
-}
-
-/// from: `com.vanvixi.file_saver_ffi.models.SaveResult`
-class SaveResult extends jni$_.JObject {
-  @jni$_.internal
-  @core$_.override
-  final jni$_.JType<SaveResult> $type;
-
-  @jni$_.internal
-  SaveResult.fromReference(jni$_.JReference reference)
-    : $type = type,
-      super.fromReference(reference);
-
-  static final _class = jni$_.JClass.forName(
-    r'com/vanvixi/file_saver_ffi/models/SaveResult',
-  );
-
-  /// The type which includes information such as the signature of this class.
-  static const jni$_.JType<SaveResult?> nullableType =
-      $SaveResult$NullableType$();
-
-  /// The type which includes information such as the signature of this class.
-  static const jni$_.JType<SaveResult> type = $SaveResult$Type$();
-  static final _id_Companion = _class.staticFieldId(
-    r'Companion',
-    r'Lcom/vanvixi/file_saver_ffi/models/SaveResult$Companion;',
-  );
-
-  /// from: `static public final com.vanvixi.file_saver_ffi.models.SaveResult$Companion Companion`
-  /// The returned object must be released after use, by calling the [release] method.
-  static SaveResult$Companion get Companion =>
-      _id_Companion.get(_class, const $SaveResult$Companion$Type$());
-
-  static final _id_new$ = _class.constructorId(
-    r'(ZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V',
-  );
-
-  static final _new$ =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
+              jni$_.JThrowablePtr Function(
                 jni$_.Pointer<jni$_.Void>,
                 jni$_.JMethodIDPtr,
                 jni$_.VarArgs<
                   (
                     jni$_.Int32,
-                    jni$_.Pointer<jni$_.Void>,
-                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Double,
                     jni$_.Pointer<jni$_.Void>,
                     jni$_.Pointer<jni$_.Void>,
                   )
                 >,
               )
             >
-          >('globalEnv_NewObject')
+          >('globalEnv_CallVoidMethod')
           .asFunction<
-            jni$_.JniResult Function(
+            jni$_.JThrowablePtr Function(
               jni$_.Pointer<jni$_.Void>,
               jni$_.JMethodIDPtr,
               int,
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.Pointer<jni$_.Void>,
+              double,
               jni$_.Pointer<jni$_.Void>,
               jni$_.Pointer<jni$_.Void>,
             )
           >();
 
-  /// from: `public void <init>(boolean z, java.lang.String string, java.lang.String string1, java.lang.String string2, java.lang.String string3)`
-  /// The returned object must be released after use, by calling the [release] method.
-  factory SaveResult(
-    bool z,
-    jni$_.JString? string,
-    jni$_.JString? string1,
-    jni$_.JString? string2,
-    jni$_.JString? string3,
-  ) {
+  /// from: `public fun onEvent(eventType: kotlin.Int, progress: kotlin.Double, data: kotlin.String?, message: kotlin.String?): kotlin.Unit`
+  void onEvent(int i, double d, jni$_.JString? string, jni$_.JString? string1) {
     final _$string = string?.reference ?? jni$_.jNullReference;
     final _$string1 = string1?.reference ?? jni$_.jNullReference;
-    final _$string2 = string2?.reference ?? jni$_.jNullReference;
-    final _$string3 = string3?.reference ?? jni$_.jNullReference;
-    return SaveResult.fromReference(
-      _new$(
-        _class.reference.pointer,
-        _id_new$ as jni$_.JMethodIDPtr,
-        z ? 1 : 0,
-        _$string.pointer,
-        _$string1.pointer,
-        _$string2.pointer,
-        _$string3.pointer,
-      ).reference,
+    _onEvent(
+      reference.pointer,
+      _id_onEvent as jni$_.JMethodIDPtr,
+      i,
+      d,
+      _$string.pointer,
+      _$string1.pointer,
+    ).check();
+  }
+
+  /// Maps a specific port to the implemented interface.
+  static final core$_.Map<int, $ProgressCallback> _$impls = {};
+  static jni$_.JObjectPtr _$invoke(
+    int port,
+    jni$_.JObjectPtr descriptor,
+    jni$_.JObjectPtr args,
+  ) {
+    return _$invokeMethod(
+      port,
+      jni$_.MethodInvocation.fromAddresses(0, descriptor.address, args.address),
     );
   }
 
-  static final _id_new$1 = _class.constructorId(
-    r'(ZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V',
-  );
+  static final jni$_.Pointer<
+    jni$_.NativeFunction<
+      jni$_.JObjectPtr Function(jni$_.Int64, jni$_.JObjectPtr, jni$_.JObjectPtr)
+    >
+  >
+  _$invokePointer = jni$_.Pointer.fromFunction(_$invoke);
 
-  static final _new$1 =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-                jni$_.VarArgs<
-                  (
-                    jni$_.Int32,
-                    jni$_.Pointer<jni$_.Void>,
-                    jni$_.Pointer<jni$_.Void>,
-                    jni$_.Pointer<jni$_.Void>,
-                    jni$_.Pointer<jni$_.Void>,
-                    jni$_.Int32,
-                    jni$_.Pointer<jni$_.Void>,
-                  )
-                >,
-              )
-            >
-          >('globalEnv_NewObject')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-              int,
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.Pointer<jni$_.Void>,
-              int,
-              jni$_.Pointer<jni$_.Void>,
-            )
-          >();
+  static jni$_.Pointer<jni$_.Void> _$invokeMethod(
+    int $p,
+    jni$_.MethodInvocation $i,
+  ) {
+    try {
+      final $d = $i.methodDescriptor.toDartString(releaseOriginal: true);
+      final $a = $i.args;
+      if ($d == r'onEvent(IDLjava/lang/String;Ljava/lang/String;)V') {
+        _$impls[$p]!.onEvent(
+          $a![0]!
+              .as(const jni$_.$JInteger$Type$(), releaseOriginal: true)
+              .intValue(releaseOriginal: true),
+          $a![1]!
+              .as(const jni$_.$JDouble$Type$(), releaseOriginal: true)
+              .doubleValue(releaseOriginal: true),
+          $a![2]?.as(const jni$_.$JString$Type$(), releaseOriginal: true),
+          $a![3]?.as(const jni$_.$JString$Type$(), releaseOriginal: true),
+        );
+        return jni$_.nullptr;
+      }
+    } catch (e) {
+      return jni$_.ProtectedJniExtensions.newDartException(e);
+    }
+    return jni$_.nullptr;
+  }
 
-  /// from: `synthetic public void <init>(boolean z, java.lang.String string, java.lang.String string1, java.lang.String string2, java.lang.String string3, int i, kotlin.jvm.internal.DefaultConstructorMarker defaultConstructorMarker)`
-  /// The returned object must be released after use, by calling the [release] method.
-  factory SaveResult.new$1(
-    bool z,
-    jni$_.JString? string,
-    jni$_.JString? string1,
-    jni$_.JString? string2,
-    jni$_.JString? string3,
+  static void implementIn(
+    jni$_.JImplementer implementer,
+    $ProgressCallback $impl,
+  ) {
+    late final jni$_.RawReceivePort $p;
+    $p = jni$_.RawReceivePort(($m) {
+      if ($m == null) {
+        _$impls.remove($p.sendPort.nativePort);
+        $p.close();
+        return;
+      }
+      final $i = jni$_.MethodInvocation.fromMessage($m);
+      final $r = _$invokeMethod($p.sendPort.nativePort, $i);
+      jni$_.ProtectedJniExtensions.returnResult($i.result, $r);
+    });
+    implementer.add(
+      r'com.vanvixi.file_saver_ffi.models.ProgressCallback',
+      $p,
+      _$invokePointer,
+      [
+        if ($impl.onEvent$async)
+          r'onEvent(IDLjava/lang/String;Ljava/lang/String;)V',
+      ],
+    );
+    final $a = $p.sendPort.nativePort;
+    _$impls[$a] = $impl;
+  }
+
+  factory ProgressCallback.implement($ProgressCallback $impl) {
+    final $i = jni$_.JImplementer();
+    implementIn($i, $impl);
+    return ProgressCallback.fromReference($i.implementReference());
+  }
+}
+
+abstract base mixin class $ProgressCallback {
+  factory $ProgressCallback({
+    required void Function(
+      int i,
+      double d,
+      jni$_.JString? string,
+      jni$_.JString? string1,
+    )
+    onEvent,
+    bool onEvent$async,
+  }) = _$ProgressCallback;
+
+  void onEvent(int i, double d, jni$_.JString? string, jni$_.JString? string1);
+  bool get onEvent$async => false;
+}
+
+final class _$ProgressCallback with $ProgressCallback {
+  _$ProgressCallback({
+    required void Function(
+      int i,
+      double d,
+      jni$_.JString? string,
+      jni$_.JString? string1,
+    )
+    onEvent,
+    this.onEvent$async = false,
+  }) : _onEvent = onEvent;
+
+  final void Function(
     int i,
-    jni$_.JObject? defaultConstructorMarker,
-  ) {
-    final _$string = string?.reference ?? jni$_.jNullReference;
-    final _$string1 = string1?.reference ?? jni$_.jNullReference;
-    final _$string2 = string2?.reference ?? jni$_.jNullReference;
-    final _$string3 = string3?.reference ?? jni$_.jNullReference;
-    final _$defaultConstructorMarker =
-        defaultConstructorMarker?.reference ?? jni$_.jNullReference;
-    return SaveResult.fromReference(
-      _new$1(
-        _class.reference.pointer,
-        _id_new$1 as jni$_.JMethodIDPtr,
-        z ? 1 : 0,
-        _$string.pointer,
-        _$string1.pointer,
-        _$string2.pointer,
-        _$string3.pointer,
-        i,
-        _$defaultConstructorMarker.pointer,
-      ).reference,
-    );
-  }
-
-  static final _id_isSuccess = _class.instanceMethodId(r'isSuccess', r'()Z');
-
-  static final _isSuccess =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-              )
-            >
-          >('globalEnv_CallBooleanMethod')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-            )
-          >();
-
-  /// from: `public final boolean isSuccess()`
-  bool isSuccess() {
-    return _isSuccess(
-      reference.pointer,
-      _id_isSuccess as jni$_.JMethodIDPtr,
-    ).boolean;
-  }
-
-  static final _id_getFilePath = _class.instanceMethodId(
-    r'getFilePath',
-    r'()Ljava/lang/String;',
-  );
-
-  static final _getFilePath =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-              )
-            >
-          >('globalEnv_CallObjectMethod')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-            )
-          >();
-
-  /// from: `public final java.lang.String getFilePath()`
-  /// The returned object must be released after use, by calling the [release] method.
-  jni$_.JString? getFilePath() {
-    return _getFilePath(
-      reference.pointer,
-      _id_getFilePath as jni$_.JMethodIDPtr,
-    ).object<jni$_.JString?>(const jni$_.$JString$NullableType$());
-  }
-
-  static final _id_getUri = _class.instanceMethodId(
-    r'getUri',
-    r'()Ljava/lang/String;',
-  );
-
-  static final _getUri =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-              )
-            >
-          >('globalEnv_CallObjectMethod')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-            )
-          >();
-
-  /// from: `public final java.lang.String getUri()`
-  /// The returned object must be released after use, by calling the [release] method.
-  jni$_.JString? getUri() {
-    return _getUri(
-      reference.pointer,
-      _id_getUri as jni$_.JMethodIDPtr,
-    ).object<jni$_.JString?>(const jni$_.$JString$NullableType$());
-  }
-
-  static final _id_getErrorMessage = _class.instanceMethodId(
-    r'getErrorMessage',
-    r'()Ljava/lang/String;',
-  );
-
-  static final _getErrorMessage =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-              )
-            >
-          >('globalEnv_CallObjectMethod')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-            )
-          >();
-
-  /// from: `public final java.lang.String getErrorMessage()`
-  /// The returned object must be released after use, by calling the [release] method.
-  jni$_.JString? getErrorMessage() {
-    return _getErrorMessage(
-      reference.pointer,
-      _id_getErrorMessage as jni$_.JMethodIDPtr,
-    ).object<jni$_.JString?>(const jni$_.$JString$NullableType$());
-  }
-
-  static final _id_getErrorCode = _class.instanceMethodId(
-    r'getErrorCode',
-    r'()Ljava/lang/String;',
-  );
-
-  static final _getErrorCode =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-              )
-            >
-          >('globalEnv_CallObjectMethod')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-            )
-          >();
-
-  /// from: `public final java.lang.String getErrorCode()`
-  /// The returned object must be released after use, by calling the [release] method.
-  jni$_.JString? getErrorCode() {
-    return _getErrorCode(
-      reference.pointer,
-      _id_getErrorCode as jni$_.JMethodIDPtr,
-    ).object<jni$_.JString?>(const jni$_.$JString$NullableType$());
-  }
-
-  static final _id_component1 = _class.instanceMethodId(r'component1', r'()Z');
-
-  static final _component1 =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-              )
-            >
-          >('globalEnv_CallBooleanMethod')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-            )
-          >();
-
-  /// from: `public operator fun component1(): kotlin.Boolean`
-  bool component1() {
-    return _component1(
-      reference.pointer,
-      _id_component1 as jni$_.JMethodIDPtr,
-    ).boolean;
-  }
-
-  static final _id_component2 = _class.instanceMethodId(
-    r'component2',
-    r'()Ljava/lang/String;',
-  );
-
-  static final _component2 =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-              )
-            >
-          >('globalEnv_CallObjectMethod')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-            )
-          >();
-
-  /// from: `public operator fun component2(): kotlin.String?`
-  /// The returned object must be released after use, by calling the [release] method.
-  jni$_.JString? component2() {
-    return _component2(
-      reference.pointer,
-      _id_component2 as jni$_.JMethodIDPtr,
-    ).object<jni$_.JString?>(const jni$_.$JString$NullableType$());
-  }
-
-  static final _id_component3 = _class.instanceMethodId(
-    r'component3',
-    r'()Ljava/lang/String;',
-  );
-
-  static final _component3 =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-              )
-            >
-          >('globalEnv_CallObjectMethod')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-            )
-          >();
-
-  /// from: `public operator fun component3(): kotlin.String?`
-  /// The returned object must be released after use, by calling the [release] method.
-  jni$_.JString? component3() {
-    return _component3(
-      reference.pointer,
-      _id_component3 as jni$_.JMethodIDPtr,
-    ).object<jni$_.JString?>(const jni$_.$JString$NullableType$());
-  }
-
-  static final _id_component4 = _class.instanceMethodId(
-    r'component4',
-    r'()Ljava/lang/String;',
-  );
-
-  static final _component4 =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-              )
-            >
-          >('globalEnv_CallObjectMethod')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-            )
-          >();
-
-  /// from: `public operator fun component4(): kotlin.String?`
-  /// The returned object must be released after use, by calling the [release] method.
-  jni$_.JString? component4() {
-    return _component4(
-      reference.pointer,
-      _id_component4 as jni$_.JMethodIDPtr,
-    ).object<jni$_.JString?>(const jni$_.$JString$NullableType$());
-  }
-
-  static final _id_component5 = _class.instanceMethodId(
-    r'component5',
-    r'()Ljava/lang/String;',
-  );
-
-  static final _component5 =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-              )
-            >
-          >('globalEnv_CallObjectMethod')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-            )
-          >();
-
-  /// from: `public operator fun component5(): kotlin.String?`
-  /// The returned object must be released after use, by calling the [release] method.
-  jni$_.JString? component5() {
-    return _component5(
-      reference.pointer,
-      _id_component5 as jni$_.JMethodIDPtr,
-    ).object<jni$_.JString?>(const jni$_.$JString$NullableType$());
-  }
-
-  static final _id_copy = _class.instanceMethodId(
-    r'copy',
-    r'(ZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lcom/vanvixi/file_saver_ffi/models/SaveResult;',
-  );
-
-  static final _copy =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-                jni$_.VarArgs<
-                  (
-                    jni$_.Int32,
-                    jni$_.Pointer<jni$_.Void>,
-                    jni$_.Pointer<jni$_.Void>,
-                    jni$_.Pointer<jni$_.Void>,
-                    jni$_.Pointer<jni$_.Void>,
-                  )
-                >,
-              )
-            >
-          >('globalEnv_CallObjectMethod')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-              int,
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.Pointer<jni$_.Void>,
-            )
-          >();
-
-  /// from: `public fun copy(isSuccess: kotlin.Boolean, filePath: kotlin.String?, uri: kotlin.String?, errorMessage: kotlin.String?, errorCode: kotlin.String?): com.vanvixi.file_saver_ffi.models.SaveResult`
-  /// The returned object must be released after use, by calling the [release] method.
-  SaveResult copy(
-    bool z,
+    double d,
     jni$_.JString? string,
     jni$_.JString? string1,
-    jni$_.JString? string2,
-    jni$_.JString? string3,
-  ) {
-    final _$string = string?.reference ?? jni$_.jNullReference;
-    final _$string1 = string1?.reference ?? jni$_.jNullReference;
-    final _$string2 = string2?.reference ?? jni$_.jNullReference;
-    final _$string3 = string3?.reference ?? jni$_.jNullReference;
-    return _copy(
-      reference.pointer,
-      _id_copy as jni$_.JMethodIDPtr,
-      z ? 1 : 0,
-      _$string.pointer,
-      _$string1.pointer,
-      _$string2.pointer,
-      _$string3.pointer,
-    ).object<SaveResult>(const $SaveResult$Type$());
-  }
+  )
+  _onEvent;
+  final bool onEvent$async;
 
-  static final _id_toString$1 = _class.instanceMethodId(
-    r'toString',
-    r'()Ljava/lang/String;',
-  );
-
-  static final _toString$1 =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-              )
-            >
-          >('globalEnv_CallObjectMethod')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-            )
-          >();
-
-  /// from: `public fun toString(): kotlin.String`
-  /// The returned object must be released after use, by calling the [release] method.
-  jni$_.JString toString$1() {
-    return _toString$1(
-      reference.pointer,
-      _id_toString$1 as jni$_.JMethodIDPtr,
-    ).object<jni$_.JString>(const jni$_.$JString$Type$());
-  }
-
-  static final _id_hashCode$1 = _class.instanceMethodId(r'hashCode', r'()I');
-
-  static final _hashCode$1 =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-              )
-            >
-          >('globalEnv_CallIntMethod')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-            )
-          >();
-
-  /// from: `public fun hashCode(): kotlin.Int`
-  int hashCode$1() {
-    return _hashCode$1(
-      reference.pointer,
-      _id_hashCode$1 as jni$_.JMethodIDPtr,
-    ).integer;
-  }
-
-  static final _id_equals = _class.instanceMethodId(
-    r'equals',
-    r'(Ljava/lang/Object;)Z',
-  );
-
-  static final _equals =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-                jni$_.VarArgs<(jni$_.Pointer<jni$_.Void>,)>,
-              )
-            >
-          >('globalEnv_CallBooleanMethod')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-              jni$_.Pointer<jni$_.Void>,
-            )
-          >();
-
-  /// from: `public operator fun equals(other: kotlin.Any?): kotlin.Boolean`
-  bool equals(jni$_.JObject? object) {
-    final _$object = object?.reference ?? jni$_.jNullReference;
-    return _equals(
-      reference.pointer,
-      _id_equals as jni$_.JMethodIDPtr,
-      _$object.pointer,
-    ).boolean;
+  void onEvent(int i, double d, jni$_.JString? string, jni$_.JString? string1) {
+    return _onEvent(i, d, string, string1);
   }
 }
 
-final class $SaveResult$NullableType$ extends jni$_.JType<SaveResult?> {
+final class $ProgressCallback$NullableType$
+    extends jni$_.JType<ProgressCallback?> {
   @jni$_.internal
-  const $SaveResult$NullableType$();
+  const $ProgressCallback$NullableType$();
 
   @jni$_.internal
   @core$_.override
-  String get signature => r'Lcom/vanvixi/file_saver_ffi/models/SaveResult;';
+  String get signature =>
+      r'Lcom/vanvixi/file_saver_ffi/models/ProgressCallback;';
 
   @jni$_.internal
   @core$_.override
-  SaveResult? fromReference(jni$_.JReference reference) =>
-      reference.isNull ? null : SaveResult.fromReference(reference);
+  ProgressCallback? fromReference(jni$_.JReference reference) =>
+      reference.isNull ? null : ProgressCallback.fromReference(reference);
   @jni$_.internal
   @core$_.override
   jni$_.JType get superType => const jni$_.$JObject$Type$();
 
   @jni$_.internal
   @core$_.override
-  jni$_.JType<SaveResult?> get nullableType => this;
+  jni$_.JType<ProgressCallback?> get nullableType => this;
 
   @jni$_.internal
   @core$_.override
   final superCount = 1;
 
   @core$_.override
-  int get hashCode => ($SaveResult$NullableType$).hashCode;
+  int get hashCode => ($ProgressCallback$NullableType$).hashCode;
 
   @core$_.override
   bool operator ==(Object other) {
-    return other.runtimeType == ($SaveResult$NullableType$) &&
-        other is $SaveResult$NullableType$;
+    return other.runtimeType == ($ProgressCallback$NullableType$) &&
+        other is $ProgressCallback$NullableType$;
   }
 }
 
-final class $SaveResult$Type$ extends jni$_.JType<SaveResult> {
+final class $ProgressCallback$Type$ extends jni$_.JType<ProgressCallback> {
   @jni$_.internal
-  const $SaveResult$Type$();
+  const $ProgressCallback$Type$();
 
   @jni$_.internal
   @core$_.override
-  String get signature => r'Lcom/vanvixi/file_saver_ffi/models/SaveResult;';
+  String get signature =>
+      r'Lcom/vanvixi/file_saver_ffi/models/ProgressCallback;';
 
   @jni$_.internal
   @core$_.override
-  SaveResult fromReference(jni$_.JReference reference) =>
-      SaveResult.fromReference(reference);
+  ProgressCallback fromReference(jni$_.JReference reference) =>
+      ProgressCallback.fromReference(reference);
   @jni$_.internal
   @core$_.override
   jni$_.JType get superType => const jni$_.$JObject$Type$();
 
   @jni$_.internal
   @core$_.override
-  jni$_.JType<SaveResult?> get nullableType =>
-      const $SaveResult$NullableType$();
+  jni$_.JType<ProgressCallback?> get nullableType =>
+      const $ProgressCallback$NullableType$();
 
   @jni$_.internal
   @core$_.override
   final superCount = 1;
 
   @core$_.override
-  int get hashCode => ($SaveResult$Type$).hashCode;
+  int get hashCode => ($ProgressCallback$Type$).hashCode;
 
   @core$_.override
   bool operator ==(Object other) {
-    return other.runtimeType == ($SaveResult$Type$) &&
-        other is $SaveResult$Type$;
+    return other.runtimeType == ($ProgressCallback$Type$) &&
+        other is $ProgressCallback$Type$;
   }
 }

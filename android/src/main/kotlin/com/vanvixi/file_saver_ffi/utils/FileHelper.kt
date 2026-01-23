@@ -68,19 +68,22 @@ object FileHelper {
      * Writes data to output stream
      *
      * @param outputStream Output stream from MediaStore
-     * @param data Video data to write
+     * @param data File data to write
+     * @param onProgress Optional callback receiving progress from 0.0 to 1.0
      */
     suspend fun writeStream(
         outputStream: OutputStream,
         data: ByteArray,
+        onProgress: ((Double) -> Unit)?,
     ) = withContext(Dispatchers.IO) {
         outputStream.use { stream ->
             var bytesWritten = 0L
             val chunkSize = Constants.CHUNK_SIZE
+            val totalBytes = data.size.toLong()
 
-            while (bytesWritten < data.size) {
+            while (bytesWritten < totalBytes) {
                 // Calculate chunk size
-                val remainingBytes = data.size - bytesWritten.toInt()
+                val remainingBytes = (totalBytes - bytesWritten).toInt()
                 val currentChunkSize = minOf(remainingBytes, chunkSize)
 
                 // Write chunk
@@ -88,6 +91,12 @@ object FileHelper {
 
                 // Update progress
                 bytesWritten += currentChunkSize
+
+                // Report progress (0.0 to 1.0)
+                if (onProgress != null) {
+                    val progress = bytesWritten.toDouble() / totalBytes.toDouble()
+                    onProgress(progress)
+                }
             }
 
             // Flush stream
