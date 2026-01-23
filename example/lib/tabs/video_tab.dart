@@ -46,7 +46,7 @@ class _VideoTabPageState extends State<VideoTabPage>
       final fileName = 'video_${DateTime.now().millisecondsSinceEpoch}';
 
       await runSaveCatching(
-        () => FileSaver.instance.saveBytes(
+        () => FileSaver.instance.saveBytesAsync(
           bytes: videoBytes,
           fileName: fileName,
           fileType: VideoType.mp4,
@@ -56,6 +56,11 @@ class _VideoTabPageState extends State<VideoTabPage>
             _ => null,
           },
           subDir: 'FileSaverFFI Demo',
+          onProgress: (value) {
+            setState(() {
+              progress = value;
+            });
+          },
         ),
       );
     } catch (e) {

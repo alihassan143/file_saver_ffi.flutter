@@ -41,7 +41,7 @@ class _ImageTabPageState extends State<ImageTabPage>
       final fileName = 'image_${DateTime.now().millisecondsSinceEpoch}';
 
       await runSaveCatching(
-        () => FileSaver.instance.saveBytes(
+        () => FileSaver.instance.saveBytesAsync(
           bytes: imageBytes,
           fileName: fileName,
           fileType: ImageType.jpg,
@@ -51,6 +51,11 @@ class _ImageTabPageState extends State<ImageTabPage>
             _ => null,
           },
           subDir: 'FileSaverFFI Demo',
+          onProgress: (value) {
+            setState(() {
+              progress = value;
+            });
+          },
         ),
       );
     } catch (e) {
