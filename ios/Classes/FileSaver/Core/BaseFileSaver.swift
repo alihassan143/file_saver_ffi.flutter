@@ -2,13 +2,16 @@ import Foundation
 import Photos
 
 protocol BaseFileSaver {
+    /// Core save method - implemented by each Saver class
+    /// - Parameter onProgress: Progress callback (0.0 to 1.0), called during write operations
     func saveBytes(
         fileData: Data,
         fileType: FileType,
         baseFileName: String,
         saveLocation: SaveLocation,
         subDir: String?,
-        conflictResolution: ConflictResolution
+        conflictResolution: ConflictResolution,
+        onProgress: ((Double) -> Void)?
     ) throws -> SaveResult
 }
 

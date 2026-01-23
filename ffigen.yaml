@@ -12,12 +12,9 @@ headers:
 functions:
   include:
     - file_saver_init
-    - file_saver_save_bytes_async
-    - file_saver_free_result
+    - file_saver_init_dart_api_dl
+    - file_saver_save_bytes
     - file_saver_dispose
-structs:
-  include:
-    - FSaveResult
 preamble: |
   // ignore_for_file: always_specify_types
   // ignore_for_file: camel_case_types

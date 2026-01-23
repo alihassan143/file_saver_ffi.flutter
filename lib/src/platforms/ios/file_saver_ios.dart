@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ffi';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
@@ -8,6 +9,7 @@ import '../../exceptions/file_saver_exceptions.dart';
 import '../../models/conflict_resolution.dart';
 import '../../models/file_type.dart';
 import '../../models/save_location.dart';
+import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
 import 'bindings.g.dart';
 
@@ -15,6 +17,16 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
   FileSaverIos() {
     final dylib = DynamicLibrary.process();
     _bindings = FileSaverFfiBindings(dylib);
+
+    // Initialize Dart API DL for NativePort communication
+    final initResult = _bindings.file_saver_init_dart_api_dl(NativeApi.initializeApiDLData);
+    if (initResult != 0) {
+      throw const PlatformException(
+        'Failed to initialize Dart API DL',
+        'INIT_FAILED',
+      );
+    }
+
     _saverInstance = _bindings.file_saver_init();
 
     if (_saverInstance.address != 0) {
@@ -46,81 +58,158 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
   }
 
   @override
-  Future<Uri> saveBytes({
+  Stream<SaveProgress> saveBytes({
     required Uint8List fileBytes,
     required String fileName,
     required FileType fileType,
     SaveLocation? saveLocation,
     String? subDir,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
-  }) async {
+  }) async* {
     _validateInput(fileBytes, fileName);
 
-    final completer = Completer<Uri>();
+    final receivePort = ReceivePort();
+    final nativePort = receivePort.sendPort.nativePort;
 
-    return using((Arena arena) {
-      void onResult(Pointer<FSaveResult> resultPtr) {
-        try {
-          final result = _convertToUriOrThrow(resultPtr.ref);
-          _bindings.file_saver_free_result(resultPtr);
-          completer.complete(result);
-        } catch (e) {
-          _bindings.file_saver_free_result(resultPtr);
-          completer.completeError(e);
+    // Copy data to native memory
+    final dataPointer = malloc<Uint8>(fileBytes.length);
+    dataPointer.asTypedList(fileBytes.length).setAll(0, fileBytes);
+
+    final fileNameCStr = fileName.toNativeUtf8();
+    final extCStr = fileType.ext.toNativeUtf8();
+    final mimeCStr = fileType.mimeType.toNativeUtf8();
+    final saveLocationIndex = switch (saveLocation) {
+      IosSaveLocation location => location.index,
+      _ => IosSaveLocation.documents.index,
+    };
+    final subDirCStr = subDir?.toNativeUtf8();
+
+    try {
+      // Call native function with NativePort
+      _bindings.file_saver_save_bytes(
+        _saverInstance,
+        dataPointer,
+        fileBytes.length,
+        fileNameCStr.cast(),
+        extCStr.cast(),
+        mimeCStr.cast(),
+        saveLocationIndex,
+        subDirCStr?.cast() ?? nullptr,
+        conflictResolution.index,
+        nativePort,
+      );
+
+      // Listen for messages from native code
+      await for (final message in receivePort) {
+        final event = _parseMessage(message);
+        yield event;
+
+        // Close port on terminal events
+        if (event is SaveProgressComplete ||
+            event is SaveProgressError ||
+            event is SaveProgressCancelled) {
+          break;
         }
       }
-
-      final callback =
-          NativeCallable<Void Function(Pointer<FSaveResult>)>.listener(
-            onResult,
-          );
-
-      final dataPointer = arena<Uint8>(fileBytes.length);
-      dataPointer.asTypedList(fileBytes.length).setAll(0, fileBytes);
-
-      final fileNameCStr = fileName.toNativeUtf8(allocator: arena);
-      final extCStr = fileType.ext.toNativeUtf8(allocator: arena);
-      final mimeCStr = fileType.mimeType.toNativeUtf8(allocator: arena);
-      final saveLocationIndex = switch (saveLocation) {
-        IosSaveLocation location => location.index,
-        _ => IosSaveLocation.documents.index,
-      };
-      final subDirCStr = subDir?.toNativeUtf8(allocator: arena);
-
-      try {
-        _bindings.file_saver_save_bytes_async(
-          _saverInstance,
-          dataPointer,
-          fileBytes.length,
-          fileNameCStr.cast(),
-          extCStr.cast(),
-          mimeCStr.cast(),
-          saveLocationIndex,
-          subDirCStr?.cast() ?? nullptr,
-          conflictResolution.index,
-          callback.nativeFunction,
-        );
-
-        completer.future.whenComplete(() {
-          callback.close();
-        });
-
-        return completer.future;
-      } catch (e) {
-        callback.close();
-        rethrow;
+    } finally {
+      receivePort.close();
+      malloc.free(dataPointer);
+      malloc.free(fileNameCStr);
+      malloc.free(extCStr);
+      malloc.free(mimeCStr);
+      if (subDirCStr != null) {
+        malloc.free(subDirCStr);
       }
-    });
+    }
   }
 
-  Uri _convertToUriOrThrow(FSaveResult cResult) {
-    if (!cResult.success) {
-      final errorCode = cResult.errorCode.cast<Utf8>().toDartString();
-      final errorMsg = cResult.errorMessage.cast<Utf8>().toDartString();
-      throw FileSaverException.fromErrorResult(errorCode, errorMsg);
+  @override
+  Future<Uri> saveBytesAsync({
+    required Uint8List fileBytes,
+    required String fileName,
+    required FileType fileType,
+    SaveLocation? saveLocation,
+    String? subDir,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+    void Function(double progress)? onProgress,
+  }) async {
+    Uri? result;
+
+    await for (final event in saveBytes(
+      fileBytes: fileBytes,
+      fileName: fileName,
+      fileType: fileType,
+      saveLocation: saveLocation,
+      subDir: subDir,
+      conflictResolution: conflictResolution,
+    )) {
+      print("saveBytes cb event: $event");
+      switch (event) {
+        case SaveProgressStarted():
+          break;
+        case SaveProgressUpdate(:final progress):
+          print("SaveProgressUpdate: $progress");
+          onProgress?.call(progress);
+        case SaveProgressComplete(:final uri):
+          result = uri;
+        case SaveProgressError(:final exception):
+          throw exception;
+        case SaveProgressCancelled():
+          throw const PlatformException('Operation cancelled', 'CANCELLED');
+      }
     }
 
-    return Uri.parse(cResult.fileUri.cast<Utf8>().toDartString());
+    if (result == null) {
+      throw const PlatformException(
+        'Save operation did not complete',
+        'INCOMPLETE',
+      );
+    }
+    return result;
+  }
+
+  /// Parses message from native code according to protocol:
+  /// - Started:    [0]
+  /// - Progress:   [1, progress]    (progress is 0.0 to 1.0)
+  /// - Error:      [2, errorCode, errorMessage]
+  /// - Success:    [3, fileUri]
+  /// - Cancelled:  [4]
+  SaveProgress _parseMessage(dynamic message) {
+    if (message is! List || message.isEmpty) {
+      return SaveProgressError(
+        const PlatformException('Invalid message format', 'INVALID_MESSAGE'),
+      );
+    }
+
+    final type = message[0] as int;
+
+    switch (type) {
+      case 0: // Started
+        return const SaveProgressStarted();
+
+      case 1: // Progress
+        final progress = (message[1] as num).toDouble();
+        return SaveProgressUpdate(progress);
+
+      case 2: // Error
+        final errorCode = message[1] as String;
+        final errorMessage = message[2] as String;
+        return SaveProgressError(
+          FileSaverException.fromErrorResult(errorCode, errorMessage),
+        );
+
+      case 3: // Success
+        final fileUri = message[1] as String;
+        return SaveProgressComplete(Uri.parse(fileUri));
+
+      case 4: // Cancelled
+        return const SaveProgressCancelled();
+
+      default:
+        return SaveProgressError(
+          PlatformException('Unknown message type: $type', 'UNKNOWN_TYPE'),
+        );
+    }
   }
 
   void _validateInput(Uint8List bytes, String fileName) {

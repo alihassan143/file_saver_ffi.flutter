@@ -26,6 +26,23 @@ class FileSaverFfiBindings {
     ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName) lookup,
   ) : _lookup = lookup;
 
+  /// Initialize Dart API for NativePort communication.
+  /// Must be called before using file_saver_save_bytes.
+  ///
+  /// @param data Pointer from NativeApi.initializeApiDLData
+  /// @return 0 on success, -1 on failure
+  int file_saver_init_dart_api_dl(ffi.Pointer<ffi.Void> data) {
+    return _file_saver_init_dart_api_dl(data);
+  }
+
+  late final _file_saver_init_dart_api_dlPtr =
+      _lookup<ffi.NativeFunction<ffi.IntPtr Function(ffi.Pointer<ffi.Void>)>>(
+        'file_saver_init_dart_api_dl',
+      );
+  late final _file_saver_init_dart_api_dl =
+      _file_saver_init_dart_api_dlPtr
+          .asFunction<int Function(ffi.Pointer<ffi.Void>)>();
+
   ffi.Pointer<ffi.Void> file_saver_init() {
     return _file_saver_init();
   }
@@ -37,7 +54,26 @@ class FileSaverFfiBindings {
   late final _file_saver_init =
       _file_saver_initPtr.asFunction<ffi.Pointer<ffi.Void> Function()>();
 
-  void file_saver_save_bytes_async(
+  /// Save file bytes asynchronously with progress reporting via NativePort.
+  ///
+  /// Progress messages sent to native_port:
+  /// - Started:    [0]
+  /// - Progress:   [1, progress]    (progress is 0.0 to 1.0)
+  /// - Error:      [2, errorCode, errorMessage]
+  /// - Success:    [3, fileUri]
+  /// - Cancelled:  [4]
+  ///
+  /// @param instance FileSaver instance from file_saver_init
+  /// @param fileData Byte array of file content
+  /// @param fileDataLength Length of fileData
+  /// @param baseFileName File name without extension
+  /// @param extension File extension without dot
+  /// @param mimeType MIME type string
+  /// @param saveLocation Save location index (0-4)
+  /// @param subDir Optional subdirectory (can be NULL)
+  /// @param conflictMode Conflict resolution mode (0-3)
+  /// @param native_port Dart NativePort for progress reporting
+  void file_saver_save_bytes(
     ffi.Pointer<ffi.Void> instance,
     ffi.Pointer<ffi.Uint8> fileData,
     int fileDataLength,
@@ -47,9 +83,9 @@ class FileSaverFfiBindings {
     int saveLocation,
     ffi.Pointer<ffi.Char> subDir,
     int conflictMode,
-    FSaveResultCallback callback,
+    int native_port,
   ) {
-    return _file_saver_save_bytes_async(
+    return _file_saver_save_bytes(
       instance,
       fileData,
       fileDataLength,
@@ -59,11 +95,11 @@ class FileSaverFfiBindings {
       saveLocation,
       subDir,
       conflictMode,
-      callback,
+      native_port,
     );
   }
 
-  late final _file_saver_save_bytes_asyncPtr = _lookup<
+  late final _file_saver_save_bytesPtr = _lookup<
     ffi.NativeFunction<
       ffi.Void Function(
         ffi.Pointer<ffi.Void>,
@@ -75,12 +111,12 @@ class FileSaverFfiBindings {
         ffi.Int32,
         ffi.Pointer<ffi.Char>,
         ffi.Int32,
-        FSaveResultCallback,
+        ffi.Int64,
       )
     >
-  >('file_saver_save_bytes_async');
-  late final _file_saver_save_bytes_async =
-      _file_saver_save_bytes_asyncPtr
+  >('file_saver_save_bytes');
+  late final _file_saver_save_bytes =
+      _file_saver_save_bytesPtr
           .asFunction<
             void Function(
               ffi.Pointer<ffi.Void>,
@@ -92,21 +128,9 @@ class FileSaverFfiBindings {
               int,
               ffi.Pointer<ffi.Char>,
               int,
-              FSaveResultCallback,
+              int,
             )
           >();
-
-  void file_saver_free_result(ffi.Pointer<FSaveResult> result) {
-    return _file_saver_free_result(result);
-  }
-
-  late final _file_saver_free_resultPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<FSaveResult>)>>(
-        'file_saver_free_result',
-      );
-  late final _file_saver_free_result =
-      _file_saver_free_resultPtr
-          .asFunction<void Function(ffi.Pointer<FSaveResult>)>();
 
   void file_saver_dispose(ffi.Pointer<ffi.Void> instance) {
     return _file_saver_dispose(instance);
@@ -119,23 +143,3 @@ class FileSaverFfiBindings {
   late final _file_saver_dispose =
       _file_saver_disposePtr.asFunction<void Function(ffi.Pointer<ffi.Void>)>();
 }
-
-final class FSaveResult extends ffi.Struct {
-  @ffi.Bool()
-  external bool success;
-
-  external ffi.Pointer<ffi.Char> filePath;
-
-  external ffi.Pointer<ffi.Char> fileUri;
-
-  external ffi.Pointer<ffi.Char> errorCode;
-
-  external ffi.Pointer<ffi.Char> errorMessage;
-}
-
-typedef FSaveResultCallbackFunction =
-    ffi.Void Function(ffi.Pointer<FSaveResult>);
-typedef DartFSaveResultCallbackFunction =
-    void Function(ffi.Pointer<FSaveResult>);
-typedef FSaveResultCallback =
-    ffi.Pointer<ffi.NativeFunction<FSaveResultCallbackFunction>>;

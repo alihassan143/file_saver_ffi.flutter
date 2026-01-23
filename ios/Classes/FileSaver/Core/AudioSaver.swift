@@ -8,7 +8,8 @@ class AudioSaver: BaseFileSaver {
         baseFileName: String,
         saveLocation: SaveLocation,
         subDir: String?,
-        conflictResolution: ConflictResolution
+        conflictResolution: ConflictResolution,
+        onProgress: ((Double) -> Void)?
     ) throws -> SaveResult {
         try FormatValidator.validateAudioFormat(fileType)
         try validateFileData(fileData)
@@ -29,7 +30,7 @@ class AudioSaver: BaseFileSaver {
             conflictResolution: conflictResolution
         )
 
-        try fileData.write(to: finalURL, options: .atomic)
+        try FileHelper.writeFileWithProgress(data: fileData, to: finalURL, onProgress: onProgress)
 
         return .success(filePath: finalURL.path, fileUri: finalURL.absoluteString)
     }
