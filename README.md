@@ -86,69 +86,64 @@ Files are saved to the Application Documents Directory. To make them visible to 
 import 'package:file_saver_ffi/file_saver_ffi.dart';
 
 try {
-  // Save image bytes
-  final uri = await FileSaver.instance.saveBytes(
+  // Save image bytes (simple API)
+  final uri = await FileSaver.instance.saveBytesAsync(
     bytes: imageBytes,
     fileName: 'my_image',
     fileType: ImageType.jpg,
   );
-  
-    print('Saved to: $uri');
-  } on PermissionDeniedException catch (e) {
-    print('Permission denied: ${e.message}');
-  } on FileSaverException catch (e) {
-    print('Save failed: ${e.message}');
+
+  print('Saved to: $uri');
+} on PermissionDeniedException catch (e) {
+  print('Permission denied: ${e.message}');
+} on FileSaverException catch (e) {
+  print('Save failed: ${e.message}');
 }
 ```
 
-## Resource Management
+## Progress Tracking
 
-`FileSaver` uses native resources via FFI (iOS) and JNI (Android). The library provides **automatic cleanup** via `NativeFinalizer`, but you can also manually release resources if needed.
+Track save progress in real-time using the streaming API or callback-based API.
 
-### Manual Disposal
-
-If you want to release native resources immediately (e.g., to free memory sooner), call `dispose()`:
+### Stream-Based API (Full Control)
 
 ```dart
-// Release resources immediately when you're done
-FileSaver.instance.dispose();
-```
-
-### App Lifecycle Integration (Optional)
-
-For explicit cleanup when the app terminates, you can use `WidgetsBindingObserver`:
-
-```dart
-import 'package:file_saver_ffi/file_saver_ffi.dart';
-import 'package:flutter/material.dart';
-
-class AppLifecycleObserver extends WidgetsBindingObserver {
-  final VoidCallback? onDetached;
-
-  AppLifecycleObserver({this.onDetached});
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.detached) {
-      onDetached?.call();
-    }
+await for (final event in FileSaver.instance.saveBytes(
+  bytes: largeVideoBytes,
+  fileName: 'video',
+  fileType: VideoType.mp4,
+)) {
+  switch (event) {
+    case SaveProgressStarted():
+      showLoadingIndicator();
+    case SaveProgressUpdate(:final progress):
+      updateProgressBar(progress); // 0.0 to 1.0
+    case SaveProgressComplete(:final uri):
+      hideLoadingIndicator();
+      showSuccess('Saved to: $uri');
+    case SaveProgressError(:final exception):
+      hideLoadingIndicator();
+      showError(exception.message);
+    case SaveProgressCancelled():
+      hideLoadingIndicator();
   }
 }
-
-void main() {
-  final binding = WidgetsFlutterBinding.ensureInitialized();
-  
-  binding.addObserver(
-    AppLifecycleObserver(
-      onDetached: FileSaver.instance.dispose,
-    ),
-  );
-  
-  runApp(const MyApp());
-}
 ```
 
-> **Note:** `AppLifecycleState.detached` is not guaranteed to be called on all platforms when the app is force-killed. However, the OS will automatically reclaim all memory when the process terminates, so this is primarily for explicit cleanup in normal shutdown scenarios.
+### Callback-Based API (Simple)
+
+```dart
+final uri = await FileSaver.instance.saveBytesAsync(
+  bytes: largeVideoBytes,
+  fileName: 'video',
+  fileType: VideoType.mp4,
+  onProgress: (progress) {
+    print('Progress: ${(progress * 100).toInt()}%');
+  },
+);
+```
+
+> **Note:** Progress is reported as chunked writes (1MB chunks). For Photos Library saves on iOS, progress jumps from 0% to 100% due to API limitations.
 
 ## Supported File Types
 
@@ -235,7 +230,7 @@ IosSaveLocation.documents  // Documents/ directory (default, no permission)
 import 'dart:io' show Platform;
 
 // Save image to Photos Library on iOS, Pictures on Android
-final uri = await FileSaver.instance.saveBytes(
+final uri = await FileSaver.instance.saveBytesAsync(
   bytes: imageBytes,
   fileName: 'photo',
   fileType: ImageType.jpg,
@@ -245,7 +240,7 @@ final uri = await FileSaver.instance.saveBytes(
 );
 
 // Save video to DCIM (Android) or Photos (iOS)
-final uri = await FileSaver.instance.saveBytes(
+final uri = await FileSaver.instance.saveBytesAsync(
   bytes: videoBytes,
   fileName: 'camera_video',
   fileType: VideoType.mp4,
@@ -256,7 +251,7 @@ final uri = await FileSaver.instance.saveBytes(
 
 // Use default location (no saveLocation specified)
 // Android → Downloads/, iOS → Documents/
-final uri = await FileSaver.instance.saveBytes(
+final uri = await FileSaver.instance.saveBytesAsync(
   bytes: pdfBytes,
   fileName: 'document',
   fileType: CustomFileType(ext: 'pdf', mimeType: 'application/pdf'),
@@ -343,17 +338,17 @@ This is Android's platform design for security, not a library limitation.
 
 ```dart
 try {
-  final uri = await FileSaver.instance.saveBytes(
+  final uri = await FileSaver.instance.saveBytesAsync(
     bytes: fileBytes,
     fileName: 'document',
     fileType: CustomFileType(ext: 'pdf', mimeType: 'application/pdf'),
     conflictResolution: ConflictResolution.autoRename,
   );
 
-    // If "document.pdf" exists, saves as "document (1).pdf"
-    print('Saved to: $uri');
-  } on FileSaverException catch (e) {
-    print('Error: ${e.message}');
+  // If "document.pdf" exists, saves as "document (1).pdf"
+  print('Saved to: $uri');
+} on FileSaverException catch (e) {
+  print('Error: ${e.message}');
 }
 ```
 
@@ -363,7 +358,7 @@ try {
 
 ```dart
 try {
-  final uri = await FileSaver.instance.saveBytes(
+  final uri = await FileSaver.instance.saveBytesAsync(
     bytes: videoBytes,
     fileName: 'vacation_video',
     fileType: VideoType.mp4,
@@ -386,7 +381,7 @@ import 'dart:io' show Platform;
 
 // Save to Photos Library (iOS) or Pictures folder (Android)
 try {
-  final uri = await FileSaver.instance.saveBytes(
+  final uri = await FileSaver.instance.saveBytesAsync(
     bytes: imageBytes,
     fileName: 'screenshot',
     fileType: ImageType.png,
@@ -402,7 +397,7 @@ try {
 
 // Save to Downloads (Android) or Documents (iOS) - using defaults
 try {
-  final uri = await FileSaver.instance.saveBytes(
+  final uri = await FileSaver.instance.saveBytesAsync(
     bytes: pdfBytes,
     fileName: 'report',
     fileType: CustomFileType(ext: 'pdf', mimeType: 'application/pdf'),
@@ -421,7 +416,7 @@ try {
 import 'dart:io' show Platform;
 
 try {
-  final uri = await FileSaver.instance.saveBytes(
+  final uri = await FileSaver.instance.saveBytesAsync(
     bytes: pdfBytes,
     fileName: 'invoice_${DateTime.now().millisecondsSinceEpoch}',
     fileType: CustomFileType(ext: 'pdf', mimeType: 'application/pdf'),
@@ -516,7 +511,7 @@ The library provides specific exception types for different failure scenarios:
 
 ```dart
 try {
-  final uri = await FileSaver.instance.saveBytes(...);
+  final uri = await FileSaver.instance.saveBytesAsync(...);
   print('Saved to: $uri');
 
 } on PermissionDeniedException catch (e) {
@@ -543,14 +538,19 @@ try {
 
 Singleton API class for saving files.
 
+#### saveBytesAsync (Recommended)
+
+Simple Future-based API with optional progress callback.
+
 ```dart
-Future<Uri> saveBytes({
+Future<Uri> saveBytesAsync({
   required Uint8List bytes,
   required String fileName,
   required FileType fileType,
   SaveLocation? saveLocation,
   String? subDir,
   ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  void Function(double progress)? onProgress,
 })
 ```
 
@@ -563,10 +563,33 @@ Future<Uri> saveBytes({
   - iOS: `IosSaveLocation.documents` (default)
 - `subDir` - (Optional) Subdirectory/album name
 - `conflictResolution` - Strategy for handling name conflicts (default: `autoRename`)
+- `onProgress` - (Optional) Progress callback (0.0 to 1.0)
 
 **Returns:** `Uri` of the saved file
 
 **Throws:** `FileSaverException` or subtypes on failure
+
+#### saveBytes (Stream API)
+
+Stream-based API for full control over progress events.
+
+```dart
+Stream<SaveProgress> saveBytes({
+  required Uint8List bytes,
+  required String fileName,
+  required FileType fileType,
+  SaveLocation? saveLocation,
+  String? subDir,
+  ConflictResolution conflictResolution = ConflictResolution.autoRename,
+})
+```
+
+**Returns:** `Stream<SaveProgress>` with events:
+- `SaveProgressStarted` - Operation started
+- `SaveProgressUpdate(double progress)` - Progress 0.0 to 1.0
+- `SaveProgressComplete(Uri uri)` - Success with file URI
+- `SaveProgressError(FileSaverException exception)` - Error occurred
+- `SaveProgressCancelled` - User cancelled
 
 ### SaveLocation
 
@@ -611,7 +634,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 * Save from Network URL
 * User-Selected Location Android (SAF), iOS (Document Picker)
 * Custom Path Support
-* Progress Tracking
+* ~~Progress Tracking~~
 * MacOS Support
 * Windows Support
 * Web Support
