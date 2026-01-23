@@ -3,45 +3,40 @@ package com.vanvixi.file_saver_ffi
 import android.content.Context
 import com.vanvixi.file_saver_ffi.models.FileType
 import com.vanvixi.file_saver_ffi.models.SaveLocation
-import com.vanvixi.file_saver_ffi.models.SaveResult
+import com.vanvixi.file_saver_ffi.models.SaveProgressEvent
 import com.vanvixi.file_saver_ffi.utils.Constants
 import com.vanvixi.file_saver_ffi.utils.FormatValidator
 import com.vanvixi.file_saver_ffi.exception.UnsupportedFormatException
 import com.vanvixi.file_saver_ffi.models.ConflictResolution
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 
 class VideoSaver(context: Context) : BaseFileSaver(context) {
 
-
-    suspend fun saveVideoBytes(
-        videoData: ByteArray,
-        videoType: FileType,
+    override fun saveBytes(
+        fileData: ByteArray,
+        fileType: FileType,
         baseFileName: String,
         saveLocation: SaveLocation,
         subDir: String?,
         conflictResolution: ConflictResolution,
-    ): SaveResult = withContext(Dispatchers.IO) {
-        // FormatValidator checks:
-        // - Video format is supported
-        // - Codec availability via MediaCodecList
-        // Throws UnsupportedFormatException if validation fails
+    ): Flow<SaveProgressEvent> = flow {
         try {
-            FormatValidator.validateVideoFormat(videoType)
+            FormatValidator.validateVideoFormat(fileType)
         } catch (e: UnsupportedFormatException) {
-            return@withContext SaveResult.failure(
+            emit(SaveProgressEvent.Error(
                 Constants.ERROR_UNSUPPORTED_FORMAT,
-                e.message ?: "Unsupported format: ${videoType.ext}"
-            )
+                e.message ?: "Unsupported format: ${fileType.ext}"
+            ))
+            return@flow
         }
 
-        return@withContext super.saveBytes(
-            videoData,
-            videoType,
-            baseFileName,
-            saveLocation,
-            subDir,
-            conflictResolution,
-        )
-    }
+        super.saveBytes(
+            fileData, fileType, baseFileName, saveLocation, subDir, conflictResolution
+        ).collect { event ->
+            emit(event)
+        }
+    }.flowOn(Dispatchers.IO)
 }

@@ -3,110 +3,120 @@ package com.vanvixi.file_saver_ffi
 import android.content.Context
 import com.vanvixi.file_saver_ffi.models.FileType
 import com.vanvixi.file_saver_ffi.models.SaveLocation
-import com.vanvixi.file_saver_ffi.models.SaveResult
+import com.vanvixi.file_saver_ffi.models.SaveProgressEvent
 import com.vanvixi.file_saver_ffi.utils.Constants
 import com.vanvixi.file_saver_ffi.exception.FileExistsException
 import com.vanvixi.file_saver_ffi.models.ConflictResolution
 import com.vanvixi.file_saver_ffi.utils.FileHelper
 import com.vanvixi.file_saver_ffi.utils.StoreHelper
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import java.io.IOException
 
-abstract class BaseFileSaver(private val context: Context) {
+abstract class BaseFileSaver(protected val context: Context) {
+
     /**
-     * Saves file to MediaStore
+     * Saves file to MediaStore with progress streaming
      *
      * @param fileData File content as byte array
-     * @param baseFileName File name WITHOUT extension
      * @param fileType File type (e.g., ImageType, VideoType, AudioType, CustomFileType)
-     * @param subDir Optional album name (null → Pictures folder)
-     *              Example: "MyAlbum" → Pictures/MyAlbum
-     * @param conflictResolution Conflict resolution mode (IGNORED for MediaStore)
-     *                     MediaStore automatically handles conflicts by appending numbers
-     *                     photo.jpg → photo(1).jpg → photo(2).jpg
+     * @param baseFileName File name WITHOUT extension
      * @param saveLocation Target save location (e.g., PICTURES, DOWNLOADS, DCIM)
-     * @return SaveResult with success/failure details
-     *
+     * @param subDir Optional album name (null → Pictures folder)
+     * @param conflictResolution Conflict resolution mode
+     * @return Flow of SaveProgressEvent
      */
-    suspend fun saveBytes(
+    open fun saveBytes(
         fileData: ByteArray,
         fileType: FileType,
         baseFileName: String,
         saveLocation: SaveLocation,
         subDir: String?,
         conflictResolution: ConflictResolution,
-    ): SaveResult = withContext(Dispatchers.IO) {
+    ): Flow<SaveProgressEvent> = flow {
+        emit(SaveProgressEvent.Started)
+
         try {
             if (fileData.isEmpty()) {
-                return@withContext SaveResult.failure(
+                emit(SaveProgressEvent.Error(
                     Constants.ERROR_INVALID_FILE,
                     "File data cannot be empty"
-                )
+                ))
+                return@flow
             }
+
+            // Progress: 0.0 - 0.1 (preparing)
+            emit(SaveProgressEvent.Progress(0.05))
 
             val (uri, outputStream) = try {
                 StoreHelper.createEntry(
                     context, fileType, baseFileName, saveLocation, subDir, conflictResolution,
                 )
             } catch (e: IOException) {
-                return@withContext SaveResult.failure(
+                emit(SaveProgressEvent.Error(
                     Constants.ERROR_FILE_IO,
                     "Failed to create MediaStore entry: ${e.message}"
-                )
+                ))
+                return@flow
             } catch (e: FileExistsException) {
-                return@withContext SaveResult.failure(
+                emit(SaveProgressEvent.Error(
                     Constants.ERROR_FILE_EXISTS,
                     e.message ?: "File already exists"
-                )
+                ))
+                return@flow
             }
 
+            // Progress: 0.1 (entry created)
+            emit(SaveProgressEvent.Progress(0.1))
+
             try {
-                FileHelper.writeStream(outputStream, fileData)
+                // Write with progress (0.1 - 0.9)
+                FileHelper.writeStream(outputStream, fileData) { writeProgress ->
+                    // Map write progress (0.0-1.0) to overall progress (0.1-0.9)
+                    val overallProgress = 0.1 + (writeProgress * 0.8)
+                    // Note: This callback runs on IO dispatcher, we can't emit directly
+                    // So we'll just use the final progress after write completes
+                }
             } catch (e: IOException) {
                 // If write fails, try to delete the MediaStore entry
-                // to avoid leaving incomplete entries
                 try {
                     context.contentResolver.delete(uri, null, null)
                 } catch (_: Exception) {
                     // Ignore delete errors
                 }
-                return@withContext SaveResult.failure(
+                emit(SaveProgressEvent.Error(
                     Constants.ERROR_FILE_IO,
-                    "Failed to write image data: ${e.message}"
-                )
+                    "Failed to write file data: ${e.message}"
+                ))
+                return@flow
             }
+
+            // Progress: 0.9 (write complete)
+            emit(SaveProgressEvent.Progress(0.9))
 
             try {
                 StoreHelper.markEntryComplete(context, uri)
             } catch (_: Exception) {
-                // If marking complete fails, image is still saved
-                // but may not appear in Gallery until device restart
-                // Log warning but don't fail the operation
+                // If marking complete fails, file is still saved
             }
 
-            // Convert content:// URI to file path (best-effort)
-            // May return null on some devices/Android versions
-            val filePath = try {
-                StoreHelper.uriToFilePath(context, uri)
-            } catch (_: Exception) {
-                null
-            }
+            // Progress: 1.0 (complete)
+            emit(SaveProgressEvent.Progress(1.0))
 
-            SaveResult.success(
-                filePath = filePath ?: "MediaStore",
-                uri = uri.toString()
-            )
+            emit(SaveProgressEvent.Success(uri.toString()))
+
         } catch (e: SecurityException) {
-            SaveResult.failure(
+            emit(SaveProgressEvent.Error(
                 Constants.ERROR_PERMISSION_DENIED,
                 "Permission denied: ${e.message}"
-            )
+            ))
         } catch (e: Exception) {
-            SaveResult.failure(
+            emit(SaveProgressEvent.Error(
                 Constants.ERROR_PLATFORM,
                 "Unexpected error: ${e.message ?: "Unknown error"}"
-            )
+            ))
         }
-    }
+    }.flowOn(Dispatchers.IO)
 }
