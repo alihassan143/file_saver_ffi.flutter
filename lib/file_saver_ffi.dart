@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'src/models/conflict_resolution.dart';
 import 'src/models/file_type.dart';
 import 'src/models/save_location.dart';
+import 'src/models/save_progress.dart';
 import 'src/platform_interface/file_saver_platform.dart';
 
 // Exceptions
@@ -14,6 +15,7 @@ export 'src/exceptions/file_saver_exceptions.dart';
 export 'src/models/conflict_resolution.dart';
 export 'src/models/file_type.dart';
 export 'src/models/save_location.dart';
+export 'src/models/save_progress.dart';
 
 class FileSaver {
   FileSaver._();
@@ -28,7 +30,14 @@ class FileSaver {
     _platform.dispose();
   }
 
-  /// Saves file bytes to device storage.
+  /// Saves file bytes to device storage with progress streaming.
+  ///
+  /// Yields progress events during save operation:
+  /// - [SaveProgressStarted]: Operation began
+  /// - [SaveProgressUpdate]: Progress from 0.0 to 1.0
+  /// - [SaveProgressComplete]: Success with URI
+  /// - [SaveProgressError]: Failed with exception
+  /// - [SaveProgressCancelled]: User cancelled
   ///
   /// Parameters:
   /// - [bytes]: The file content to save
@@ -41,44 +50,35 @@ class FileSaver {
   /// - [subDir]: Optional subdirectory within the save location
   /// - [conflictResolution]: How to handle filename conflicts
   ///
-  /// Returns the [Uri] where the file was saved.
-  ///
-  /// Throws [FileSaverException] or one of its subtypes on failure:
-  /// - [PermissionDeniedException] - Storage permission denied
-  /// - [FileExistsException] - File exists with [ConflictResolution.fail] strategy
-  /// - [StorageFullException] - Insufficient device storage
-  /// - [InvalidFileException] - Invalid file data or filename
-  /// - [FileIOException] - File I/O operation failed
-  /// - [UnsupportedFormatException] - Format not supported on platform
-  /// - [PlatformException] - Generic platform-specific error
-  ///
   /// Example:
   /// ```dart
-  /// // Default location (downloads on Android, documents on iOS)
-  /// final uri = await FileSaver.instance.saveBytes(
+  /// await for (final event in FileSaver.instance.saveBytes(
   ///   bytes: imageBytes,
   ///   fileName: 'photo',
   ///   fileType: ImageType.jpg,
-  /// );
-  ///
-  /// // Specify location explicitly
-  /// final uri = await FileSaver.instance.saveBytes(
-  ///   bytes: photoBytes,
-  ///   fileName: 'camera_photo',
-  ///   fileType: ImageType.jpg,
-  ///   saveLocation: Platform.isAndroid
-  ///     ? AndroidSaveLocation.dcim
-  ///     : IosSaveLocation.photos,
-  /// );
+  /// )) {
+  ///   switch (event) {
+  ///     case SaveProgressStarted():
+  ///       showLoadingIndicator();
+  ///     case SaveProgressUpdate(:final progress):
+  ///       updateProgressBar(progress);
+  ///     case SaveProgressComplete(:final uri):
+  ///       handleSuccess(uri);
+  ///     case SaveProgressError(:final exception):
+  ///       handleError(exception);
+  ///     case SaveProgressCancelled():
+  ///       handleCancel();
+  ///   }
+  /// }
   /// ```
-  Future<Uri> saveBytes({
+  Stream<SaveProgress> saveBytes({
     required Uint8List bytes,
     required FileType fileType,
     required String fileName,
     SaveLocation? saveLocation,
     String? subDir,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
-  }) async {
+  }) {
     return _platform.saveBytes(
       fileBytes: bytes,
       fileType: fileType,
@@ -86,6 +86,50 @@ class FileSaver {
       saveLocation: saveLocation,
       subDir: subDir,
       conflictResolution: conflictResolution,
+    );
+  }
+
+  /// Saves file bytes to device storage with optional progress callback.
+  ///
+  /// Parameters:
+  /// - [bytes]: The file content to save
+  /// - [fileName]: The name of the file without extension
+  /// - [fileType]: The file type (determines extension and MIME type)
+  /// - [saveLocation]: Where to save the file (platform-specific, optional)
+  /// - [subDir]: Optional subdirectory within the save location
+  /// - [conflictResolution]: How to handle filename conflicts
+  /// - [onProgress]: Optional callback receiving progress from 0.0 to 1.0
+  ///
+  /// Returns the [Uri] where the file was saved.
+  ///
+  /// Throws [FileSaverException] or one of its subtypes on failure.
+  ///
+  /// Example:
+  /// ```dart
+  /// final uri = await FileSaver.instance.saveBytesAsync(
+  ///   bytes: imageBytes,
+  ///   fileName: 'photo',
+  ///   fileType: ImageType.jpg,
+  ///   onProgress: (progress) => print('${(progress * 100).toInt()}%'),
+  /// );
+  /// ```
+  Future<Uri> saveBytesAsync({
+    required Uint8List bytes,
+    required FileType fileType,
+    required String fileName,
+    SaveLocation? saveLocation,
+    String? subDir,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+    void Function(double progress)? onProgress,
+  }) {
+    return _platform.saveBytesAsync(
+      fileBytes: bytes,
+      fileType: fileType,
+      fileName: fileName,
+      saveLocation: saveLocation,
+      subDir: subDir,
+      conflictResolution: conflictResolution,
+      onProgress: onProgress,
     );
   }
 }
