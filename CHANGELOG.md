@@ -1,3 +1,46 @@
+## 0.0.5
+
+### Breaking Changes
+- **`saveBytes()` now returns `Stream<SaveProgress>`** instead of `Future<Uri>`
+  - Enables real-time progress tracking during save operations
+  - Use `saveBytesAsync()` for the previous `Future<Uri>` behavior
+
+### Added
+- **`SaveProgress` sealed class** for streaming progress events:
+  - `SaveProgressStarted` - Operation started
+  - `SaveProgressUpdate(double progress)` - Progress 0.0 to 1.0
+  - `SaveProgressComplete(Uri uri)` - Success with file URI
+  - `SaveProgressError(FileSaverException)` - Error occurred
+  - `SaveProgressCancelled` - User cancelled
+- **`saveBytesAsync()` method** - Convenience API returning `Future<Uri>` with optional `onProgress` callback
+- **Real progress reporting for iOS** - Chunked file writes with progress callbacks (1MB chunks)
+
+### Migration Guide
+```dart
+// Before (0.0.4)
+final uri = await FileSaver.instance.saveBytes(...);
+
+// After (0.0.5) - Option 1: Use saveBytesAsync (minimal change)
+final uri = await FileSaver.instance.saveBytesAsync(...);
+
+// After (0.0.5) - Option 2: Use saveBytesAsync with progress
+final uri = await FileSaver.instance.saveBytesAsync(
+  ...,
+  onProgress: (progress) => print('${(progress * 100).toInt()}%'),
+);
+
+// After (0.0.5) - Option 3: Use saveBytes stream for full control
+await for (final event in FileSaver.instance.saveBytes(...)) {
+  switch (event) {
+    case SaveProgressStarted(): showLoading();
+    case SaveProgressUpdate(:final progress): updateUI(progress);
+    case SaveProgressComplete(:final uri): handleSuccess(uri);
+    case SaveProgressError(:final exception): handleError(exception);
+    case SaveProgressCancelled(): handleCancel();
+  }
+}
+```
+
 ## 0.0.4
 
 ### Added
