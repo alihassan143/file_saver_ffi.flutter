@@ -8,7 +8,8 @@ class ImageSaver: BaseFileSaver {
         baseFileName: String,
         saveLocation: SaveLocation,
         subDir: String?,
-        conflictResolution: ConflictResolution
+        conflictResolution: ConflictResolution,
+        onProgress: ((Double) -> Void)?
     ) throws -> SaveResult {
         try FormatValidator.validateImageFormat(fileType)
         try validateFileData(fileData)
@@ -17,6 +18,9 @@ class ImageSaver: BaseFileSaver {
 
         switch saveLocation {
         case .photos:
+            // Photos Library API doesn't support progress, report 0 → 1
+            onProgress?(0.0)
+
             let hasReadAccess = try requestPhotosPermission()
 
             if let result = try handlePhotosConflictResolution(
@@ -25,21 +29,25 @@ class ImageSaver: BaseFileSaver {
                 conflictResolution: conflictResolution,
                 hasReadAccess: hasReadAccess
             ) {
+                onProgress?(1.0)
                 return result
             }
 
-            return try saveToPhotosLibrary(
+            let result = try saveToPhotosLibrary(
                 imageData: fileData,
                 fileName: fileName,
                 albumName: hasReadAccess ? subDir : nil
             )
+            onProgress?(1.0)
+            return result
 
         case .documents:
             return try saveToDocuments(
                 imageData: fileData,
                 fileName: fileName,
                 subDir: subDir,
-                conflictResolution: conflictResolution
+                conflictResolution: conflictResolution,
+                onProgress: onProgress
             )
         }
     }
@@ -80,7 +88,8 @@ class ImageSaver: BaseFileSaver {
         imageData: Data,
         fileName: String,
         subDir: String?,
-        conflictResolution: ConflictResolution
+        conflictResolution: ConflictResolution,
+        onProgress: ((Double) -> Void)?
     ) throws -> SaveResult {
         var targetDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
 
@@ -96,7 +105,7 @@ class ImageSaver: BaseFileSaver {
             conflictResolution: conflictResolution
         )
 
-        try imageData.write(to: finalURL, options: .atomic)
+        try FileHelper.writeFileWithProgress(data: imageData, to: finalURL, onProgress: onProgress)
 
         return .success(filePath: finalURL.path, fileUri: finalURL.absoluteString)
     }

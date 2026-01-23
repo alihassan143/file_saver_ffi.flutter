@@ -6,6 +6,7 @@ class FileSaver {
     let audioSaver = AudioSaver()
     let customFileSaver = CustomFileSaver()
 
+    /// Saves file bytes with progress reporting via ProgressReporter
     func saveBytes(
         fileData: Data,
         baseFileName: String,
@@ -13,66 +14,57 @@ class FileSaver {
         mimeType: String,
         subDir: String?,
         saveLocationValue: Int,
-        conflictMode: Int
-    ) -> SaveResult {
+        conflictMode: Int,
+        reporter: ProgressReporter
+    ) {
         do {
             let fileType = FileHelper.getFileType(ext: ext, mimeType: mimeType)
 
             guard let conflictResolution = ConflictResolution(rawValue: conflictMode) else {
-                return .failure(
-                    errorCode: Constants.errorPlatform,
+                reporter.sendError(
+                    code: Constants.errorPlatform,
                     message: "Invalid conflict resolution mode: \(conflictMode)"
                 )
+                return
             }
 
             let saveLocation = SaveLocation.fromInt(saveLocationValue)
 
-            if fileType.category == .image {
-                return try imageSaver.saveBytes(
-                    fileData: fileData,
-                    fileType: fileType,
-                    baseFileName: baseFileName,
-                    saveLocation: saveLocation,
-                    subDir: subDir,
-                    conflictResolution: conflictResolution
-                )
+            let saver: BaseFileSaver
+            switch fileType.category {
+            case .image:
+                saver = imageSaver
+            case .video:
+                saver = videoSaver
+            case .audio:
+                saver = audioSaver
+            case .custom:
+                saver = customFileSaver
             }
 
-            if fileType.category == .video {
-                return try videoSaver.saveBytes(
-                    fileData: fileData,
-                    fileType: fileType,
-                    baseFileName: baseFileName,
-                    saveLocation: saveLocation,
-                    subDir: subDir,
-                    conflictResolution: conflictResolution
-                )
-            }
-
-            if fileType.category == .audio {
-                return try audioSaver.saveBytes(
-                    fileData: fileData,
-                    fileType: fileType,
-                    baseFileName: baseFileName,
-                    saveLocation: saveLocation,
-                    subDir: subDir,
-                    conflictResolution: conflictResolution
-                )
-            }
-
-            return try customFileSaver.saveBytes(
+            let result = try saver.saveBytes(
                 fileData: fileData,
                 fileType: fileType,
                 baseFileName: baseFileName,
                 saveLocation: saveLocation,
                 subDir: subDir,
-                conflictResolution: conflictResolution
+                conflictResolution: conflictResolution,
+                onProgress: { progress in
+                    reporter.sendProgress(progress)
+                }
             )
+
+            switch result {
+            case .success(_, let fileUri):
+                reporter.sendSuccess(uri: fileUri)
+            case .failure(let errorCode, let message):
+                reporter.sendError(code: errorCode, message: message)
+            }
         } catch let error as FileSaverError {
-            return .failure(errorCode: error.code, message: error.message)
+            reporter.sendError(code: error.code, message: error.message)
         } catch {
-            return .failure(
-                errorCode: Constants.errorPlatform,
+            reporter.sendError(
+                code: Constants.errorPlatform,
                 message: "Unexpected error: \(error.localizedDescription)"
             )
         }

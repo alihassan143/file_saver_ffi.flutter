@@ -8,7 +8,8 @@ class CustomFileSaver: BaseFileSaver {
         baseFileName: String,
         saveLocation: SaveLocation,
         subDir: String?,
-        conflictResolution: ConflictResolution
+        conflictResolution: ConflictResolution,
+        onProgress: ((Double) -> Void)?
     ) throws -> SaveResult {
         try validateFileData(fileData)
 
@@ -28,7 +29,7 @@ class CustomFileSaver: BaseFileSaver {
             conflictResolution: conflictResolution
         )
 
-        try fileData.write(to: finalURL, options: .atomic)
+        try FileHelper.writeFileWithProgress(data: fileData, to: finalURL, onProgress: onProgress)
 
         return .success(filePath: finalURL.path, fileUri: finalURL.absoluteString)
     }

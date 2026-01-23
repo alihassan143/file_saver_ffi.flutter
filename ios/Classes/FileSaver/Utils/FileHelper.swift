@@ -12,6 +12,23 @@ enum FileHelper {
     }
 
     static func writeFile(data: Data, to url: URL) throws {
+        try writeFileWithProgress(data: data, to: url, onProgress: nil)
+    }
+
+    /// Writes data to file with progress reporting
+    ///
+    /// - Parameters:
+    ///   - data: Data to write
+    ///   - url: File URL to write to
+    ///   - onProgress: Optional progress callback (0.0 to 1.0)
+    static func writeFileWithProgress(
+        data: Data,
+        to url: URL,
+        onProgress: ((Double) -> Void)?
+    ) throws {
+        // Create empty file first (FileHandle requires file to exist)
+        FileManager.default.createFile(atPath: url.path, contents: nil, attributes: nil)
+
         if #available(iOS 13.4, *) {
             // iOS 13.4+ - Use modern write API with error handling
             let fileHandle = try FileHandle(forWritingTo: url)
@@ -19,12 +36,19 @@ enum FileHelper {
 
             var offset = 0
             let chunkSize = Constants.chunkSize
+            let totalBytes = data.count
 
-            while offset < data.count {
-                let length = min(chunkSize, data.count - offset)
+            while offset < totalBytes {
+                let length = min(chunkSize, totalBytes - offset)
                 let chunk = data.subdata(in: offset..<(offset + length))
                 try fileHandle.write(contentsOf: chunk)
                 offset += length
+
+                // Report progress
+                if let onProgress = onProgress, totalBytes > 0 {
+                    let progress = Double(offset) / Double(totalBytes)
+                    onProgress(progress)
+                }
             }
         } else {
             // iOS 13.0-13.3 fallback - Use legacy write API
@@ -33,12 +57,19 @@ enum FileHelper {
 
             var offset = 0
             let chunkSize = Constants.chunkSize
+            let totalBytes = data.count
 
-            while offset < data.count {
-                let length = min(chunkSize, data.count - offset)
+            while offset < totalBytes {
+                let length = min(chunkSize, totalBytes - offset)
                 let chunk = data.subdata(in: offset..<(offset + length))
                 fileHandle.write(chunk)
                 offset += length
+
+                // Report progress
+                if let onProgress = onProgress, totalBytes > 0 {
+                    let progress = Double(offset) / Double(totalBytes)
+                    onProgress(progress)
+                }
             }
         }
     }

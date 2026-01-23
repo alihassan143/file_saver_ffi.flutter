@@ -4,19 +4,35 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef struct {
-    bool success;
-    const char* filePath;
-    const char* fileUri;
-    const char* errorCode;
-    const char* errorMessage;
-} FSaveResult;
-
-typedef void (*FSaveResultCallback)(FSaveResult*);
+/// Initialize Dart API for NativePort communication.
+/// Must be called before using file_saver_save_bytes.
+///
+/// @param data Pointer from NativeApi.initializeApiDLData
+/// @return 0 on success, -1 on failure
+intptr_t file_saver_init_dart_api_dl(void* data);
 
 void* file_saver_init(void);
 
-void file_saver_save_bytes_async(
+/// Save file bytes asynchronously with progress reporting via NativePort.
+///
+/// Progress messages sent to native_port:
+/// - Started:    [0]
+/// - Progress:   [1, progress]    (progress is 0.0 to 1.0)
+/// - Error:      [2, errorCode, errorMessage]
+/// - Success:    [3, fileUri]
+/// - Cancelled:  [4]
+///
+/// @param instance FileSaver instance from file_saver_init
+/// @param fileData Byte array of file content
+/// @param fileDataLength Length of fileData
+/// @param baseFileName File name without extension
+/// @param extension File extension without dot
+/// @param mimeType MIME type string
+/// @param saveLocation Save location index (0-4)
+/// @param subDir Optional subdirectory (can be NULL)
+/// @param conflictMode Conflict resolution mode (0-3)
+/// @param native_port Dart NativePort for progress reporting
+void file_saver_save_bytes(
     void* instance,
     const uint8_t* fileData,
     int64_t fileDataLength,
@@ -26,10 +42,8 @@ void file_saver_save_bytes_async(
     int32_t saveLocation,
     const char* subDir,
     int32_t conflictMode,
-    FSaveResultCallback callback
+    int64_t native_port
 );
-
-void file_saver_free_result(FSaveResult* result);
 
 void file_saver_dispose(void* instance);
 
