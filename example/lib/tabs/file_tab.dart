@@ -37,20 +37,42 @@ class _FileTabPageState extends State<FileTabPage>
 
       final fileName = 'document_${DateTime.now().millisecondsSinceEpoch}';
 
-      await runSaveCatching(
-        () => FileSaver.instance.saveBytes(
-          bytes: fileBytes,
-          fileName: fileName,
-          fileType: CustomFileType(ext: 'pdf', mimeType: 'application/pdf'),
-          saveLocation: switch (true) {
-            _ when Platform.isAndroid => AndroidSaveLocation.downloads,
-            _ when Platform.isIOS => IosSaveLocation.documents,
-            _ => null,
-          },
-          subDir: Platform.isIOS ? 'PDF' : 'FileSaverFFI Demo',
-          conflictResolution: ConflictResolution.autoRename,
-        ),
-      );
+      await for (final event in FileSaver.instance.saveBytes(
+        bytes: fileBytes,
+        fileName: fileName,
+        fileType: CustomFileType(ext: 'pdf', mimeType: 'application/pdf'),
+        saveLocation: switch (true) {
+          _ when Platform.isAndroid => AndroidSaveLocation.downloads,
+          _ when Platform.isIOS => IosSaveLocation.documents,
+          _ => null,
+        },
+        subDir: Platform.isIOS ? 'PDF' : 'FileSaverFFI Demo',
+        conflictResolution: ConflictResolution.autoRename,
+      )) {
+        switch (event) {
+          case SaveProgressStarted():
+            break;
+          case SaveProgressUpdate(:final progress):
+            setState(() {
+              this.progress = progress;
+            });
+          case SaveProgressComplete(:final uri):
+            setState(() {
+              savedFilePath = uri.toString();
+            });
+            if (mounted) {
+              showAppSnackBar(
+                context,
+                'Saved successfully!\nURI: $uri',
+                isSuccess: true,
+              );
+            }
+          case SaveProgressError(:final exception):
+            showError(exception);
+          case SaveProgressCancelled():
+            showError('Operation cancelled');
+        }
+      }
     } catch (e) {
       showError(e);
     } finally {
