@@ -54,8 +54,9 @@ class VideoSaver: BaseFileSaver {
     }
 
     private func saveToPhotosLibrary(videoData: Data, fileName: String, fileExtension: String, albumName: String?) throws -> SaveResult {
-        let tempFileName = "\(UUID().uuidString).\(fileExtension)"
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(tempFileName)
+        // Videos must be saved from a file URL (not directly from data)
+        // Use the actual fileName for temp file to preserve metadata
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
         try videoData.write(to: tempURL)
         defer { try? FileManager.default.removeItem(at: tempURL) }
 
@@ -65,16 +66,22 @@ class VideoSaver: BaseFileSaver {
 
         do {
             try PHPhotoLibrary.shared().performChangesAndWait {
-                let request = PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: tempURL)
+                let request = PHAssetCreationRequest.forAsset()
+
+                // Use addResource with fileURL and originalFilename to preserve the file name
+                let options = PHAssetResourceCreationOptions()
+                options.originalFilename = fileName
+
+                request.addResource(with: .video, fileURL: tempURL, options: options)
 
                 if let album = album {
-                    if let placeholder = request?.placeholderForCreatedAsset {
+                    if let placeholder = request.placeholderForCreatedAsset {
                         let albumChangeRequest = PHAssetCollectionChangeRequest(for: album)
                         albumChangeRequest?.addAssets([placeholder] as NSArray)
                     }
                 }
 
-                assetId = request?.placeholderForCreatedAsset?.localIdentifier
+                assetId = request.placeholderForCreatedAsset?.localIdentifier
             }
         } catch {
             throw FileSaverError.fileIO("Failed to save video: \(error.localizedDescription)")
