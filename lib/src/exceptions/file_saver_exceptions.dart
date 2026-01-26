@@ -17,6 +17,8 @@ sealed class FileSaverException implements Exception {
     return switch (msg) {
       _ when contains('PERMISSION_DENIED') => PermissionDeniedException(msg),
       _ when contains('FILE_EXISTS') => FileExistsException(msg),
+      _ when contains('FILE_NOT_FOUND') => SourceFileNotFoundException(msg),
+      _ when contains('ICLOUD_DOWNLOAD_FAILED') => ICloudDownloadException(msg),
       _ when contains('INVALID_FILE') => InvalidFileException(msg),
       _ when contains('UNSUPPORTED_FORMAT') => UnsupportedFormatException(msg),
       _ when contains('STORAGE_FULL') => const StorageFullException(),
@@ -29,6 +31,8 @@ sealed class FileSaverException implements Exception {
     return switch (errorCode) {
       'PERMISSION_DENIED' => PermissionDeniedException(message),
       'FILE_EXISTS' => FileExistsException(message),
+      'FILE_NOT_FOUND' => SourceFileNotFoundException(message),
+      'ICLOUD_DOWNLOAD_FAILED' => ICloudDownloadException(message),
       'INVALID_FILE' || 'INVALID_ARGUMENT' => InvalidFileException(message),
       'UNSUPPORTED_FORMAT' => UnsupportedFormatException(message),
       'STORAGE_FULL' => const StorageFullException(),
@@ -137,4 +141,36 @@ final class UnsupportedFormatException extends FileSaverException {
   @override
   String toString() =>
       'UnsupportedFormatException: File format "$format" is not supported on this platform';
+}
+
+/// Source file was not found at the specified path.
+///
+/// This exception is thrown when:
+/// - The source file path does not exist
+/// - The file was deleted before the operation completed
+/// - The path is invalid or inaccessible
+final class SourceFileNotFoundException extends FileSaverException {
+  const SourceFileNotFoundException(this.path)
+    : super('Source file not found: $path', 'FILE_NOT_FOUND');
+
+  /// The path of the file that was not found.
+  final String path;
+
+  @override
+  String toString() =>
+      'SourceFileNotFoundException: Source file not found: $path';
+}
+
+/// iCloud file download failed or timed out (iOS only).
+///
+/// This exception is thrown when:
+/// - The iCloud file could not be downloaded
+/// - The download timed out (default 60 seconds)
+/// - Network connection is unavailable
+final class ICloudDownloadException extends FileSaverException {
+  const ICloudDownloadException([String? details])
+    : super(
+        'iCloud file download failed${details != null ? ": $details" : ""}',
+        'ICLOUD_DOWNLOAD_FAILED',
+      );
 }

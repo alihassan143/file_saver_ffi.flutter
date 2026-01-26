@@ -132,4 +132,115 @@ class FileSaver {
       onProgress: onProgress,
     );
   }
+
+  /// Saves a file from source path to device storage with progress streaming.
+  ///
+  /// This method reads the source file in chunks without loading it entirely
+  /// into memory, making it suitable for large files (100MB+).
+  ///
+  /// Yields progress events during save operation:
+  /// - [SaveProgressStarted]: Operation began
+  /// - [SaveProgressUpdate]: Progress from 0.0 to 1.0
+  /// - [SaveProgressComplete]: Success with URI
+  /// - [SaveProgressError]: Failed with exception
+  /// - [SaveProgressCancelled]: User cancelled
+  ///
+  /// Parameters:
+  /// - [filePath]: Source file path (file:// URI or content:// URI on Android)
+  /// - [fileName]: Target file name without extension
+  /// - [fileType]: The file type (determines extension and MIME type)
+  /// - [saveLocation]: Where to save the file (platform-specific, optional)
+  ///   - If not specified, defaults to:
+  ///     - Android: [AndroidSaveLocation.downloads]
+  ///     - iOS: [IosSaveLocation.documents] (app's Documents directory)
+  /// - [subDir]: Optional subdirectory within the save location
+  /// - [conflictResolution]: How to handle filename conflicts
+  ///
+  /// Example:
+  /// ```dart
+  /// await for (final event in FileSaver.instance.saveFile(
+  ///   filePath: '/path/to/large_video.mp4',
+  ///   fileName: 'my_video',
+  ///   fileType: VideoType.mp4,
+  /// )) {
+  ///   switch (event) {
+  ///     case SaveProgressStarted():
+  ///       showLoadingIndicator();
+  ///     case SaveProgressUpdate(:final progress):
+  ///       updateProgressBar(progress);
+  ///     case SaveProgressComplete(:final uri):
+  ///       handleSuccess(uri);
+  ///     case SaveProgressError(:final exception):
+  ///       handleError(exception);
+  ///     case SaveProgressCancelled():
+  ///       handleCancel();
+  ///   }
+  /// }
+  /// ```
+  Stream<SaveProgress> saveFile({
+    required String filePath,
+    required String fileName,
+    required FileType fileType,
+    SaveLocation? saveLocation,
+    String? subDir,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) {
+    return _platform.saveFile(
+      filePath: filePath,
+      fileName: fileName,
+      fileType: fileType,
+      saveLocation: saveLocation,
+      subDir: subDir,
+      conflictResolution: conflictResolution,
+    );
+  }
+
+  /// Saves a file from source path with optional progress callback.
+  ///
+  /// This method reads the source file in chunks without loading it entirely
+  /// into memory, making it suitable for large files (100MB+).
+  ///
+  /// Parameters:
+  /// - [filePath]: Source file path (file:// URI or content:// URI on Android)
+  /// - [fileName]: Target file name without extension
+  /// - [fileType]: The file type (determines extension and MIME type)
+  /// - [saveLocation]: Where to save the file (platform-specific, optional)
+  /// - [subDir]: Optional subdirectory within the save location
+  /// - [conflictResolution]: How to handle filename conflicts
+  /// - [onProgress]: Optional callback receiving progress from 0.0 to 1.0
+  ///
+  /// Returns the [Uri] where the file was saved.
+  ///
+  /// Throws [SourceFileNotFoundException] if the source file does not exist.
+  /// Throws [ICloudDownloadException] on iOS if iCloud file download fails.
+  /// Throws [FileSaverException] or one of its subtypes on other failures.
+  ///
+  /// Example:
+  /// ```dart
+  /// final uri = await FileSaver.instance.saveFileAsync(
+  ///   filePath: pickedFile.path,
+  ///   fileName: 'document',
+  ///   fileType: CustomFileType(ext: 'pdf', mimeType: 'application/pdf'),
+  ///   onProgress: (progress) => print('${(progress * 100).toInt()}%'),
+  /// );
+  /// ```
+  Future<Uri> saveFileAsync({
+    required String filePath,
+    required String fileName,
+    required FileType fileType,
+    SaveLocation? saveLocation,
+    String? subDir,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+    void Function(double progress)? onProgress,
+  }) {
+    return _platform.saveFileAsync(
+      filePath: filePath,
+      fileName: fileName,
+      fileType: fileType,
+      saveLocation: saveLocation,
+      subDir: subDir,
+      conflictResolution: conflictResolution,
+      onProgress: onProgress,
+    );
+  }
 }

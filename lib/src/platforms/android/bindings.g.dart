@@ -161,6 +161,78 @@ class FileSaver extends jni$_.JObject {
       _$progressCallback.pointer,
     ).check();
   }
+
+  static final _id_saveFile = _class.instanceMethodId(
+    r'saveFile',
+    r'(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;ILcom/vanvixi/file_saver_ffi/models/ProgressCallback;)V',
+  );
+
+  static final _saveFile =
+      jni$_.ProtectedJniExtensions.lookup<
+            jni$_.NativeFunction<
+              jni$_.JThrowablePtr Function(
+                jni$_.Pointer<jni$_.Void>,
+                jni$_.JMethodIDPtr,
+                jni$_.VarArgs<
+                  (
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Int32,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Int32,
+                    jni$_.Pointer<jni$_.Void>,
+                  )
+                >,
+              )
+            >
+          >('globalEnv_CallVoidMethod')
+          .asFunction<
+            jni$_.JThrowablePtr Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              int,
+              jni$_.Pointer<jni$_.Void>,
+              int,
+              jni$_.Pointer<jni$_.Void>,
+            )
+          >();
+
+  /// from: `public fun saveFile(filePath: kotlin.String, baseFileName: kotlin.String, extension: kotlin.String, mimeType: kotlin.String, saveLocationIndex: kotlin.Int, subDir: kotlin.String?, conflictMode: kotlin.Int, callback: com.vanvixi.file_saver_ffi.models.ProgressCallback): kotlin.Unit`
+  void saveFile(
+    jni$_.JString string,
+    jni$_.JString string1,
+    jni$_.JString string2,
+    jni$_.JString string3,
+    int i,
+    jni$_.JString? string4,
+    int i1,
+    ProgressCallback progressCallback,
+  ) {
+    final _$string = string.reference;
+    final _$string1 = string1.reference;
+    final _$string2 = string2.reference;
+    final _$string3 = string3.reference;
+    final _$string4 = string4?.reference ?? jni$_.jNullReference;
+    final _$progressCallback = progressCallback.reference;
+    _saveFile(
+      reference.pointer,
+      _id_saveFile as jni$_.JMethodIDPtr,
+      _$string.pointer,
+      _$string1.pointer,
+      _$string2.pointer,
+      _$string3.pointer,
+      i,
+      _$string4.pointer,
+      i1,
+      _$progressCallback.pointer,
+    ).check();
+  }
 }
 
 final class $FileSaver$NullableType$ extends jni$_.JType<FileSaver?> {

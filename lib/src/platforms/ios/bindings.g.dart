@@ -132,6 +132,84 @@ class FileSaverFfiBindings {
             )
           >();
 
+  /// Save file from source path asynchronously with progress reporting via
+  /// NativePort.
+  ///
+  /// Reads source file in chunks without loading into memory - suitable for large
+  /// files. Handles security-scoped resources (Files app) and iCloud file
+  /// downloads.
+  ///
+  /// Progress messages sent to native_port:
+  /// - Started:    [0]
+  /// - Progress:   [1, progress]    (progress is 0.0 to 1.0)
+  /// - Error:      [2, errorCode, errorMessage]
+  /// - Success:    [3, fileUri]
+  /// - Cancelled:  [4]
+  ///
+  /// @param instance FileSaver instance from file_saver_init
+  /// @param filePath Source file path (file:// URI)
+  /// @param baseFileName Target file name without extension
+  /// @param extension File extension without dot
+  /// @param mimeType MIME type string
+  /// @param saveLocation Save location index (0-1 for iOS)
+  /// @param subDir Optional subdirectory (can be NULL)
+  /// @param conflictMode Conflict resolution mode (0-3)
+  /// @param native_port Dart NativePort for progress reporting
+  void file_saver_save_file(
+    ffi.Pointer<ffi.Void> instance,
+    ffi.Pointer<ffi.Char> filePath,
+    ffi.Pointer<ffi.Char> baseFileName,
+    ffi.Pointer<ffi.Char> extension,
+    ffi.Pointer<ffi.Char> mimeType,
+    int saveLocation,
+    ffi.Pointer<ffi.Char> subDir,
+    int conflictMode,
+    int native_port,
+  ) {
+    return _file_saver_save_file(
+      instance,
+      filePath,
+      baseFileName,
+      extension,
+      mimeType,
+      saveLocation,
+      subDir,
+      conflictMode,
+      native_port,
+    );
+  }
+
+  late final _file_saver_save_filePtr = _lookup<
+    ffi.NativeFunction<
+      ffi.Void Function(
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Int32,
+        ffi.Pointer<ffi.Char>,
+        ffi.Int32,
+        ffi.Int64,
+      )
+    >
+  >('file_saver_save_file');
+  late final _file_saver_save_file =
+      _file_saver_save_filePtr
+          .asFunction<
+            void Function(
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int,
+              int,
+            )
+          >();
+
   void file_saver_dispose(ffi.Pointer<ffi.Void> instance) {
     return _file_saver_dispose(instance);
   }

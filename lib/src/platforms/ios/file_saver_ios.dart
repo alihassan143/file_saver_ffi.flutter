@@ -19,7 +19,9 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
     _bindings = FileSaverFfiBindings(dylib);
 
     // Initialize Dart API DL for NativePort communication
-    final initResult = _bindings.file_saver_init_dart_api_dl(NativeApi.initializeApiDLData);
+    final initResult = _bindings.file_saver_init_dart_api_dl(
+      NativeApi.initializeApiDLData,
+    );
     if (initResult != 0) {
       throw const PlatformException(
         'Failed to initialize Dart API DL',
@@ -143,12 +145,115 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
       subDir: subDir,
       conflictResolution: conflictResolution,
     )) {
-      print("saveBytes cb event: $event");
       switch (event) {
         case SaveProgressStarted():
           break;
         case SaveProgressUpdate(:final progress):
-          print("SaveProgressUpdate: $progress");
+          onProgress?.call(progress);
+        case SaveProgressComplete(:final uri):
+          result = uri;
+        case SaveProgressError(:final exception):
+          throw exception;
+        case SaveProgressCancelled():
+          throw const PlatformException('Operation cancelled', 'CANCELLED');
+      }
+    }
+
+    if (result == null) {
+      throw const PlatformException(
+        'Save operation did not complete',
+        'INCOMPLETE',
+      );
+    }
+    return result;
+  }
+
+  @override
+  Stream<SaveProgress> saveFile({
+    required String filePath,
+    required String fileName,
+    required FileType fileType,
+    SaveLocation? saveLocation,
+    String? subDir,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) async* {
+    _validateFilePath(filePath, fileName);
+
+    final receivePort = ReceivePort();
+    final nativePort = receivePort.sendPort.nativePort;
+
+    final filePathCStr = filePath.toNativeUtf8();
+    final fileNameCStr = fileName.toNativeUtf8();
+    final extCStr = fileType.ext.toNativeUtf8();
+    final mimeCStr = fileType.mimeType.toNativeUtf8();
+    final saveLocationIndex = switch (saveLocation) {
+      IosSaveLocation location => location.index,
+      _ => IosSaveLocation.documents.index,
+    };
+    final subDirCStr = subDir?.toNativeUtf8();
+
+    try {
+      // Call native function with NativePort
+      _bindings.file_saver_save_file(
+        _saverInstance,
+        filePathCStr.cast(),
+        fileNameCStr.cast(),
+        extCStr.cast(),
+        mimeCStr.cast(),
+        saveLocationIndex,
+        subDirCStr?.cast() ?? nullptr,
+        conflictResolution.index,
+        nativePort,
+      );
+
+      // Listen for messages from native code
+      await for (final message in receivePort) {
+        final event = _parseMessage(message);
+        yield event;
+
+        // Close port on terminal events
+        if (event is SaveProgressComplete ||
+            event is SaveProgressError ||
+            event is SaveProgressCancelled) {
+          break;
+        }
+      }
+    } finally {
+      receivePort.close();
+      malloc.free(filePathCStr);
+      malloc.free(fileNameCStr);
+      malloc.free(extCStr);
+      malloc.free(mimeCStr);
+      if (subDirCStr != null) {
+        malloc.free(subDirCStr);
+      }
+    }
+  }
+
+  @override
+  Future<Uri> saveFileAsync({
+    required String filePath,
+    required String fileName,
+    required FileType fileType,
+    SaveLocation? saveLocation,
+    String? subDir,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+    void Function(double progress)? onProgress,
+  }) async {
+    Uri? result;
+
+    await for (final event in saveFile(
+      filePath: filePath,
+      fileName: fileName,
+      fileType: fileType,
+      saveLocation: saveLocation,
+      subDir: subDir,
+      conflictResolution: conflictResolution,
+    )) {
+      switch (event) {
+        case SaveProgressStarted():
+          break;
+        case SaveProgressUpdate(:final progress):
           onProgress?.call(progress);
         case SaveProgressComplete(:final uri):
           result = uri;
@@ -215,6 +320,15 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
   void _validateInput(Uint8List bytes, String fileName) {
     if (bytes.isEmpty) {
       throw const InvalidFileException('File bytes cannot be empty');
+    }
+    if (fileName.isEmpty) {
+      throw const InvalidFileException('File name cannot be empty');
+    }
+  }
+
+  void _validateFilePath(String filePath, String fileName) {
+    if (filePath.isEmpty) {
+      throw const InvalidFileException('File path cannot be empty');
     }
     if (fileName.isEmpty) {
       throw const InvalidFileException('File name cannot be empty');
