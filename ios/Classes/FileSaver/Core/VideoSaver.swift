@@ -9,8 +9,9 @@ class VideoSaver: BaseFileSaver {
         saveLocation: SaveLocation,
         subDir: String?,
         conflictResolution: ConflictResolution,
-        onProgress: ((Double) -> Void)?
-    ) throws -> SaveResult {
+        onProgress: ((Double) -> Void)?,
+        onSuccess: (String) -> Void
+    ) throws {
         try FormatValidator.validateVideoFormat(fileType)
         try validateFileData(fileData)
 
@@ -23,37 +24,39 @@ class VideoSaver: BaseFileSaver {
 
             let hasReadAccess = try requestPhotosPermission()
 
-            if let result = try handlePhotosConflictResolution(
+            if let existingUri = try handlePhotosConflictResolution(
                 fileName: fileName,
                 subDir: subDir,
                 conflictResolution: conflictResolution,
                 hasReadAccess: hasReadAccess
             ) {
                 onProgress?(1.0)
-                return result
+                onSuccess(existingUri)
+                return
             }
 
-            let result = try saveToPhotosLibrary(
+            let uri = try saveToPhotosLibrary(
                 videoData: fileData,
                 fileName: fileName,
                 fileExtension: fileType.ext,
                 albumName: hasReadAccess ? subDir : nil
             )
             onProgress?(1.0)
-            return result
+            onSuccess(uri)
 
         case .documents:
-            return try saveToDocuments(
+            let uri = try saveToDocuments(
                 videoData: fileData,
                 fileName: fileName,
                 subDir: subDir,
                 conflictResolution: conflictResolution,
                 onProgress: onProgress
             )
+            onSuccess(uri)
         }
     }
 
-    private func saveToPhotosLibrary(videoData: Data, fileName: String, fileExtension: String, albumName: String?) throws -> SaveResult {
+    private func saveToPhotosLibrary(videoData: Data, fileName: String, fileExtension: String, albumName: String?) throws -> String {
         // Videos must be saved from a file URL (not directly from data)
         // Use the actual fileName for temp file to preserve metadata
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
@@ -91,7 +94,7 @@ class VideoSaver: BaseFileSaver {
             throw FileSaverError.fileIO("Failed to save video to Photos library")
         }
 
-        return .success(filePath: assetId, fileUri: "ph://\(assetId)")
+        return "ph://\(assetId)"
     }
 
     private func saveToDocuments(
@@ -100,7 +103,7 @@ class VideoSaver: BaseFileSaver {
         subDir: String?,
         conflictResolution: ConflictResolution,
         onProgress: ((Double) -> Void)?
-    ) throws -> SaveResult {
+    ) throws -> String {
         var targetDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
 
         if let subDir = subDir {
@@ -117,6 +120,7 @@ class VideoSaver: BaseFileSaver {
 
         try FileHelper.writeFileWithProgress(data: videoData, to: finalURL, onProgress: onProgress)
 
-        return .success(filePath: finalURL.path, fileUri: finalURL.absoluteString)
+        return finalURL.absoluteString
+    }
     }
 }
