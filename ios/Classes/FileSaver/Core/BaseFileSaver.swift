@@ -15,6 +15,20 @@ protocol BaseFileSaver {
         onProgress: ((Double) -> Void)?,
         onSuccess: (String) -> Void
     ) throws
+    
+    /// Save from source file path - reads source in chunks without loading into memory
+    /// - Parameter onProgress: Progress callback (0.0 to 1.0), called during copy operations
+    /// - Parameter onSuccess: Success callback with file URI string
+    func saveFile(
+        filePath: String,
+        fileType: FileType,
+        baseFileName: String,
+        saveLocation: SaveLocation,
+        subDir: String?,
+        conflictResolution: ConflictResolution,
+        onProgress: ((Double) -> Void)?,
+        onSuccess: (String) -> Void
+    ) throws
 }
 
 extension BaseFileSaver {
