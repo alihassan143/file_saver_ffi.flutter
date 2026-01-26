@@ -26,17 +26,40 @@ class AudioSaver(context: Context) : BaseFileSaver(context) {
         try {
             FormatValidator.validateAudioFormat(fileType)
         } catch (e: UnsupportedFormatException) {
-            emit(SaveProgressEvent.Error(
-                Constants.ERROR_UNSUPPORTED_FORMAT,
-                e.message ?: "Unsupported format: ${fileType.ext}"
-            ))
+            emit(
+                SaveProgressEvent.Error(
+                    Constants.ERROR_UNSUPPORTED_FORMAT,
+                    e.message ?: "Unsupported format: ${fileType.ext}"
+                )
+            )
             return@flow
         }
 
-        super.saveBytes(
-            fileData, fileType, baseFileName, saveLocation, subDir, conflictResolution
-        ).collect { event ->
-            emit(event)
+        super.saveBytes(fileData, fileType, baseFileName, saveLocation, subDir, conflictResolution)
+            .collect { event -> emit(event) }
+    }.flowOn(Dispatchers.IO)
+
+    override fun saveFile(
+        filePath: String,
+        fileType: FileType,
+        baseFileName: String,
+        saveLocation: SaveLocation,
+        subDir: String?,
+        conflictResolution: ConflictResolution,
+    ): Flow<SaveProgressEvent> = flow {
+        try {
+            FormatValidator.validateAudioFormat(fileType)
+        } catch (e: UnsupportedFormatException) {
+            emit(
+                SaveProgressEvent.Error(
+                    Constants.ERROR_UNSUPPORTED_FORMAT,
+                    e.message ?: "Unsupported format: ${fileType.ext}",
+                )
+            )
+            return@flow
         }
+
+        super.saveFile(filePath, fileType, baseFileName, saveLocation, subDir, conflictResolution)
+            .collect { event -> emit(event) }
     }.flowOn(Dispatchers.IO)
 }

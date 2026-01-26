@@ -38,6 +38,11 @@ object Constants {
     const val ERROR_FILE_IO = "FILE_IO_ERROR"
 
     /**
+     * Source file not found
+     */
+    const val ERROR_FILE_NOT_FOUND = "FILE_NOT_FOUND"
+
+    /**
      * Generic platform error
      */
     const val ERROR_PLATFORM = "PLATFORM_ERROR"
@@ -47,26 +52,4 @@ object Constants {
      * Used to split large files into manageable chunks
      */
     const val CHUNK_SIZE = 1024 * 1024 // 1MB
-
-    /**
-     * Progress throttle percentage: 5%
-     * Report progress every 5% of total size
-     */
-    const val PROGRESS_THROTTLE_PERCENTAGE = 5 // 5%
-
-    /**
-     * Progress throttle bytes: 5MB
-     * Report progress every 5MB written
-     */
-    const val PROGRESS_THROTTLE_BYTES = 5 * 1024 * 1024L // 5MB
-
-    // ===========================================
-    // File Naming
-    // ===========================================
-
-    /**
-     * Maximum number of attempts for auto-rename
-     * Pattern: file.txt → file (1).txt → file (2).txt → ... → file (1000).txt
-     */
-    const val MAX_RENAME_ATTEMPTS = 1000
 }
