@@ -49,16 +49,15 @@ class FileSaver(context: Context) {
                 else -> customFileSaver
             }
 
-            saver.saveBytes(
-                fileData, fileType, baseFileName, saveLocation, subDir, conflictResolution
-            ).collect { event ->
-                emit(event)
-            }
+            saver.saveBytes(fileData, fileType, baseFileName, saveLocation, subDir, conflictResolution)
+                .collect { event -> emit(event) }
         } catch (e: Exception) {
-            emit(SaveProgressEvent.Error(
-                Constants.ERROR_PLATFORM,
-                "Unexpected error: ${e.message ?: "Unknown error"}"
-            ))
+            emit(
+                SaveProgressEvent.Error(
+                    Constants.ERROR_PLATFORM,
+                    "Unexpected error: ${e.message ?: "Unknown error"}",
+                )
+            )
         }
     }.flowOn(Dispatchers.IO)
 
@@ -86,20 +85,116 @@ class FileSaver(context: Context) {
     ) {
         CoroutineScope(Dispatchers.IO).launch {
             saveBytes(
-                fileData, baseFileName, extension, mimeType,
-                saveLocationIndex, subDir, conflictMode
+                fileData,
+                baseFileName,
+                extension,
+                mimeType,
+                saveLocationIndex,
+                subDir,
+                conflictMode,
             ).collect { event ->
                 when (event) {
-                    is SaveProgressEvent.Started ->
-                        callback.onEvent(0, 0.0, null, null)
-                    is SaveProgressEvent.Progress ->
-                        callback.onEvent(1, event.value, null, null)
-                    is SaveProgressEvent.Error ->
-                        callback.onEvent(2, 0.0, event.code, event.message)
-                    is SaveProgressEvent.Success ->
-                        callback.onEvent(3, 1.0, event.uri, null)
-                    is SaveProgressEvent.Cancelled ->
-                        callback.onEvent(4, 0.0, null, null)
+                    is SaveProgressEvent.Started -> callback.onEvent(0, 0.0, null, null)
+
+                    is SaveProgressEvent.Progress -> callback.onEvent(1, event.value, null, null)
+
+                    is SaveProgressEvent.Error -> callback.onEvent(2, 0.0, event.code, event.message)
+
+                    is SaveProgressEvent.Success -> callback.onEvent(3, 1.0, event.uri, null)
+
+                    is SaveProgressEvent.Cancelled -> callback.onEvent(4, 0.0, null, null)
+                }
+            }
+        }
+    }
+
+    /**
+     * Saves file from source path with progress streaming (internal)
+     *
+     * @param filePath Source file path (file:// or content:// URI)
+     * @param baseFileName File name WITHOUT extension
+     * @param extension File extension WITHOUT dot
+     * @param mimeType MIME type string (e.g., "image/jpeg")
+     * @param saveLocationIndex Save location index from Dart enum (0-4)
+     * @param subDir Optional subdirectory within target location
+     * @param conflictMode Conflict resolution mode (0-3)
+     * @return Flow of SaveProgressEvent
+     */
+    internal fun saveFile(
+        filePath: String,
+        baseFileName: String,
+        extension: String,
+        mimeType: String,
+        saveLocationIndex: Int,
+        subDir: String?,
+        conflictMode: Int,
+    ): Flow<SaveProgressEvent> = flow {
+        try {
+            val fileType = FileType(extension, mimeType)
+            val conflictResolution = ConflictResolution.fromInt(conflictMode)
+            val saveLocation = SaveLocation.fromInt(saveLocationIndex)
+
+            val saver = when {
+                fileType.isImage -> imageSaver
+                fileType.isVideo -> videoSaver
+                fileType.isAudio -> audioSaver
+                else -> customFileSaver
+            }
+
+            saver.saveFile(filePath, fileType, baseFileName, saveLocation, subDir, conflictResolution)
+                .collect { event -> emit(event) }
+        } catch (e: Exception) {
+            emit(
+                SaveProgressEvent.Error(
+                    Constants.ERROR_PLATFORM,
+                    "Unexpected error: ${e.message ?: "Unknown error"}",
+                )
+            )
+        }
+    }.flowOn(Dispatchers.IO)
+
+    /**
+     * Saves file from source path with progress callback (for Dart consumption via JNI)
+     *
+     * @param filePath Source file path (file:// or content:// URI)
+     * @param baseFileName File name WITHOUT extension
+     * @param extension File extension WITHOUT dot
+     * @param mimeType MIME type string (e.g., "image/jpeg")
+     * @param saveLocationIndex Save location index from Dart enum (0-4)
+     * @param subDir Optional subdirectory within target location
+     * @param conflictMode Conflict resolution mode (0-3)
+     * @param callback Progress callback for events
+     */
+    fun saveFile(
+        filePath: String,
+        baseFileName: String,
+        extension: String,
+        mimeType: String,
+        saveLocationIndex: Int,
+        subDir: String?,
+        conflictMode: Int,
+        callback: ProgressCallback,
+    ) {
+        CoroutineScope(Dispatchers.IO).launch {
+            saveFile(
+                filePath,
+                baseFileName,
+                extension,
+                mimeType,
+                saveLocationIndex,
+                subDir,
+                conflictMode
+            ).collect { event ->
+                when (event) {
+                    is SaveProgressEvent.Started -> callback.onEvent(0, 0.0, null, null)
+
+                    is SaveProgressEvent.Progress -> callback.onEvent(1, event.value, null, null)
+
+                    is SaveProgressEvent.Error -> callback.onEvent(2, 0.0, event.code, event.message)
+
+                    is SaveProgressEvent.Success -> callback.onEvent(3, 1.0, event.uri, null)
+
+                    is SaveProgressEvent.Cancelled -> callback.onEvent(4, 0.0, null, null)
                 }
             }
         }
