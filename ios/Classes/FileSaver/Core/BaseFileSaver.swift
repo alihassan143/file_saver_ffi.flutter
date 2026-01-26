@@ -4,6 +4,7 @@ import Photos
 protocol BaseFileSaver {
     /// Core save method - implemented by each Saver class
     /// - Parameter onProgress: Progress callback (0.0 to 1.0), called during write operations
+    /// - Parameter onSuccess: Success callback with file URI string
     func saveBytes(
         fileData: Data,
         fileType: FileType,
@@ -11,8 +12,9 @@ protocol BaseFileSaver {
         saveLocation: SaveLocation,
         subDir: String?,
         conflictResolution: ConflictResolution,
-        onProgress: ((Double) -> Void)?
-    ) throws -> SaveResult
+        onProgress: ((Double) -> Void)?,
+        onSuccess: (String) -> Void
+    ) throws
 }
 
 extension BaseFileSaver {
@@ -24,13 +26,6 @@ extension BaseFileSaver {
 
     func buildFileName(base: String, extension ext: String) -> String {
         return FileHelper.buildFileName(fileName: base, extension: ext)
-    }
-
-    func handleError(_ error: Error) -> SaveResult {
-        if let fsError = error as? FileSaverError {
-            return .failure(errorCode: fsError.code, message: fsError.message)
-        }
-        return .failure(errorCode: Constants.errorPlatform, message: error.localizedDescription)
     }
 
     /// Requests photo library permission from the user.
@@ -121,12 +116,14 @@ extension BaseFileSaver {
         return album
     }
 
+    /// Handles conflict resolution for Photos Library saves
+    /// - Returns: File URI if skip and file exists, nil otherwise
     func handlePhotosConflictResolution(
         fileName: String,
         subDir: String?,
         conflictResolution: ConflictResolution,
         hasReadAccess: Bool
-    ) throws -> SaveResult? {
+    ) throws -> String? {
         guard hasReadAccess else {
             return nil
         }
@@ -136,7 +133,7 @@ extension BaseFileSaver {
                 if conflictResolution == .fail {
                     throw FileSaverError.fileExists(fileName)
                 }
-                return .success(filePath: existing.localIdentifier, fileUri: "ph://\(existing.localIdentifier)")
+                return "ph://\(existing.localIdentifier)"
             }
         }
 

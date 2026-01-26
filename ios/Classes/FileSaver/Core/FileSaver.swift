@@ -42,7 +42,7 @@ class FileSaver {
                 saver = customFileSaver
             }
 
-            let result = try saver.saveBytes(
+            try saver.saveBytes(
                 fileData: fileData,
                 fileType: fileType,
                 baseFileName: baseFileName,
@@ -51,15 +51,20 @@ class FileSaver {
                 conflictResolution: conflictResolution,
                 onProgress: { progress in
                     reporter.sendProgress(progress)
+                },
+                onSuccess: { fileUri in
+                    reporter.sendSuccess(uri: fileUri)
                 }
             )
-
-            switch result {
-            case .success(_, let fileUri):
-                reporter.sendSuccess(uri: fileUri)
-            case .failure(let errorCode, let message):
-                reporter.sendError(code: errorCode, message: message)
-            }
+        } catch let error as FileSaverError {
+            reporter.sendError(code: error.code, message: error.message)
+        } catch {
+            reporter.sendError(
+                code: Constants.errorPlatform,
+                message: "Unexpected error: \(error.localizedDescription)"
+            )
+        }
+    }
         } catch let error as FileSaverError {
             reporter.sendError(code: error.code, message: error.message)
         } catch {

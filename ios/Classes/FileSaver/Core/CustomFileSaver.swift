@@ -9,8 +9,9 @@ class CustomFileSaver: BaseFileSaver {
         saveLocation: SaveLocation,
         subDir: String?,
         conflictResolution: ConflictResolution,
-        onProgress: ((Double) -> Void)?
-    ) throws -> SaveResult {
+        onProgress: ((Double) -> Void)?,
+        onSuccess: (String) -> Void
+    ) throws {
         try validateFileData(fileData)
 
         // Custom files always use Documents directory regardless of saveLocation
@@ -31,6 +32,7 @@ class CustomFileSaver: BaseFileSaver {
 
         try FileHelper.writeFileWithProgress(data: fileData, to: finalURL, onProgress: onProgress)
 
-        return .success(filePath: finalURL.path, fileUri: finalURL.absoluteString)
+        onSuccess(finalURL.absoluteString)
+    }
     }
 }

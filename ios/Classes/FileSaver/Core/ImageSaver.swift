@@ -9,8 +9,9 @@ class ImageSaver: BaseFileSaver {
         saveLocation: SaveLocation,
         subDir: String?,
         conflictResolution: ConflictResolution,
-        onProgress: ((Double) -> Void)?
-    ) throws -> SaveResult {
+        onProgress: ((Double) -> Void)?,
+        onSuccess: (String) -> Void
+    ) throws {
         try FormatValidator.validateImageFormat(fileType)
         try validateFileData(fileData)
 
@@ -23,32 +24,34 @@ class ImageSaver: BaseFileSaver {
 
             let hasReadAccess = try requestPhotosPermission()
 
-            if let result = try handlePhotosConflictResolution(
+            if let existingUri = try handlePhotosConflictResolution(
                 fileName: fileName,
                 subDir: subDir,
                 conflictResolution: conflictResolution,
                 hasReadAccess: hasReadAccess
             ) {
                 onProgress?(1.0)
-                return result
+                onSuccess(existingUri)
+                return
             }
 
-            let result = try saveToPhotosLibrary(
+            let uri = try saveToPhotosLibrary(
                 imageData: fileData,
                 fileName: fileName,
                 albumName: hasReadAccess ? subDir : nil
             )
             onProgress?(1.0)
-            return result
+            onSuccess(uri)
 
         case .documents:
-            return try saveToDocuments(
+            let uri = try saveToDocuments(
                 imageData: fileData,
                 fileName: fileName,
                 subDir: subDir,
                 conflictResolution: conflictResolution,
                 onProgress: onProgress
             )
+            onSuccess(uri)
         }
     }
 
@@ -81,7 +84,7 @@ class ImageSaver: BaseFileSaver {
             throw FileSaverError.fileIO("Failed to save image to Photos library")
         }
 
-        return .success(filePath: assetId, fileUri: "ph://\(assetId)")
+        return "ph://\(assetId)"
     }
 
     private func saveToDocuments(
@@ -90,7 +93,7 @@ class ImageSaver: BaseFileSaver {
         subDir: String?,
         conflictResolution: ConflictResolution,
         onProgress: ((Double) -> Void)?
-    ) throws -> SaveResult {
+    ) throws -> String {
         var targetDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
 
         if let subDir = subDir {
@@ -107,6 +110,7 @@ class ImageSaver: BaseFileSaver {
 
         try FileHelper.writeFileWithProgress(data: imageData, to: finalURL, onProgress: onProgress)
 
-        return .success(filePath: finalURL.path, fileUri: finalURL.absoluteString)
+        return finalURL.absoluteString
+    }
     }
 }
