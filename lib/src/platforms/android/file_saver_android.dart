@@ -131,6 +131,113 @@ class FileSaverAndroid extends FileSaverPlatform {
     return result;
   }
 
+  @override
+  Stream<SaveProgress> saveFile({
+    required String filePath,
+    required String fileName,
+    required FileType fileType,
+    SaveLocation? saveLocation,
+    String? subDir,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) async* {
+    _validateFilePath(filePath, fileName);
+
+    final controller = StreamController<SaveProgress>();
+
+    final jFilePath = filePath.toJString();
+    final jFileName = fileName.toJString();
+    final jExtension = fileType.ext.toJString();
+    final jMimeType = fileType.mimeType.toJString();
+    final jConflictMode = conflictResolution.index;
+    final jSaveLocationIndex = switch (saveLocation) {
+      AndroidSaveLocation location => location.index,
+      _ => AndroidSaveLocation.downloads.index,
+    };
+    final jSubDir = subDir?.toJString();
+
+    // Create callback implementation
+    final callback = bindings.ProgressCallback.implement(
+      bindings.$ProgressCallback(
+        onEvent: (eventType, progress, data, message) {
+          final event = _parseEvent(eventType, progress, data, message);
+          controller.add(event);
+
+          // Close stream on terminal events
+          if (event is SaveProgressComplete ||
+              event is SaveProgressError ||
+              event is SaveProgressCancelled) {
+            controller.close();
+          }
+        },
+        onEvent$async: true,
+      ),
+    );
+
+    try {
+      // Call native method with callback
+      _fileSaver.saveFile(
+        jFilePath,
+        jFileName,
+        jExtension,
+        jMimeType,
+        jSaveLocationIndex,
+        jSubDir,
+        jConflictMode,
+        callback,
+      );
+
+      // Yield events from stream
+      await for (final event in controller.stream) {
+        yield event;
+      }
+    } finally {
+      callback.release();
+    }
+  }
+
+  @override
+  Future<Uri> saveFileAsync({
+    required String filePath,
+    required String fileName,
+    required FileType fileType,
+    SaveLocation? saveLocation,
+    String? subDir,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+    void Function(double progress)? onProgress,
+  }) async {
+    Uri? result;
+
+    await for (final event in saveFile(
+      filePath: filePath,
+      fileName: fileName,
+      fileType: fileType,
+      saveLocation: saveLocation,
+      subDir: subDir,
+      conflictResolution: conflictResolution,
+    )) {
+      switch (event) {
+        case SaveProgressStarted():
+          break;
+        case SaveProgressUpdate(:final progress):
+          onProgress?.call(progress);
+        case SaveProgressComplete(:final uri):
+          result = uri;
+        case SaveProgressError(:final exception):
+          throw exception;
+        case SaveProgressCancelled():
+          throw const PlatformException('Operation cancelled', 'CANCELLED');
+      }
+    }
+
+    if (result == null) {
+      throw const PlatformException(
+        'Save operation did not complete',
+        'INCOMPLETE',
+      );
+    }
+    return result;
+  }
+
   /// Parses event from native callback
   /// - eventType 0: Started
   /// - eventType 1: Progress (progress = 0.0-1.0)
@@ -151,8 +258,10 @@ class FileSaverAndroid extends FileSaverPlatform {
         return SaveProgressUpdate(progress);
 
       case 2: // Error
-        final errorCode = data?.toDartString(releaseOriginal: true) ?? 'UNKNOWN';
-        final errorMsg = message?.toDartString(releaseOriginal: true) ?? 'Unknown error';
+        final errorCode =
+            data?.toDartString(releaseOriginal: true) ?? 'UNKNOWN';
+        final errorMsg =
+            message?.toDartString(releaseOriginal: true) ?? 'Unknown error';
         return SaveProgressError(
           FileSaverException.fromErrorResult(errorCode, errorMsg),
         );
@@ -174,6 +283,15 @@ class FileSaverAndroid extends FileSaverPlatform {
   void _validateInput(Uint8List bytes, String fileName) {
     if (bytes.isEmpty) {
       throw const InvalidFileException('File bytes cannot be empty');
+    }
+    if (fileName.isEmpty) {
+      throw const InvalidFileException('File name cannot be empty');
+    }
+  }
+
+  void _validateFilePath(String filePath, String fileName) {
+    if (filePath.isEmpty) {
+      throw const InvalidFileException('File path cannot be empty');
     }
     if (fileName.isEmpty) {
       throw const InvalidFileException('File name cannot be empty');
