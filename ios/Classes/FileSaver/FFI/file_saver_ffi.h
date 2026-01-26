@@ -45,6 +45,41 @@ void file_saver_save_bytes(
     int64_t native_port
 );
 
+/// Save file from source path asynchronously with progress reporting via
+/// NativePort.
+///
+/// Reads source file in chunks without loading into memory - suitable for large
+/// files. Handles security-scoped resources (Files app) and iCloud file
+/// downloads.
+///
+/// Progress messages sent to native_port:
+/// - Started:    [0]
+/// - Progress:   [1, progress]    (progress is 0.0 to 1.0)
+/// - Error:      [2, errorCode, errorMessage]
+/// - Success:    [3, fileUri]
+/// - Cancelled:  [4]
+///
+/// @param instance FileSaver instance from file_saver_init
+/// @param filePath Source file path (file:// URI)
+/// @param baseFileName Target file name without extension
+/// @param extension File extension without dot
+/// @param mimeType MIME type string
+/// @param saveLocation Save location index (0-1 for iOS)
+/// @param subDir Optional subdirectory (can be NULL)
+/// @param conflictMode Conflict resolution mode (0-3)
+/// @param native_port Dart NativePort for progress reporting
+void file_saver_save_file(
+    void *instance,
+    const char *filePath,
+    const char *baseFileName,
+    const char *extension,
+    const char *mimeType,
+    int32_t saveLocation,
+    const char *subDir,
+    int32_t conflictMode,
+    int64_t native_port
+);
+
 void file_saver_dispose(void* instance);
 
 #endif

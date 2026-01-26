@@ -7,6 +7,8 @@ enum FileSaverError: Error {
     case unsupportedFormat(String, details: String? = nil)
     case storageFull(String)
     case fileIO(String)
+    case fileNotFound(String)
+    case iCloudDownloadFailed(String)
     case platformError(String)
 
     var code: String {
@@ -17,6 +19,8 @@ enum FileSaverError: Error {
         case .unsupportedFormat: return Constants.errorUnsupportedFormat
         case .storageFull: return Constants.errorStorageFull
         case .fileIO: return Constants.errorFileIO
+        case .fileNotFound: return Constants.errorFileNotFound
+        case .iCloudDownloadFailed: return Constants.errorICloudDownloadFailed
         case .platformError: return Constants.errorPlatform
         }
     }
@@ -33,6 +37,8 @@ enum FileSaverError: Error {
             return "Unsupported format: \(format)"
         case .storageFull(let msg): return msg
         case .fileIO(let msg): return msg
+        case .fileNotFound(let path): return "Source file not found: \(path)"
+        case .iCloudDownloadFailed(let msg): return "iCloud download failed: \(msg)"
         case .platformError(let msg): return msg
         }
     }

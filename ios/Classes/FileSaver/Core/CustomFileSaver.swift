@@ -34,5 +34,64 @@ class CustomFileSaver: BaseFileSaver {
 
         onSuccess(finalURL.absoluteString)
     }
+    
+    func saveFile(
+        filePath: String,
+        fileType: FileType,
+        baseFileName: String,
+        saveLocation: SaveLocation,
+        subDir: String?,
+        conflictResolution: ConflictResolution,
+        onProgress: ((Double) -> Void)?,
+        onSuccess: (String) -> Void
+    ) throws {
+        // Phase 1 (0.0 → 0.5): iCloud download progress
+        let downloadProgressHandler: ((Double) -> Void)? = onProgress.map { handler in
+            { downloadProgress in
+                // Map download progress (0.0-1.0) to overall progress (0.0-0.5)
+                handler(downloadProgress * 0.5)
+            }
+        }
+        
+        // Open source file with security scope and iCloud handling
+        let sourceFile = try FileHelper.openSourceFile(
+            at: filePath,
+            onDownloadProgress: downloadProgressHandler
+        )
+        defer { sourceFile.close() }
+        
+        // Custom files always use Documents directory regardless of saveLocation
+        var targetDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        
+        if let subDir = subDir {
+            targetDir = targetDir.appendingPathComponent(subDir)
+        }
+        
+        try FileHelper.ensureDirectoryExists(at: targetDir)
+        
+        let fileName = buildFileName(base: baseFileName, extension: fileType.ext)
+        let finalURL = try FileManagerConflictResolver.resolveConflict(
+            directory: targetDir,
+            fileName: fileName,
+            conflictResolution: conflictResolution
+        )
+        
+        // Phase 2 (0.5 → 1.0): Copy progress
+        let copyProgressHandler: ((Double) -> Void)? = onProgress.map { handler in
+            { copyProgress in
+                // Map copy progress (0.0-1.0) to overall progress (0.5-1.0)
+                handler(0.5 + copyProgress * 0.5)
+            }
+        }
+        
+        // Copy file with progress
+        try FileHelper.copyFileWithProgress(
+            from: sourceFile.handle,
+            to: finalURL,
+            totalSize: sourceFile.totalSize,
+            onProgress: copyProgressHandler
+        )
+        
+        onSuccess(finalURL.absoluteString)
     }
 }
