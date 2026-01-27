@@ -15,7 +15,8 @@ class FileSaver {
         subDir: String?,
         saveLocationValue: Int,
         conflictMode: Int,
-        reporter: ProgressReporter
+        reporter: ProgressReporter,
+        cancellationToken: CancellationToken? = nil
     ) {
         do {
             let fileType = FileHelper.getFileType(ext: ext, mimeType: mimeType)
@@ -54,8 +55,11 @@ class FileSaver {
                 },
                 onSuccess: { fileUri in
                     reporter.sendSuccess(uri: fileUri)
-                }
+                },
+                cancellationToken: cancellationToken
             )
+        } catch FileSaverError.cancelled {
+            reporter.sendCancelled()
         } catch let error as FileSaverError {
             reporter.sendError(code: error.code, message: error.message)
         } catch {
@@ -75,11 +79,12 @@ class FileSaver {
         subDir: String?,
         saveLocationValue: Int,
         conflictMode: Int,
-        reporter: ProgressReporter
+        reporter: ProgressReporter,
+        cancellationToken: CancellationToken? = nil
     ) {
         do {
             let fileType = FileHelper.getFileType(ext: ext, mimeType: mimeType)
-            
+
             guard let conflictResolution = ConflictResolution(rawValue: conflictMode) else {
                 reporter.sendError(
                     code: Constants.errorPlatform,
@@ -87,9 +92,9 @@ class FileSaver {
                 )
                 return
             }
-            
+
             let saveLocation = SaveLocation.fromInt(saveLocationValue)
-            
+
             let saver: BaseFileSaver
             switch fileType.category {
             case .image:
@@ -101,7 +106,7 @@ class FileSaver {
             case .custom:
                 saver = customFileSaver
             }
-            
+
             try saver.saveFile(
                 filePath: filePath,
                 fileType: fileType,
@@ -114,8 +119,11 @@ class FileSaver {
                 },
                 onSuccess: { fileUri in
                     reporter.sendSuccess(uri: fileUri)
-                }
+                },
+                cancellationToken: cancellationToken
             )
+        } catch FileSaverError.cancelled {
+            reporter.sendCancelled()
         } catch let error as FileSaverError {
             reporter.sendError(code: error.code, message: error.message)
         } catch {

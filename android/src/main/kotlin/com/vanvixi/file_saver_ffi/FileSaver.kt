@@ -5,16 +5,23 @@ import com.vanvixi.file_saver_ffi.models.*
 import com.vanvixi.file_saver_ffi.utils.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 class FileSaver(context: Context) {
     private val imageSaver = ImageSaver(context)
     private val videoSaver = VideoSaver(context)
     private val audioSaver = AudioSaver(context)
     private val customFileSaver = CustomFileSaver(context)
+
+    // Job tracking for cancellation support
+    private val activeJobs = ConcurrentHashMap<Long, Job>()
+    private val operationIdCounter = AtomicLong(0)
 
     /**
      * Saves file data with progress streaming (internal)
@@ -72,6 +79,7 @@ class FileSaver(context: Context) {
      * @param subDir Optional subdirectory within target location
      * @param conflictMode Conflict resolution mode (0-3)
      * @param callback Progress callback for events
+     * @return Operation ID for cancellation
      */
     fun saveBytes(
         fileData: ByteArray,
@@ -82,8 +90,10 @@ class FileSaver(context: Context) {
         subDir: String?,
         conflictMode: Int,
         callback: ProgressCallback,
-    ) {
-        CoroutineScope(Dispatchers.IO).launch {
+    ): Long {
+        val operationId = operationIdCounter.incrementAndGet()
+
+        val job = CoroutineScope(Dispatchers.IO).launch {
             saveBytes(
                 fileData,
                 baseFileName,
@@ -106,6 +116,11 @@ class FileSaver(context: Context) {
                 }
             }
         }
+
+        activeJobs[operationId] = job
+        job.invokeOnCompletion { activeJobs.remove(operationId) }
+
+        return operationId
     }
 
     /**
@@ -164,6 +179,7 @@ class FileSaver(context: Context) {
      * @param subDir Optional subdirectory within target location
      * @param conflictMode Conflict resolution mode (0-3)
      * @param callback Progress callback for events
+     * @return Operation ID for cancellation
      */
     fun saveFile(
         filePath: String,
@@ -174,8 +190,10 @@ class FileSaver(context: Context) {
         subDir: String?,
         conflictMode: Int,
         callback: ProgressCallback,
-    ) {
-        CoroutineScope(Dispatchers.IO).launch {
+    ): Long {
+        val operationId = operationIdCounter.incrementAndGet()
+
+        val job = CoroutineScope(Dispatchers.IO).launch {
             saveFile(
                 filePath,
                 baseFileName,
@@ -198,5 +216,19 @@ class FileSaver(context: Context) {
                 }
             }
         }
+
+        activeJobs[operationId] = job
+        job.invokeOnCompletion { activeJobs.remove(operationId) }
+
+        return operationId
+    }
+
+    /**
+     * Cancels an ongoing save operation.
+     *
+     * @param operationId The operation ID returned by saveBytes or saveFile
+     */
+    fun cancelOperation(operationId: Long) {
+        activeJobs[operationId]?.cancel()
     }
 }

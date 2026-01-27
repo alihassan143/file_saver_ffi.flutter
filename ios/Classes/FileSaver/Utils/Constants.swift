@@ -10,6 +10,7 @@ enum Constants {
     static let errorFileNotFound = "FILE_NOT_FOUND"
     static let errorICloudDownloadFailed = "ICLOUD_DOWNLOAD_FAILED"
     static let errorPlatform = "PLATFORM_ERROR"
+    static let errorCancelled = "CANCELLED"
 
     static let chunkSize = 1024 * 1024
     static let maxRenameAttempts = 1000

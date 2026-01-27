@@ -9,6 +9,7 @@ import com.vanvixi.file_saver_ffi.models.SaveProgressEvent
 import com.vanvixi.file_saver_ffi.utils.Constants
 import com.vanvixi.file_saver_ffi.utils.FileHelper
 import com.vanvixi.file_saver_ffi.utils.StoreHelper
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -94,6 +95,17 @@ abstract class BaseFileSaver(protected val context: Context) {
                     val overallProgress = 0.1 + (writeProgress * 0.8)
                     trySend(SaveProgressEvent.Progress(overallProgress))
                 }
+            } catch (e: CancellationException) {
+                // Operation was cancelled - cleanup partial file
+                try {
+                    context.contentResolver.delete(uri, null, null)
+                } catch (_: Exception) {
+                    // Ignore delete errors
+                }
+                trySend(SaveProgressEvent.Cancelled)
+                close()
+                awaitClose {}
+                throw e  // Re-throw to properly cancel coroutine
             } catch (e: IOException) {
                 // If write fails, try to delete the MediaStore entry
                 try {
@@ -254,6 +266,17 @@ abstract class BaseFileSaver(protected val context: Context) {
                     val overallProgress = 0.15 + (copyProgress * 0.75)
                     trySend(SaveProgressEvent.Progress(overallProgress))
                 }
+            } catch (e: CancellationException) {
+                // Operation was cancelled - cleanup partial file
+                try {
+                    context.contentResolver.delete(uri, null, null)
+                } catch (_: Exception) {
+                    // Ignore delete errors
+                }
+                trySend(SaveProgressEvent.Cancelled)
+                close()
+                awaitClose {}
+                throw e  // Re-throw to properly cancel coroutine
             } catch (e: IOException) {
                 // If copy fails, try to delete the MediaStore entry
                 try {

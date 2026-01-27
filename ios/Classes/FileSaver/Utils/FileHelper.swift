@@ -12,19 +12,21 @@ enum FileHelper {
     }
 
     static func writeFile(data: Data, to url: URL) throws {
-        try writeFileWithProgress(data: data, to: url, onProgress: nil)
+        try writeFileWithProgress(data: data, to: url, onProgress: nil, cancellationToken: nil)
     }
 
-    /// Writes data to file with progress reporting
+    /// Writes data to file with progress reporting and cancellation support
     ///
     /// - Parameters:
     ///   - data: Data to write
     ///   - url: File URL to write to
     ///   - onProgress: Optional progress callback (0.0 to 1.0)
+    ///   - cancellationToken: Optional token to check for cancellation between chunks
     static func writeFileWithProgress(
         data: Data,
         to url: URL,
-        onProgress: ((Double) -> Void)?
+        onProgress: ((Double) -> Void)?,
+        cancellationToken: CancellationToken? = nil
     ) throws {
         // Create empty file first (FileHandle requires file to exist)
         FileManager.default.createFile(atPath: url.path, contents: nil, attributes: nil)
@@ -39,6 +41,9 @@ enum FileHelper {
             let totalBytes = data.count
 
             while offset < totalBytes {
+                // Check for cancellation before each chunk
+                try cancellationToken?.throwIfCancelled()
+
                 let length = min(chunkSize, totalBytes - offset)
                 let chunk = data.subdata(in: offset..<(offset + length))
                 try fileHandle.write(contentsOf: chunk)
@@ -60,6 +65,9 @@ enum FileHelper {
             let totalBytes = data.count
 
             while offset < totalBytes {
+                // Check for cancellation before each chunk
+                try cancellationToken?.throwIfCancelled()
+
                 let length = min(chunkSize, totalBytes - offset)
                 let chunk = data.subdata(in: offset..<(offset + length))
                 fileHandle.write(chunk)
@@ -293,7 +301,7 @@ enum FileHelper {
         }
     }
     
-    /// Copies file from source to destination with progress reporting
+    /// Copies file from source to destination with progress reporting and cancellation support
     ///
     /// Reads and writes in chunks to avoid loading entire file into memory.
     ///
@@ -302,15 +310,17 @@ enum FileHelper {
     ///   - destination: Destination URL to write to
     ///   - totalSize: Total size of source file in bytes
     ///   - onProgress: Progress callback (0.0 to 1.0)
+    ///   - cancellationToken: Optional token to check for cancellation between chunks
     static func copyFileWithProgress(
         from source: FileHandle,
         to destination: URL,
         totalSize: Int64,
-        onProgress: ((Double) -> Void)?
+        onProgress: ((Double) -> Void)?,
+        cancellationToken: CancellationToken? = nil
     ) throws {
         // Create empty file first
         FileManager.default.createFile(atPath: destination.path, contents: nil, attributes: nil)
-        
+
         let destHandle = try FileHandle(forWritingTo: destination)
         defer {
             if #available(iOS 13.4, *) {
@@ -319,19 +329,22 @@ enum FileHelper {
                 destHandle.closeFile()
             }
         }
-        
+
         var bytesWritten: Int64 = 0
         let chunkSize = Constants.chunkSize
-        
+
         if #available(iOS 13.4, *) {
             while true {
+                // Check for cancellation before each chunk
+                try cancellationToken?.throwIfCancelled()
+
                 guard let data = try source.read(upToCount: chunkSize), !data.isEmpty else {
                     break
                 }
-                
+
                 try destHandle.write(contentsOf: data)
                 bytesWritten += Int64(data.count)
-                
+
                 if let onProgress = onProgress, totalSize > 0 {
                     let progress = Double(bytesWritten) / Double(totalSize)
                     onProgress(min(progress, 1.0))
@@ -340,12 +353,15 @@ enum FileHelper {
         } else {
             // Legacy API fallback
             while true {
+                // Check for cancellation before each chunk
+                try cancellationToken?.throwIfCancelled()
+
                 let data = source.readData(ofLength: chunkSize)
                 if data.isEmpty { break }
-                
+
                 destHandle.write(data)
                 bytesWritten += Int64(data.count)
-                
+
                 if let onProgress = onProgress, totalSize > 0 {
                     let progress = Double(bytesWritten) / Double(totalSize)
                     onProgress(min(progress, 1.0))

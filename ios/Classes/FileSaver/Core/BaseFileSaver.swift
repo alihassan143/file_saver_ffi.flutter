@@ -5,6 +5,7 @@ protocol BaseFileSaver {
     /// Core save method - implemented by each Saver class
     /// - Parameter onProgress: Progress callback (0.0 to 1.0), called during write operations
     /// - Parameter onSuccess: Success callback with file URI string
+    /// - Parameter cancellationToken: Optional token to check for cancellation
     func saveBytes(
         fileData: Data,
         fileType: FileType,
@@ -13,12 +14,14 @@ protocol BaseFileSaver {
         subDir: String?,
         conflictResolution: ConflictResolution,
         onProgress: ((Double) -> Void)?,
-        onSuccess: (String) -> Void
+        onSuccess: (String) -> Void,
+        cancellationToken: CancellationToken?
     ) throws
-    
+
     /// Save from source file path - reads source in chunks without loading into memory
     /// - Parameter onProgress: Progress callback (0.0 to 1.0), called during copy operations
     /// - Parameter onSuccess: Success callback with file URI string
+    /// - Parameter cancellationToken: Optional token to check for cancellation
     func saveFile(
         filePath: String,
         fileType: FileType,
@@ -27,7 +30,8 @@ protocol BaseFileSaver {
         subDir: String?,
         conflictResolution: ConflictResolution,
         onProgress: ((Double) -> Void)?,
-        onSuccess: (String) -> Void
+        onSuccess: (String) -> Void,
+        cancellationToken: CancellationToken?
     ) throws
 }
 

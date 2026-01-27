@@ -32,43 +32,56 @@ class FileSaverAndroid extends FileSaverPlatform {
     SaveLocation? saveLocation,
     String? subDir,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
-  }) async* {
+  }) {
     _validateInput(fileBytes, fileName);
 
-    final controller = StreamController<SaveProgress>();
+    return Stream.multi((controller) {
+      bool cleanedUp = false;
+      late final bindings.ProgressCallback callback;
 
-    final jByteArray = JByteArray.from(fileBytes);
-    final jFileName = fileName.toJString();
-    final jExtension = fileType.ext.toJString();
-    final jMimeType = fileType.mimeType.toJString();
-    final jConflictMode = conflictResolution.index;
-    final jSaveLocationIndex = switch (saveLocation) {
-      AndroidSaveLocation location => location.index,
-      _ => AndroidSaveLocation.downloads.index,
-    };
-    final jSubDir = subDir?.toJString();
+      final jByteArray = JByteArray.from(fileBytes);
+      final jFileName = fileName.toJString();
+      final jExtension = fileType.ext.toJString();
+      final jMimeType = fileType.mimeType.toJString();
+      final jConflictMode = conflictResolution.index;
+      final jSaveLocationIndex = switch (saveLocation) {
+        AndroidSaveLocation location => location.index,
+        _ => AndroidSaveLocation.downloads.index,
+      };
+      final jSubDir = subDir?.toJString();
 
-    // Create callback implementation
-    final callback = bindings.ProgressCallback.implement(
-      bindings.$ProgressCallback(
-        onEvent: (eventType, progress, data, message) {
-          final event = _parseEvent(eventType, progress, data, message);
-          controller.add(event);
+      void cleanup() {
+        if (cleanedUp) return;
+        cleanedUp = true;
 
-          // Close stream on terminal events
-          if (event is SaveProgressComplete ||
-              event is SaveProgressError ||
-              event is SaveProgressCancelled) {
-            controller.close();
-          }
-        },
-        onEvent$async: true,
-      ),
-    );
+        // Defer release out of [callback] stack
+        Future.microtask(() {
+          if (!controller.isClosed) controller.closeSync();
+          callback.release();
+        });
+      }
 
-    try {
-      // Call native method with callback
-      _fileSaver.saveBytes(
+      // Create callback - cleanup happens on terminal events
+      callback = bindings.ProgressCallback.implement(
+        bindings.$ProgressCallback(
+          onEvent: (eventType, progress, data, message) {
+            if (cleanedUp || controller.isClosed) return;
+
+            final event = _parseEvent(eventType, progress, data, message);
+            controller.addSync(event);
+
+            if (event is SaveProgressComplete ||
+                event is SaveProgressError ||
+                event is SaveProgressCancelled) {
+              cleanup();
+            }
+          },
+          onEvent$async: true,
+        ),
+      );
+
+      // Call native method - returns operationId for cancellation
+      final operationId = _fileSaver.saveBytes(
         jByteArray,
         jFileName,
         jExtension,
@@ -79,13 +92,12 @@ class FileSaverAndroid extends FileSaverPlatform {
         callback,
       );
 
-      // Yield events from stream
-      await for (final event in controller.stream) {
-        yield event;
-      }
-    } finally {
-      callback.release();
-    }
+      controller.onCancel = () {
+        _fileSaver.cancelOperation(operationId);
+        // Fallback cleanup if native doesn't respond with Cancelled event
+        Future.delayed(const Duration(milliseconds: 500), cleanup);
+      };
+    });
   }
 
   @override
@@ -139,43 +151,56 @@ class FileSaverAndroid extends FileSaverPlatform {
     SaveLocation? saveLocation,
     String? subDir,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
-  }) async* {
+  }) {
     _validateFilePath(filePath, fileName);
 
-    final controller = StreamController<SaveProgress>();
+    return Stream.multi((controller) {
+      bool cleanedUp = false;
+      late final bindings.ProgressCallback callback;
 
-    final jFilePath = filePath.toJString();
-    final jFileName = fileName.toJString();
-    final jExtension = fileType.ext.toJString();
-    final jMimeType = fileType.mimeType.toJString();
-    final jConflictMode = conflictResolution.index;
-    final jSaveLocationIndex = switch (saveLocation) {
-      AndroidSaveLocation location => location.index,
-      _ => AndroidSaveLocation.downloads.index,
-    };
-    final jSubDir = subDir?.toJString();
+      final jFilePath = filePath.toJString();
+      final jFileName = fileName.toJString();
+      final jExtension = fileType.ext.toJString();
+      final jMimeType = fileType.mimeType.toJString();
+      final jConflictMode = conflictResolution.index;
+      final jSaveLocationIndex = switch (saveLocation) {
+        AndroidSaveLocation location => location.index,
+        _ => AndroidSaveLocation.downloads.index,
+      };
+      final jSubDir = subDir?.toJString();
 
-    // Create callback implementation
-    final callback = bindings.ProgressCallback.implement(
-      bindings.$ProgressCallback(
-        onEvent: (eventType, progress, data, message) {
-          final event = _parseEvent(eventType, progress, data, message);
-          controller.add(event);
+      void cleanup() {
+        if (cleanedUp) return;
+        cleanedUp = true;
 
-          // Close stream on terminal events
-          if (event is SaveProgressComplete ||
-              event is SaveProgressError ||
-              event is SaveProgressCancelled) {
-            controller.close();
-          }
-        },
-        onEvent$async: true,
-      ),
-    );
+        // Defer release out of [callback] stack
+        Future.microtask(() {
+          if (!controller.isClosed) controller.closeSync();
+          callback.release();
+        });
+      }
 
-    try {
-      // Call native method with callback
-      _fileSaver.saveFile(
+      // Create callback - cleanup happens on terminal events
+      callback = bindings.ProgressCallback.implement(
+        bindings.$ProgressCallback(
+          onEvent: (eventType, progress, data, message) {
+            if (cleanedUp || controller.isClosed) return;
+
+            final event = _parseEvent(eventType, progress, data, message);
+            controller.addSync(event);
+
+            if (event is SaveProgressComplete ||
+                event is SaveProgressError ||
+                event is SaveProgressCancelled) {
+              cleanup();
+            }
+          },
+          onEvent$async: true,
+        ),
+      );
+
+      // Call native method - returns operationId for cancellation
+      final operationId = _fileSaver.saveFile(
         jFilePath,
         jFileName,
         jExtension,
@@ -186,13 +211,12 @@ class FileSaverAndroid extends FileSaverPlatform {
         callback,
       );
 
-      // Yield events from stream
-      await for (final event in controller.stream) {
-        yield event;
-      }
-    } finally {
-      callback.release();
-    }
+      controller.onCancel = () {
+        _fileSaver.cancelOperation(operationId);
+        // Fallback cleanup if native doesn't respond with Cancelled event
+        Future.delayed(const Duration(milliseconds: 500), cleanup);
+      };
+    });
   }
 
   @override

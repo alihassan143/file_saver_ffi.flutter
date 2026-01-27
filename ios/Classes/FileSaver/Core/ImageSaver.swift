@@ -10,7 +10,8 @@ class ImageSaver: BaseFileSaver {
         subDir: String?,
         conflictResolution: ConflictResolution,
         onProgress: ((Double) -> Void)?,
-        onSuccess: (String) -> Void
+        onSuccess: (String) -> Void,
+        cancellationToken: CancellationToken?
     ) throws {
         try FormatValidator.validateImageFormat(fileType)
         try validateFileData(fileData)
@@ -49,13 +50,14 @@ class ImageSaver: BaseFileSaver {
                 fileName: fileName,
                 subDir: subDir,
                 conflictResolution: conflictResolution,
-                onProgress: onProgress
+                onProgress: onProgress,
+                cancellationToken: cancellationToken
             )
             onSuccess(uri)
         }
     }
 
-    private func saveToPhotosLibrary(imageData: Data, fileName: String, albumName: String?) throws -> SaveResult {
+    private func saveToPhotosLibrary(imageData: Data, fileName: String, albumName: String?) throws -> String {
         let album = try albumName.map { try findOrCreateAlbum(name: $0) }
 
         var assetId: String?
@@ -92,7 +94,8 @@ class ImageSaver: BaseFileSaver {
         fileName: String,
         subDir: String?,
         conflictResolution: ConflictResolution,
-        onProgress: ((Double) -> Void)?
+        onProgress: ((Double) -> Void)?,
+        cancellationToken: CancellationToken?
     ) throws -> String {
         var targetDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
 
@@ -108,13 +111,24 @@ class ImageSaver: BaseFileSaver {
             conflictResolution: conflictResolution
         )
 
-        try FileHelper.writeFileWithProgress(data: imageData, to: finalURL, onProgress: onProgress)
+        do {
+            try FileHelper.writeFileWithProgress(
+                data: imageData,
+                to: finalURL,
+                onProgress: onProgress,
+                cancellationToken: cancellationToken
+            )
+        } catch FileSaverError.cancelled {
+            // Cleanup partial file on cancellation
+            try? FileManager.default.removeItem(at: finalURL)
+            throw FileSaverError.cancelled
+        }
 
         return finalURL.absoluteString
     }
     
     // MARK: - Save from File Path
-    
+
     func saveFile(
         filePath: String,
         fileType: FileType,
@@ -123,7 +137,8 @@ class ImageSaver: BaseFileSaver {
         subDir: String?,
         conflictResolution: ConflictResolution,
         onProgress: ((Double) -> Void)?,
-        onSuccess: (String) -> Void
+        onSuccess: (String) -> Void,
+        cancellationToken: CancellationToken?
     ) throws {
         try FormatValidator.validateImageFormat(fileType)
 
@@ -137,9 +152,9 @@ class ImageSaver: BaseFileSaver {
                     handler(downloadProgress * 0.5)
                 }
             }
-            
+
             let hasReadAccess = try requestPhotosPermission()
-            
+
             if let existingUri = try handlePhotosConflictResolution(
                 fileName: fileName,
                 subDir: subDir,
@@ -150,17 +165,17 @@ class ImageSaver: BaseFileSaver {
                 onSuccess(existingUri)
                 return
             }
-            
+
             // Open source file with iCloud download progress
             let sourceFile = try FileHelper.openSourceFile(
                 at: filePath,
                 onDownloadProgress: downloadProgressHandler
             )
             defer { sourceFile.close() }
-            
+
             // Phase 2 (0.5 → 1.0): Photos Library save (no granular progress available)
             onProgress?(0.5)
-            
+
             let uri = try saveToPhotosLibraryFromURL(
                 sourceURL: sourceFile.url,
                 fileName: fileName,
@@ -168,14 +183,15 @@ class ImageSaver: BaseFileSaver {
             )
             onProgress?(1.0)
             onSuccess(uri)
-            
+
         case .documents:
             let uri = try saveToDocumentsFromFile(
                 filePath: filePath,
                 fileName: fileName,
                 subDir: subDir,
                 conflictResolution: conflictResolution,
-                onProgress: onProgress
+                onProgress: onProgress,
+                cancellationToken: cancellationToken
             )
             onSuccess(uri)
         }
@@ -222,7 +238,8 @@ class ImageSaver: BaseFileSaver {
         fileName: String,
         subDir: String?,
         conflictResolution: ConflictResolution,
-        onProgress: ((Double) -> Void)?
+        onProgress: ((Double) -> Void)?,
+        cancellationToken: CancellationToken?
     ) throws -> String {
         // Phase 1 (0.0 → 0.5): iCloud download progress
         let downloadProgressHandler: ((Double) -> Void)? = onProgress.map { handler in
@@ -230,43 +247,50 @@ class ImageSaver: BaseFileSaver {
                 handler(downloadProgress * 0.5)
             }
         }
-        
+
         // Open source file with security scope and iCloud handling
         let sourceFile = try FileHelper.openSourceFile(
             at: filePath,
             onDownloadProgress: downloadProgressHandler
         )
         defer { sourceFile.close() }
-        
+
         var targetDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        
+
         if let subDir = subDir {
             targetDir = targetDir.appendingPathComponent(subDir)
         }
-        
+
         try FileHelper.ensureDirectoryExists(at: targetDir)
-        
+
         let finalURL = try FileManagerConflictResolver.resolveConflict(
             directory: targetDir,
             fileName: fileName,
             conflictResolution: conflictResolution
         )
-        
+
         // Phase 2 (0.5 → 1.0): Copy progress
         let copyProgressHandler: ((Double) -> Void)? = onProgress.map { handler in
             { copyProgress in
                 handler(0.5 + copyProgress * 0.5)
             }
         }
-        
-        // Copy file with progress
-        try FileHelper.copyFileWithProgress(
-            from: sourceFile.handle,
-            to: finalURL,
-            totalSize: sourceFile.totalSize,
-            onProgress: copyProgressHandler
-        )
-        
+
+        // Copy file with progress and cancellation support
+        do {
+            try FileHelper.copyFileWithProgress(
+                from: sourceFile.handle,
+                to: finalURL,
+                totalSize: sourceFile.totalSize,
+                onProgress: copyProgressHandler,
+                cancellationToken: cancellationToken
+            )
+        } catch FileSaverError.cancelled {
+            // Cleanup partial file on cancellation
+            try? FileManager.default.removeItem(at: finalURL)
+            throw FileSaverError.cancelled
+        }
+
         return finalURL.absoluteString
     }
 }
