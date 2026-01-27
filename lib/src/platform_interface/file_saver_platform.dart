@@ -51,30 +51,6 @@ abstract class FileSaverPlatform {
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   });
 
-  /// Saves file bytes to device storage with optional progress callback.
-  ///
-  /// Convenience method that returns [Future<Uri>].
-  ///
-  /// Parameters:
-  /// - [fileBytes]: The file data to save
-  /// - [fileType]: The type of file being saved
-  /// - [fileName]: The name of the file (without extension)
-  /// - [saveLocation]: Where to save the file (platform-specific, optional)
-  /// - [subDir]: Optional subdirectory within the standard save location
-  /// - [conflictResolution]: How to handle filename conflicts
-  /// - [onProgress]: Optional callback receiving progress from 0.0 to 1.0
-  ///
-  /// Returns the [Uri] where the file was saved.
-  Future<Uri> saveBytesAsync({
-    required Uint8List fileBytes,
-    required FileType fileType,
-    required String fileName,
-    SaveLocation? saveLocation,
-    String? subDir,
-    ConflictResolution conflictResolution = ConflictResolution.autoRename,
-    void Function(double progress)? onProgress,
-  });
-
   /// Saves a file from source path to device storage with progress streaming.
   ///
   /// This method reads the source file in chunks without loading it entirely
@@ -99,36 +75,6 @@ abstract class FileSaverPlatform {
     SaveLocation? saveLocation,
     String? subDir,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
-  });
-
-  /// Saves a file from source path with optional progress callback.
-  ///
-  /// Convenience method that returns [Future<Uri>].
-  ///
-  /// This method reads the source file in chunks without loading it entirely
-  /// into memory, making it suitable for large files.
-  ///
-  /// Parameters:
-  /// - [filePath]: Source file path (file:// URI or content:// URI on Android)
-  /// - [fileName]: Target file name without extension
-  /// - [fileType]: The type of file being saved (determines extension and MIME type)
-  /// - [saveLocation]: Where to save the file (platform-specific, optional)
-  /// - [subDir]: Optional subdirectory within the standard save location
-  /// - [conflictResolution]: How to handle filename conflicts
-  /// - [onProgress]: Optional callback receiving progress from 0.0 to 1.0
-  ///
-  /// Returns the [Uri] where the file was saved.
-  ///
-  /// Throws [SourceFileNotFoundException] if the source file does not exist.
-  /// Throws [ICloudDownloadException] on iOS if iCloud file download fails.
-  Future<Uri> saveFileAsync({
-    required String filePath,
-    required String fileName,
-    required FileType fileType,
-    SaveLocation? saveLocation,
-    String? subDir,
-    ConflictResolution conflictResolution = ConflictResolution.autoRename,
-    void Function(double progress)? onProgress,
   });
 
   // ─────────────────────────────────────────────────────────────────────────
