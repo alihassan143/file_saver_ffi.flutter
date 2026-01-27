@@ -31,10 +31,10 @@ class _SaveFileScreenState extends State<SaveFileScreen>
 
   // Available categories for file picker (no audio in image_picker)
   List<MediaCategory> get _availableCategories => [
-        MediaCategory.image,
-        MediaCategory.video,
-        MediaCategory.document,
-      ];
+    MediaCategory.image,
+    MediaCategory.video,
+    MediaCategory.document,
+  ];
 
   @override
   void dispose() {
@@ -123,12 +123,10 @@ class _SaveFileScreenState extends State<SaveFileScreen>
   Future<String?> _pickFile() async {
     switch (_selectedCategory) {
       case MediaCategory.image:
-        final image =
-            await _imagePicker.pickImage(source: ImageSource.gallery);
+        final image = await _imagePicker.pickImage(source: ImageSource.gallery);
         return image?.path;
       case MediaCategory.video:
-        final video =
-            await _imagePicker.pickVideo(source: ImageSource.gallery);
+        final video = await _imagePicker.pickVideo(source: ImageSource.gallery);
         return video?.path;
       case MediaCategory.audio:
       case MediaCategory.document:
@@ -157,8 +155,7 @@ class _SaveFileScreenState extends State<SaveFileScreen>
       return switch (_selectedCategory) {
         MediaCategory.image || MediaCategory.video => IosSaveLocation.documents,
         MediaCategory.audio ||
-        MediaCategory.document =>
-          IosSaveLocation.documents,
+        MediaCategory.document => IosSaveLocation.documents,
       };
     }
     return null;

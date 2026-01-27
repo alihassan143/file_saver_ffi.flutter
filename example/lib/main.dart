@@ -58,12 +58,7 @@ class FileSaverDemoPage extends StatelessWidget {
             ],
           ),
         ),
-        body: const TabBarView(
-          children: [
-            SaveBytesScreen(),
-            SaveFileScreen(),
-          ],
-        ),
+        body: const TabBarView(children: [SaveBytesScreen(), SaveFileScreen()]),
       ),
     );
   }
