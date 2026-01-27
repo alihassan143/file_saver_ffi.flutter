@@ -5,6 +5,36 @@ private var instanceCounter: UInt = 0
 private var instances: [UInt: FileSaver] = [:]
 private let instanceLock = NSLock()
 
+// Cancellation token registry
+private var tokenCounter: UInt = 0
+private var activeTokens: [UInt: CancellationToken] = [:]
+private let tokenLock = NSLock()
+
+private func generateTokenId() -> UInt {
+    tokenLock.lock()
+    defer { tokenLock.unlock() }
+    tokenCounter += 1
+    return tokenCounter
+}
+
+private func registerToken(_ tokenId: UInt, _ token: CancellationToken) {
+    tokenLock.lock()
+    defer { tokenLock.unlock() }
+    activeTokens[tokenId] = token
+}
+
+private func unregisterToken(_ tokenId: UInt) {
+    tokenLock.lock()
+    defer { tokenLock.unlock() }
+    activeTokens.removeValue(forKey: tokenId)
+}
+
+private func getToken(_ tokenId: UInt) -> CancellationToken? {
+    tokenLock.lock()
+    defer { tokenLock.unlock() }
+    return activeTokens[tokenId]
+}
+
 @_cdecl("file_saver_init_dart_api_dl")
 public func fileSaverInitDartApiDL(_ data: UnsafeMutableRawPointer?) -> Int {
     guard let data = data else { return -1 }
@@ -35,19 +65,26 @@ public func fileSaverSaveBytes(
     _ subDir: UnsafePointer<CChar>?,
     _ conflictMode: Int32,
     _ nativePort: Int64
-) {
+) -> UInt {
     let reporter = ProgressReporter(port: nativePort)
 
+    // Create cancellation token
+    let tokenId = generateTokenId()
+    let token = CancellationToken()
+    registerToken(tokenId, token)
+
+    // Copy data before async operation (must be done synchronously)
+    let data = Data(bytes: fileData, count: Int(fileDataLength))
+    let fileName = String(cString: baseFileName)
+    let extStr = String(cString: ext)
+    let mime = String(cString: mimeType)
+    let directory = subDir.map { String(cString: $0) }
+
     DispatchQueue.global(qos: .userInitiated).async {
+        defer { unregisterToken(tokenId) }
+
         // Send started event
         reporter.sendStarted()
-
-        // Copy data before async operation
-        let data = Data(bytes: fileData, count: Int(fileDataLength))
-        let fileName = String(cString: baseFileName)
-        let extStr = String(cString: ext)
-        let mime = String(cString: mimeType)
-        let directory = subDir.map { String(cString: $0) }
 
         // Get FileSaver instance
         instanceLock.lock()
@@ -61,7 +98,7 @@ public func fileSaverSaveBytes(
         }
         instanceLock.unlock()
 
-        // Perform save with progress
+        // Perform save with progress and cancellation support
         saver.saveBytes(
             fileData: data,
             baseFileName: fileName,
@@ -70,9 +107,12 @@ public func fileSaverSaveBytes(
             subDir: directory,
             saveLocationValue: Int(saveLocation),
             conflictMode: Int(conflictMode),
-            reporter: reporter
+            reporter: reporter,
+            cancellationToken: token
         )
     }
+
+    return tokenId
 }
 
 @_cdecl("file_saver_save_file")
@@ -86,20 +126,27 @@ public func fileSaverSaveFile(
     _ subDir: UnsafePointer<CChar>?,
     _ conflictMode: Int32,
     _ nativePort: Int64
-) {
+) -> UInt {
     let reporter = ProgressReporter(port: nativePort)
-    
+
+    // Create cancellation token
+    let tokenId = generateTokenId()
+    let token = CancellationToken()
+    registerToken(tokenId, token)
+
+    // Copy strings before async operation (must be done synchronously)
+    let path = String(cString: filePath)
+    let fileName = String(cString: baseFileName)
+    let extStr = String(cString: ext)
+    let mime = String(cString: mimeType)
+    let directory = subDir.map { String(cString: $0) }
+
     DispatchQueue.global(qos: .userInitiated).async {
+        defer { unregisterToken(tokenId) }
+
         // Send started event
         reporter.sendStarted()
-        
-        // Copy strings before async operation
-        let path = String(cString: filePath)
-        let fileName = String(cString: baseFileName)
-        let extStr = String(cString: ext)
-        let mime = String(cString: mimeType)
-        let directory = subDir.map { String(cString: $0) }
-        
+
         // Get FileSaver instance
         instanceLock.lock()
         guard let saver = instances[instanceId] else {
@@ -111,8 +158,8 @@ public func fileSaverSaveFile(
             return
         }
         instanceLock.unlock()
-        
-        // Perform save with progress
+
+        // Perform save with progress and cancellation support
         saver.saveFile(
             filePath: path,
             baseFileName: fileName,
@@ -121,9 +168,17 @@ public func fileSaverSaveFile(
             subDir: directory,
             saveLocationValue: Int(saveLocation),
             conflictMode: Int(conflictMode),
-            reporter: reporter
+            reporter: reporter,
+            cancellationToken: token
         )
     }
+
+    return tokenId
+}
+
+@_cdecl("file_saver_cancel")
+public func fileSaverCancel(_ tokenId: UInt) {
+    getToken(tokenId)?.cancel()
 }
 
 @_cdecl("file_saver_dispose")

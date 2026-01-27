@@ -32,7 +32,8 @@ void* file_saver_init(void);
 /// @param subDir Optional subdirectory (can be NULL)
 /// @param conflictMode Conflict resolution mode (0-3)
 /// @param native_port Dart NativePort for progress reporting
-void file_saver_save_bytes(
+/// @return Token ID for cancellation
+uint64_t file_saver_save_bytes(
     void* instance,
     const uint8_t* fileData,
     int64_t fileDataLength,
@@ -68,7 +69,8 @@ void file_saver_save_bytes(
 /// @param subDir Optional subdirectory (can be NULL)
 /// @param conflictMode Conflict resolution mode (0-3)
 /// @param native_port Dart NativePort for progress reporting
-void file_saver_save_file(
+/// @return Token ID for cancellation
+uint64_t file_saver_save_file(
     void *instance,
     const char *filePath,
     const char *baseFileName,
@@ -79,6 +81,11 @@ void file_saver_save_file(
     int32_t conflictMode,
     int64_t native_port
 );
+
+/// Cancel an ongoing save operation.
+///
+/// @param tokenId Token ID returned from file_saver_save_bytes or file_saver_save_file
+void file_saver_cancel(uint64_t tokenId);
 
 void file_saver_dispose(void* instance);
 

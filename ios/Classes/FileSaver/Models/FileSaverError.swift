@@ -10,6 +10,7 @@ enum FileSaverError: Error {
     case fileNotFound(String)
     case iCloudDownloadFailed(String)
     case platformError(String)
+    case cancelled
 
     var code: String {
         switch self {
@@ -22,6 +23,7 @@ enum FileSaverError: Error {
         case .fileNotFound: return Constants.errorFileNotFound
         case .iCloudDownloadFailed: return Constants.errorICloudDownloadFailed
         case .platformError: return Constants.errorPlatform
+        case .cancelled: return Constants.errorCancelled
         }
     }
 
@@ -40,6 +42,7 @@ enum FileSaverError: Error {
         case .fileNotFound(let path): return "Source file not found: \(path)"
         case .iCloudDownloadFailed(let msg): return "iCloud download failed: \(msg)"
         case .platformError(let msg): return msg
+        case .cancelled: return "Operation was cancelled"
         }
     }
 }

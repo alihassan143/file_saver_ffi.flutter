@@ -67,28 +67,52 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
     SaveLocation? saveLocation,
     String? subDir,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
-  }) async* {
+  }) {
     _validateInput(fileBytes, fileName);
 
-    final receivePort = ReceivePort();
-    final nativePort = receivePort.sendPort.nativePort;
+    return Stream.multi((controller) {
+      final receivePort = ReceivePort();
+      final arena = Arena();
+      final nativePort = receivePort.sendPort.nativePort;
+      bool cleanedUp = false;
 
-    // Copy data to native memory
-    final dataPointer = malloc<Uint8>(fileBytes.length);
-    dataPointer.asTypedList(fileBytes.length).setAll(0, fileBytes);
+      void cleanup() {
+        if (cleanedUp) return;
+        cleanedUp = true;
+        receivePort.close();
+        arena.releaseAll();
+        controller.closeSync();
+      }
 
-    final fileNameCStr = fileName.toNativeUtf8();
-    final extCStr = fileType.ext.toNativeUtf8();
-    final mimeCStr = fileType.mimeType.toNativeUtf8();
-    final saveLocationIndex = switch (saveLocation) {
-      IosSaveLocation location => location.index,
-      _ => IosSaveLocation.documents.index,
-    };
-    final subDirCStr = subDir?.toNativeUtf8();
+      // Allocate in arena - all freed together with arena.releaseAll()
+      final dataPointer = arena<Uint8>(fileBytes.length);
+      dataPointer.asTypedList(fileBytes.length).setAll(0, fileBytes);
 
-    try {
-      // Call native function with NativePort
-      _bindings.file_saver_save_bytes(
+      final fileNameCStr = fileName.toNativeUtf8(allocator: arena);
+      final extCStr = fileType.ext.toNativeUtf8(allocator: arena);
+      final mimeCStr = fileType.mimeType.toNativeUtf8(allocator: arena);
+      final saveLocationIndex = switch (saveLocation) {
+        IosSaveLocation location => location.index,
+        _ => IosSaveLocation.documents.index,
+      };
+      final subDirCStr = subDir?.toNativeUtf8(allocator: arena);
+
+      // Listen to native port - cleanup happens here on terminal events
+      receivePort.listen((message) {
+        if (cleanedUp || controller.isClosed) return;
+
+        final event = _parseMessage(message);
+        controller.addSync(event);
+
+        if (event is SaveProgressComplete ||
+            event is SaveProgressError ||
+            event is SaveProgressCancelled) {
+          cleanup();
+        }
+      });
+
+      // Call native function - returns tokenId for cancellation
+      final tokenId = _bindings.file_saver_save_bytes(
         _saverInstance,
         dataPointer,
         fileBytes.length,
@@ -101,28 +125,12 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
         nativePort,
       );
 
-      // Listen for messages from native code
-      await for (final message in receivePort) {
-        final event = _parseMessage(message);
-        yield event;
-
-        // Close port on terminal events
-        if (event is SaveProgressComplete ||
-            event is SaveProgressError ||
-            event is SaveProgressCancelled) {
-          break;
-        }
-      }
-    } finally {
-      receivePort.close();
-      malloc.free(dataPointer);
-      malloc.free(fileNameCStr);
-      malloc.free(extCStr);
-      malloc.free(mimeCStr);
-      if (subDirCStr != null) {
-        malloc.free(subDirCStr);
-      }
-    }
+      controller.onCancel = () {
+        _bindings.file_saver_cancel(tokenId);
+        // Fallback cleanup if native doesn't respond with Cancelled event
+        Future.delayed(const Duration(milliseconds: 500), cleanup);
+      };
+    });
   }
 
   @override
@@ -176,25 +184,50 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
     SaveLocation? saveLocation,
     String? subDir,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
-  }) async* {
+  }) {
     _validateFilePath(filePath, fileName);
 
-    final receivePort = ReceivePort();
-    final nativePort = receivePort.sendPort.nativePort;
+    return Stream.multi((controller) {
+      final receivePort = ReceivePort();
+      final arena = Arena();
+      final nativePort = receivePort.sendPort.nativePort;
+      bool cleanedUp = false;
 
-    final filePathCStr = filePath.toNativeUtf8();
-    final fileNameCStr = fileName.toNativeUtf8();
-    final extCStr = fileType.ext.toNativeUtf8();
-    final mimeCStr = fileType.mimeType.toNativeUtf8();
-    final saveLocationIndex = switch (saveLocation) {
-      IosSaveLocation location => location.index,
-      _ => IosSaveLocation.documents.index,
-    };
-    final subDirCStr = subDir?.toNativeUtf8();
+      void cleanup() {
+        if (cleanedUp) return;
+        cleanedUp = true;
+        receivePort.close();
+        arena.releaseAll();
+        controller.closeSync();
+      }
 
-    try {
-      // Call native function with NativePort
-      _bindings.file_saver_save_file(
+      // Allocate in arena - all freed together with arena.releaseAll()
+      final filePathCStr = filePath.toNativeUtf8(allocator: arena);
+      final fileNameCStr = fileName.toNativeUtf8(allocator: arena);
+      final extCStr = fileType.ext.toNativeUtf8(allocator: arena);
+      final mimeCStr = fileType.mimeType.toNativeUtf8(allocator: arena);
+      final saveLocationIndex = switch (saveLocation) {
+        IosSaveLocation location => location.index,
+        _ => IosSaveLocation.documents.index,
+      };
+      final subDirCStr = subDir?.toNativeUtf8(allocator: arena);
+
+      // Listen to native port - cleanup happens here on terminal events
+      receivePort.listen((message) {
+        if (cleanedUp || controller.isClosed) return;
+
+        final event = _parseMessage(message);
+        controller.addSync(event);
+
+        if (event is SaveProgressComplete ||
+            event is SaveProgressError ||
+            event is SaveProgressCancelled) {
+          cleanup();
+        }
+      });
+
+      // Call native function - returns tokenId for cancellation
+      final tokenId = _bindings.file_saver_save_file(
         _saverInstance,
         filePathCStr.cast(),
         fileNameCStr.cast(),
@@ -206,28 +239,12 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
         nativePort,
       );
 
-      // Listen for messages from native code
-      await for (final message in receivePort) {
-        final event = _parseMessage(message);
-        yield event;
-
-        // Close port on terminal events
-        if (event is SaveProgressComplete ||
-            event is SaveProgressError ||
-            event is SaveProgressCancelled) {
-          break;
-        }
-      }
-    } finally {
-      receivePort.close();
-      malloc.free(filePathCStr);
-      malloc.free(fileNameCStr);
-      malloc.free(extCStr);
-      malloc.free(mimeCStr);
-      if (subDirCStr != null) {
-        malloc.free(subDirCStr);
-      }
-    }
+      controller.onCancel = () {
+        _bindings.file_saver_cancel(tokenId);
+        // Fallback cleanup if native doesn't respond with Cancelled event
+        Future.delayed(const Duration(milliseconds: 500), cleanup);
+      };
+    });
   }
 
   @override

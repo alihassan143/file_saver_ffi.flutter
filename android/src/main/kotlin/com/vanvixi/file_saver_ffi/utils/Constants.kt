@@ -48,6 +48,11 @@ object Constants {
     const val ERROR_PLATFORM = "PLATFORM_ERROR"
 
     /**
+     * Operation was cancelled by user
+     */
+    const val ERROR_CANCELLED = "CANCELLED"
+
+    /**
      * Chunk size for file writing: 1MB
      * Used to split large files into manageable chunks
      */

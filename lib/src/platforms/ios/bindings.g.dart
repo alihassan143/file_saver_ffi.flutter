@@ -73,7 +73,8 @@ class FileSaverFfiBindings {
   /// @param subDir Optional subdirectory (can be NULL)
   /// @param conflictMode Conflict resolution mode (0-3)
   /// @param native_port Dart NativePort for progress reporting
-  void file_saver_save_bytes(
+  /// @return Token ID for cancellation
+  int file_saver_save_bytes(
     ffi.Pointer<ffi.Void> instance,
     ffi.Pointer<ffi.Uint8> fileData,
     int fileDataLength,
@@ -101,7 +102,7 @@ class FileSaverFfiBindings {
 
   late final _file_saver_save_bytesPtr = _lookup<
     ffi.NativeFunction<
-      ffi.Void Function(
+      ffi.Uint64 Function(
         ffi.Pointer<ffi.Void>,
         ffi.Pointer<ffi.Uint8>,
         ffi.Int64,
@@ -118,7 +119,7 @@ class FileSaverFfiBindings {
   late final _file_saver_save_bytes =
       _file_saver_save_bytesPtr
           .asFunction<
-            void Function(
+            int Function(
               ffi.Pointer<ffi.Void>,
               ffi.Pointer<ffi.Uint8>,
               int,
@@ -155,7 +156,8 @@ class FileSaverFfiBindings {
   /// @param subDir Optional subdirectory (can be NULL)
   /// @param conflictMode Conflict resolution mode (0-3)
   /// @param native_port Dart NativePort for progress reporting
-  void file_saver_save_file(
+  /// @return Token ID for cancellation
+  int file_saver_save_file(
     ffi.Pointer<ffi.Void> instance,
     ffi.Pointer<ffi.Char> filePath,
     ffi.Pointer<ffi.Char> baseFileName,
@@ -181,7 +183,7 @@ class FileSaverFfiBindings {
 
   late final _file_saver_save_filePtr = _lookup<
     ffi.NativeFunction<
-      ffi.Void Function(
+      ffi.Uint64 Function(
         ffi.Pointer<ffi.Void>,
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<ffi.Char>,
@@ -197,7 +199,7 @@ class FileSaverFfiBindings {
   late final _file_saver_save_file =
       _file_saver_save_filePtr
           .asFunction<
-            void Function(
+            int Function(
               ffi.Pointer<ffi.Void>,
               ffi.Pointer<ffi.Char>,
               ffi.Pointer<ffi.Char>,
@@ -209,6 +211,20 @@ class FileSaverFfiBindings {
               int,
             )
           >();
+
+  /// Cancel an ongoing save operation.
+  ///
+  /// @param tokenId Token ID returned from file_saver_save_bytes or file_saver_save_file
+  void file_saver_cancel(int tokenId) {
+    return _file_saver_cancel(tokenId);
+  }
+
+  late final _file_saver_cancelPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Uint64)>>(
+        'file_saver_cancel',
+      );
+  late final _file_saver_cancel =
+      _file_saver_cancelPtr.asFunction<void Function(int)>();
 
   void file_saver_dispose(ffi.Pointer<ffi.Void> instance) {
     return _file_saver_dispose(instance);

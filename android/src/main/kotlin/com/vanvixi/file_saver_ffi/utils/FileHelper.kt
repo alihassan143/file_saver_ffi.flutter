@@ -4,6 +4,7 @@ import android.content.Context
 import android.provider.MediaStore
 import androidx.core.net.toUri
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.*
 
@@ -84,6 +85,9 @@ object FileHelper {
             val totalBytes = data.size.toLong()
 
             while (bytesWritten < totalBytes) {
+                // Check for cancellation before each chunk
+                ensureActive()
+
                 // Calculate chunk size
                 val remainingBytes = (totalBytes - bytesWritten).toInt()
                 val currentChunkSize = minOf(remainingBytes, chunkSize)
@@ -182,6 +186,9 @@ object FileHelper {
                     var bytesWritten = 0L
 
                     while (true) {
+                        // Check for cancellation before each chunk
+                        ensureActive()
+
                         val bytesRead = inputStream.read(buffer)
                         if (bytesRead == -1) break
 
