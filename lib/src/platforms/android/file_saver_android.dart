@@ -126,7 +126,7 @@ class FileSaverAndroid extends FileSaverPlatform {
         case SaveProgressError(:final exception):
           throw exception;
         case SaveProgressCancelled():
-          throw const PlatformException('Operation cancelled', 'CANCELLED');
+          throw const CancelledException();
       }
     }
 
@@ -241,7 +241,7 @@ class FileSaverAndroid extends FileSaverPlatform {
         case SaveProgressError(:final exception):
           throw exception;
         case SaveProgressCancelled():
-          throw const PlatformException('Operation cancelled', 'CANCELLED');
+          throw const CancelledException();
       }
     }
 
