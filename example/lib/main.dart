@@ -1,7 +1,7 @@
 import 'package:file_saver_ffi/file_saver_ffi.dart';
 import 'package:flutter/material.dart';
 
-import 'tabs/tabs.dart';
+import 'screens/screens.dart';
 
 class AppLifecycleStateObserver extends WidgetsBindingObserver {
   final void Function()? onDetached;
@@ -10,10 +10,8 @@ class AppLifecycleStateObserver extends WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    switch (state) {
-      case AppLifecycleState.detached:
-        onDetached?.call();
-      default:
+    if (state == AppLifecycleState.detached) {
+      onDetached?.call();
     }
   }
 }
@@ -48,21 +46,23 @@ class FileSaverDemoPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 2,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('File Saver FFI Demo'),
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          bottom: TabBar(
-            tabs: const [
-              Tab(icon: Icon(Icons.image), text: 'Image'),
-              Tab(icon: Icon(Icons.video_library), text: 'Video'),
-              Tab(icon: Icon(Icons.insert_drive_file), text: 'File'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(icon: Icon(Icons.memory), text: 'Save Bytes'),
+              Tab(icon: Icon(Icons.file_open), text: 'Save File'),
             ],
           ),
         ),
-        body: TabBarView(
-          children: const [ImageTabPage(), VideoTabPage(), FileTabPage()],
+        body: const TabBarView(
+          children: [
+            SaveBytesScreen(),
+            SaveFileScreen(),
+          ],
         ),
       ),
     );

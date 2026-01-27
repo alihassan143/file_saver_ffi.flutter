@@ -122,6 +122,9 @@ mixin MediaSaverStateMixin<T extends StatefulWidget> on State<T> {
     } on StorageFullException catch (e) {
       if (!mounted) return;
       showAppSnackBar(context, 'Storage full: ${e.message}', isSuccess: false);
+    } on CancelledException {
+      if (!mounted) return;
+      showAppSnackBar(context, 'Operation cancelled', isSuccess: false);
     } on FileSaverException catch (e) {
       if (!mounted) return;
       showAppSnackBar(
