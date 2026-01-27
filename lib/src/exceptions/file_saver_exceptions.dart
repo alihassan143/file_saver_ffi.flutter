@@ -15,6 +15,7 @@ sealed class FileSaverException implements Exception {
     }
 
     return switch (msg) {
+      _ when contains('CANCELLED') => const CancelledException(),
       _ when contains('PERMISSION_DENIED') => PermissionDeniedException(msg),
       _ when contains('FILE_EXISTS') => FileExistsException(msg),
       _ when contains('FILE_NOT_FOUND') => SourceFileNotFoundException(msg),
@@ -29,6 +30,7 @@ sealed class FileSaverException implements Exception {
 
   factory FileSaverException.fromErrorResult(String errorCode, String message) {
     return switch (errorCode) {
+      'CANCELLED' => const CancelledException(),
       'PERMISSION_DENIED' => PermissionDeniedException(message),
       'FILE_EXISTS' => FileExistsException(message),
       'FILE_NOT_FOUND' => SourceFileNotFoundException(message),
@@ -173,4 +175,14 @@ final class ICloudDownloadException extends FileSaverException {
         'iCloud file download failed${details != null ? ": $details" : ""}',
         'ICLOUD_DOWNLOAD_FAILED',
       );
+}
+
+/// Operation was cancelled by the user.
+///
+/// This exception is thrown when:
+/// - User calls `subscription.cancel()` on a save stream
+/// - User breaks from `await for` loop early
+/// - The operation is cancelled programmatically
+final class CancelledException extends FileSaverException {
+  const CancelledException() : super('Operation cancelled', 'CANCELLED');
 }

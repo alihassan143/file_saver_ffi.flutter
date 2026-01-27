@@ -159,7 +159,7 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
         case SaveProgressError(:final exception):
           throw exception;
         case SaveProgressCancelled():
-          throw const PlatformException('Operation cancelled', 'CANCELLED');
+          throw const CancelledException();
       }
     }
 
@@ -269,7 +269,7 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
         case SaveProgressError(:final exception):
           throw exception;
         case SaveProgressCancelled():
-          throw const PlatformException('Operation cancelled', 'CANCELLED');
+          throw const CancelledException();
       }
     }
 
