@@ -130,4 +130,37 @@ abstract class FileSaverPlatform {
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
     void Function(double progress)? onProgress,
   });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Protected helpers for subclasses
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Validates input for [saveBytes] and [saveBytesAsync].
+  @protected
+  void validateBytesInput(Uint8List bytes, String fileName) {
+    if (bytes.isEmpty) {
+      throw const InvalidFileException('File bytes cannot be empty');
+    }
+    if (fileName.isEmpty) {
+      throw const InvalidFileException('File name cannot be empty');
+    }
+  }
+
+  /// Validates input for [saveFile] and [saveFileAsync].
+  @protected
+  void validateFilePathInput(String filePath, String fileName) {
+    if (filePath.isEmpty) {
+      throw const InvalidFileException('File path cannot be empty');
+    }
+    if (fileName.isEmpty) {
+      throw const InvalidFileException('File name cannot be empty');
+    }
+  }
+
+  /// Checks if [SaveProgress] event is terminal.
+  @protected
+  bool isTerminal(SaveProgress e) =>
+      e is SaveProgressComplete ||
+      e is SaveProgressError ||
+      e is SaveProgressCancelled;
 }
