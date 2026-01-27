@@ -47,8 +47,8 @@ class BytesDemoConfig {
     getSaveLocation: () => Platform.isAndroid
         ? AndroidSaveLocation.pictures
         : Platform.isIOS
-            ? IosSaveLocation.photos
-            : null,
+        ? IosSaveLocation.photos
+        : null,
   );
 
   static final video = BytesDemoConfig(
@@ -61,22 +61,23 @@ class BytesDemoConfig {
     getSaveLocation: () => Platform.isAndroid
         ? AndroidSaveLocation.movies
         : Platform.isIOS
-            ? IosSaveLocation.photos
-            : null,
+        ? IosSaveLocation.photos
+        : null,
   );
 
   static final audio = BytesDemoConfig(
     category: MediaCategory.audio,
     title: 'Audio Bytes Demo',
     description: 'Downloads a sample audio file and saves to Music folder.',
-    downloadUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    downloadUrl:
+        'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
     fileNamePrefix: 'audio',
     fileType: AudioType.mp3,
     getSaveLocation: () => Platform.isAndroid
         ? AndroidSaveLocation.music
         : Platform.isIOS
-            ? IosSaveLocation.documents
-            : null,
+        ? IosSaveLocation.documents
+        : null,
     defaultUseStreamApi: true,
   );
 
@@ -91,8 +92,8 @@ class BytesDemoConfig {
     getSaveLocation: () => Platform.isAndroid
         ? AndroidSaveLocation.downloads
         : Platform.isIOS
-            ? IosSaveLocation.documents
-            : null,
+        ? IosSaveLocation.documents
+        : null,
     defaultUseStreamApi: true,
   );
 

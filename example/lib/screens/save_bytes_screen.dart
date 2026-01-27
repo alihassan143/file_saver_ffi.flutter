@@ -62,9 +62,9 @@ class _SaveBytesScreenState extends State<SaveBytesScreen>
     try {
       final hasPermission =
           config.category == MediaCategory.document ||
-                  config.category == MediaCategory.audio
-              ? await isGrantedPermissionWriteExternalStorage()
-              : await isGrantedPermissionWritePhotos();
+              config.category == MediaCategory.audio
+          ? await isGrantedPermissionWriteExternalStorage()
+          : await isGrantedPermissionWritePhotos();
 
       if (!hasPermission) {
         showError('Permission denied');
