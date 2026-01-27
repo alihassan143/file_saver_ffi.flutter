@@ -1,3 +1,70 @@
+## 0.1.0
+
+### Breaking Changes
+- **`saveBytes()` now returns `Stream<SaveProgress>`** instead of `Future<Uri>`
+  - Renamed `saveBytes` parameter from `bytes` to `fileBytes`.
+  - Renamed `saveBytesAsync` parameter from `bytes` to `fileBytes`.
+
+### Added
+- **`saveFile()` method**: Save files from source path instead of bytes in memory
+  - Stream-based API returning `Stream<SaveProgress>` for real-time progress tracking
+  - Handles large files efficiently without loading entire file into RAM
+  - Supports `file://` paths and picker results
+
+- **`saveFileAsync()` method**: Convenience API returning `Future<Uri>` with optional `onProgress` callback
+  ```dart
+  final uri = await FileSaver.instance.saveFileAsync(
+    filePath: '/path/to/source/video.mp4',
+    fileName: 'my_video',
+    fileType: VideoType.mp4,
+    onProgress: (progress) => print('${(progress * 100).toInt()}%'),
+  );
+  ```
+
+- **True Cancellation Support**: Cancel save operations mid-stream with proper cleanup
+  - Call `subscription.cancel()` or break from `await for` loop to cancel
+  - Native code stops I/O operations between chunks (1MB)
+  - Partial files are automatically deleted on cancellation
+  - `SaveProgressCancelled` event emitted on successful cancellation
+  - Works for both `saveBytes()` and `saveFile()` streams
+  ```dart
+  // Example: Cancel with subscription
+  final subscription = FileSaver.instance.saveBytes(...).listen((event) {
+    if (event is SaveProgressCancelled) {
+      print('Cancelled and cleaned up!');
+    }
+  });
+
+  // Cancel when needed
+  await subscription.cancel();
+
+  // Example: Cancel with await for
+  await for (final event in FileSaver.instance.saveBytes(...)) {
+    if (shouldCancel) break;  // Triggers native cancellation
+    // handle event...
+  }
+  ```
+
+- **iOS iCloud download progress**: When saving files from iCloud Drive, progress is split into 2 phases:
+  - Phase 1 (0% → 50%): iCloud download progress
+  - Phase 2 (50% → 100%): Copy to destination progress
+
+- **New exceptions**:
+  - `FileNotFoundException`: Source file not found
+  - `ICloudDownloadException`: iCloud download failed or timed out (iOS only)
+
+### Changed
+- **Simplified FormatValidator**: Removed codec/encoder validation on both platforms
+  - iOS: Removed AVAssetWriter and ImageIO validation
+  - Android: Removed MediaCodecList encoder checks
+  - Now only validates MIME type category (image/video/audio)
+  - Rationale: This library is a file saver, not a media player. Files are written as raw bytes without encoding/decoding. The developer is responsible for choosing appropriate formats.
+
+### Fixed
+- **iOS video filename**: Videos saved to Photos Library now preserve the specified filename instead of using UUID
+- **iOS audio format crash**: Fixed crash when saving MP3 and other audio formats that AVAssetWriter doesn't support
+- **Android audio format rejection**: Fixed rejection of audio formats not in MediaCodecList (AMR, OPUS, etc.)
+
 ## 0.0.5
 
 ### Breaking Changes
