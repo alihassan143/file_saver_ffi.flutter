@@ -97,49 +97,6 @@ class FileSaverAndroid extends FileSaverPlatform {
   }
 
   @override
-  Future<Uri> saveBytesAsync({
-    required Uint8List fileBytes,
-    required String fileName,
-    required FileType fileType,
-    SaveLocation? saveLocation,
-    String? subDir,
-    ConflictResolution conflictResolution = ConflictResolution.autoRename,
-    void Function(double progress)? onProgress,
-  }) async {
-    Uri? result;
-
-    await for (final event in saveBytes(
-      fileBytes: fileBytes,
-      fileName: fileName,
-      fileType: fileType,
-      saveLocation: saveLocation,
-      subDir: subDir,
-      conflictResolution: conflictResolution,
-    )) {
-      switch (event) {
-        case SaveProgressStarted():
-          break;
-        case SaveProgressUpdate(:final progress):
-          onProgress?.call(progress);
-        case SaveProgressComplete(:final uri):
-          result = uri;
-        case SaveProgressError(:final exception):
-          throw exception;
-        case SaveProgressCancelled():
-          throw const CancelledException();
-      }
-    }
-
-    if (result == null) {
-      throw const PlatformException(
-        'Save operation did not complete',
-        'INCOMPLETE',
-      );
-    }
-    return result;
-  }
-
-  @override
   Stream<SaveProgress> saveFile({
     required String filePath,
     required String fileName,
@@ -209,49 +166,6 @@ class FileSaverAndroid extends FileSaverPlatform {
         Future.delayed(const Duration(milliseconds: 500), cleanup);
       };
     });
-  }
-
-  @override
-  Future<Uri> saveFileAsync({
-    required String filePath,
-    required String fileName,
-    required FileType fileType,
-    SaveLocation? saveLocation,
-    String? subDir,
-    ConflictResolution conflictResolution = ConflictResolution.autoRename,
-    void Function(double progress)? onProgress,
-  }) async {
-    Uri? result;
-
-    await for (final event in saveFile(
-      filePath: filePath,
-      fileName: fileName,
-      fileType: fileType,
-      saveLocation: saveLocation,
-      subDir: subDir,
-      conflictResolution: conflictResolution,
-    )) {
-      switch (event) {
-        case SaveProgressStarted():
-          break;
-        case SaveProgressUpdate(:final progress):
-          onProgress?.call(progress);
-        case SaveProgressComplete(:final uri):
-          result = uri;
-        case SaveProgressError(:final exception):
-          throw exception;
-        case SaveProgressCancelled():
-          throw const CancelledException();
-      }
-    }
-
-    if (result == null) {
-      throw const PlatformException(
-        'Save operation did not complete',
-        'INCOMPLETE',
-      );
-    }
-    return result;
   }
 
   /// Parses event from native callback
