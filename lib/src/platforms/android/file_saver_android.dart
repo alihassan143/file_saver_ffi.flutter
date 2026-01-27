@@ -33,7 +33,7 @@ class FileSaverAndroid extends FileSaverPlatform {
     String? subDir,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
-    _validateInput(fileBytes, fileName);
+    validateBytesInput(fileBytes, fileName);
 
     return Stream.multi((controller) {
       bool cleanedUp = false;
@@ -70,11 +70,7 @@ class FileSaverAndroid extends FileSaverPlatform {
             final event = _parseEvent(eventType, progress, data, message);
             controller.addSync(event);
 
-            if (event is SaveProgressComplete ||
-                event is SaveProgressError ||
-                event is SaveProgressCancelled) {
-              cleanup();
-            }
+            if (isTerminal(event)) cleanup();
           },
           onEvent$async: true,
         ),
@@ -152,7 +148,7 @@ class FileSaverAndroid extends FileSaverPlatform {
     String? subDir,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
-    _validateFilePath(filePath, fileName);
+    validateFilePathInput(filePath, fileName);
 
     return Stream.multi((controller) {
       bool cleanedUp = false;
@@ -189,11 +185,7 @@ class FileSaverAndroid extends FileSaverPlatform {
             final event = _parseEvent(eventType, progress, data, message);
             controller.addSync(event);
 
-            if (event is SaveProgressComplete ||
-                event is SaveProgressError ||
-                event is SaveProgressCancelled) {
-              cleanup();
-            }
+            if (isTerminal(event)) cleanup();
           },
           onEvent$async: true,
         ),
@@ -301,24 +293,6 @@ class FileSaverAndroid extends FileSaverPlatform {
         return SaveProgressError(
           PlatformException('Unknown event type: $eventType', 'UNKNOWN_TYPE'),
         );
-    }
-  }
-
-  void _validateInput(Uint8List bytes, String fileName) {
-    if (bytes.isEmpty) {
-      throw const InvalidFileException('File bytes cannot be empty');
-    }
-    if (fileName.isEmpty) {
-      throw const InvalidFileException('File name cannot be empty');
-    }
-  }
-
-  void _validateFilePath(String filePath, String fileName) {
-    if (filePath.isEmpty) {
-      throw const InvalidFileException('File path cannot be empty');
-    }
-    if (fileName.isEmpty) {
-      throw const InvalidFileException('File name cannot be empty');
     }
   }
 }

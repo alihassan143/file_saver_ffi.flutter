@@ -68,7 +68,7 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
     String? subDir,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
-    _validateInput(fileBytes, fileName);
+    validateBytesInput(fileBytes, fileName);
 
     return Stream.multi((controller) {
       final receivePort = ReceivePort();
@@ -104,11 +104,7 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
         final event = _parseMessage(message);
         controller.addSync(event);
 
-        if (event is SaveProgressComplete ||
-            event is SaveProgressError ||
-            event is SaveProgressCancelled) {
-          cleanup();
-        }
+        if (isTerminal(event)) cleanup();
       });
 
       // Call native function - returns tokenId for cancellation
@@ -185,7 +181,7 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
     String? subDir,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
-    _validateFilePath(filePath, fileName);
+    validateFilePathInput(filePath, fileName);
 
     return Stream.multi((controller) {
       final receivePort = ReceivePort();
@@ -219,11 +215,7 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
         final event = _parseMessage(message);
         controller.addSync(event);
 
-        if (event is SaveProgressComplete ||
-            event is SaveProgressError ||
-            event is SaveProgressCancelled) {
-          cleanup();
-        }
+        if (isTerminal(event)) cleanup();
       });
 
       // Call native function - returns tokenId for cancellation
@@ -331,24 +323,6 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
         return SaveProgressError(
           PlatformException('Unknown message type: $type', 'UNKNOWN_TYPE'),
         );
-    }
-  }
-
-  void _validateInput(Uint8List bytes, String fileName) {
-    if (bytes.isEmpty) {
-      throw const InvalidFileException('File bytes cannot be empty');
-    }
-    if (fileName.isEmpty) {
-      throw const InvalidFileException('File name cannot be empty');
-    }
-  }
-
-  void _validateFilePath(String filePath, String fileName) {
-    if (filePath.isEmpty) {
-      throw const InvalidFileException('File path cannot be empty');
-    }
-    if (fileName.isEmpty) {
-      throw const InvalidFileException('File name cannot be empty');
     }
   }
 }
