@@ -3,13 +3,15 @@
 </p>
 
 ## File Saver FFI
+
 <p align="left">
-  <a href="https://pub.dev/packages/file_saver_ffi"><img src="https://img.shields.io/pub/v/file_saver_ffi.svg" alt="Pub"></a>
   <a href="https://github.com/vanvixi/file_saver_ffi"><img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS-blue.svg" alt="Platform"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-purple.svg" alt="License: MIT"></a>
+  <a href="https://deepwiki.com/vanvixi/file_saver_ffi.flutter"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
 
-A high-performance file saver for Flutter using FFI and JNI. Effortlessly save to gallery (images/videos) or device storage with original quality and custom album support.
+A high-performance file saver for Flutter using FFI and JNI. Effortlessly save to gallery (images/videos) or device
+storage with original quality and custom album support.
 
 ## Features
 
@@ -24,13 +26,13 @@ If you want to say thank you, star us on GitHub or like us on pub.dev.
 
 ## 🤖 Ask AI About This Library
 
-Have questions about `file_saver_ffi`? Get instant AI-powered answers about the library's features, usage, and best practices.
-
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/vanvixi/file_saver_ffi.flutter)
+Have questions about `file_saver_ffi`? Get instant AI-powered answers about the library's features, usage, and best
+practices.
 
 **[→ Chat with AI Documentation Assistant](https://deepwiki.com/vanvixi/file_saver_ffi.flutter)**
 
 Ask anything like:
+
 - "How do I save a video to the gallery with progress tracking?"
 - "What's the difference between saveBytes and saveFile?"
 - "How to handle permission errors on Android 10+?"
@@ -38,7 +40,8 @@ Ask anything like:
 
 ## Installation
 
-First, follow the [package installation instructions](https://pub.dev/packages/file_saver_ffi/install) and add `file_saver_ffi` to your app.
+First, follow the [package installation instructions](https://pub.dev/packages/file_saver_ffi/install) and add
+`file_saver_ffi` to your app.
 
 ## Quick Start
 
@@ -119,24 +122,27 @@ try {
 The library provides methods organized by **input source** and **API style**:
 
 #### Input Sources
+
 - **Bytes** (`save*Bytes*`) - Save data from memory (`Uint8List`)
 - **File** (`save*File*`) - Save from file path (efficient for large files)
 - **Network** - Download and save from URL *(planned)*
 
 #### API Styles
+
 - **Stream** (`save*`) - Full control with progress events and cancellation
 - **Async** (`save*Async`) - Simple Future-based API with optional progress callback
 - **Interactive** (`save*As`) - User picks save location *(planned)*
 
 #### API Matrix
 
-| Input Source | Stream API | Async API | Interactive |
-|--------------|-----------|-----------|---------------|
-| **Bytes** | `saveBytes()` | `saveBytesAsync()` | `saveBytesAs()` |
-| **File** | `saveFile()` | `saveFileAsync()` | `saveFileAs()` |
-| **Network** | `saveNetworkFile()` | `saveNetworkFileAsync()` | `saveNetworkFileAs()` |
+| Input Source | Stream API          | Async API                | Interactive           |
+|--------------|---------------------|--------------------------|-----------------------|
+| **Bytes**    | `saveBytes()`       | `saveBytesAsync()`       | `saveBytesAs()`       |
+| **File**     | `saveFile()`        | `saveFileAsync()`        | `saveFileAs()`        |
+| **Network**  | `saveNetworkFile()` | `saveNetworkFileAsync()` | `saveNetworkFileAs()` |
 
 **When to use:**
+
 - `save*()` - Need real-time progress, cancellation, or full event control
 - `save*Async()` - Simple save with optional progress callback
 - `save*As()` - Let user choose save location via system picker
@@ -145,12 +151,12 @@ The library provides methods organized by **input source** and **API style**:
 
 The library supports 35+ file formats across 4 categories:
 
-| Category | Formats | Count | Example Types |
-|----------|---------|-------|---------------|
-| **Images** | PNG, JPG, GIF, WebP, BMP, HEIC, HEIF, TIFF, ICO, DNG | 12 | `ImageType.png`, `ImageType.jpg` |
-| **Videos** | MP4, MOV, MKV, WebM, AVI, 3GP, M4V, FLV, WMV, HEVC | 12 | `VideoType.mp4`, `VideoType.mov` |
-| **Audio** | MP3, AAC, WAV, FLAC, OGG, M4A, AMR, Opus, AIFF, CAF | 11 | `AudioType.mp3`, `AudioType.aac` |
-| **Custom** | Any format via extension + MIME type | ∞ | `CustomFileType(ext: 'pdf', mimeType: 'application/pdf')` |
+| Category   | Formats                                              | Count | Example Types                                             |
+|------------|------------------------------------------------------|-------|-----------------------------------------------------------|
+| **Images** | PNG, JPG, GIF, WebP, BMP, HEIC, HEIF, TIFF, ICO, DNG | 12    | `ImageType.png`, `ImageType.jpg`                          |
+| **Videos** | MP4, MOV, MKV, WebM, AVI, 3GP, M4V, FLV, WMV, HEVC   | 12    | `VideoType.mp4`, `VideoType.mov`                          |
+| **Audio**  | MP3, AAC, WAV, FLAC, OGG, M4A, AMR, Opus, AIFF, CAF  | 11    | `AudioType.mp3`, `AudioType.aac`                          |
+| **Custom** | Any format via extension + MIME type                 | ∞     | `CustomFileType(ext: 'pdf', mimeType: 'application/pdf')` |
 
 ### Save Locations
 
@@ -160,24 +166,25 @@ Control where files are saved using platform-specific `SaveLocation` enums.
 
 Maps to standard Android MediaStore directories.
 
-| Enum Value | Storage Directory | Use Case |
-|------------|-------------------|----------|
-| `.downloads` (default) | `Downloads/` | General files, PDFs, Docs |
-| `.pictures` | `Pictures/` | Images (png, jpg, etc.) |
-| `.movies` | `Movies/` | Videos (mp4, mov, etc.) |
-| `.music` | `Music/` | Audio files |
-| `.dcim` | `DCIM/` | Camera photos/videos |
+| Enum Value             | Storage Directory | Use Case                  |
+|------------------------|-------------------|---------------------------|
+| `.downloads` (default) | `Downloads/`      | General files, PDFs, Docs |
+| `.pictures`            | `Pictures/`       | Images (png, jpg, etc.)   |
+| `.movies`              | `Movies/`         | Videos (mp4, mov, etc.)   |
+| `.music`               | `Music/`          | Audio files               |
+| `.dcim`                | `DCIM/`           | Camera photos/videos      |
 
 #### iOS (`IosSaveLocation`)
 
 Maps to either the Files app (Documents) or Photos app.
 
-| Enum Value | Destination | Use Case |
-|------------|-------------|----------|
-| `.documents` (default) | Documents Directory | Any file type. Visible in **Files** app |
-| `.photos` | Photos Library | Images & Videos only. Requires permission |
+| Enum Value             | Destination         | Use Case                                  |
+|------------------------|---------------------|-------------------------------------------|
+| `.documents` (default) | Documents Directory | Any file type. Visible in **Files** app   |
+| `.photos`              | Photos Library      | Images & Videos only. Requires permission |
 
 **Example:**
+
 ```dart
 import 'dart:io' show Platform;
 
@@ -193,14 +200,15 @@ final uri = await FileSaver.instance.saveBytesAsync(
 
 Handle existing files with 4 strategies:
 
-| Strategy | Behavior | Use Case |
-|----------|----------|----------|
+| Strategy               | Behavior                           | Use Case                 |
+|------------------------|------------------------------------|--------------------------|
 | `autoRename` (default) | Appends (1), (2), etc. to filename | Safe, prevents data loss |
-| `overwrite` | Replaces existing file* | Update existing files |
-| `fail` | Throws `FileExistsException` | Strict validation |
-| `skip` | Returns existing file URI | Idempotent saves |
+| `overwrite`            | Replaces existing file*            | Update existing files    |
+| `fail`                 | Throws `FileExistsException`       | Strict validation        |
+| `skip`                 | Returns existing file URI          | Idempotent saves         |
 
-\* **Platform limitations:** 
+\* **Platform limitations:**
+
 - iOS Photos: Can only overwrite files owned by your app
 - Android 10+: Can only overwrite files owned by your app (scoped storage)
 
@@ -259,7 +267,8 @@ final uri = await FileSaver.instance.saveBytesAsync(
 );
 ```
 
-> **Note:** Progress is reported in 1MB chunks. For iOS Photos Library saves, progress jumps from 0% to 100% due to API limitations.
+> **Note:** Progress is reported in 1MB chunks. For iOS Photos Library saves, progress jumps from 0% to 100% due to API 
+> limitations.
 
 ### Cancellation
 
@@ -320,18 +329,18 @@ try {
 
 ### Storage Locations
 
-| Aspect | Android | iOS |
-|--------|---------|-----|
-| **Default location** | Downloads/ | Documents/ |
-| **Gallery access** | MediaStore (no permission on 10+) | Photos Library (requires permission) |
-| **Custom files** | Public directories via MediaStore | App sandbox (Documents/) |
-| **File visibility** | Visible in file managers | Visible in Files app if `UIFileSharingEnabled` |
+| Aspect               | Android                           | iOS                                            |
+|----------------------|-----------------------------------|------------------------------------------------|
+| **Default location** | Downloads/                        | Documents/                                     |
+| **Gallery access**   | MediaStore (no permission on 10+) | Photos Library (requires permission)           |
+| **Custom files**     | Public directories via MediaStore | App sandbox (Documents/)                       |
+| **File visibility**  | Visible in file managers          | Visible in Files app if `UIFileSharingEnabled` |
 
 ### Overwrite Behavior
 
-| Scenario | Android 9- | Android 10+ | iOS Photos | iOS Documents |
-|----------|-----------|-------------|-----------|---------------|
-| **Own files** | ✅ Overwrite | ✅ Overwrite | ✅ Overwrite | ✅ Overwrite |
+| Scenario              | Android 9-  | Android 10+     | iOS Photos   | iOS Documents   |
+|-----------------------|-------------|-----------------|--------------|-----------------|
+| **Own files**         | ✅ Overwrite | ✅ Overwrite     | ✅ Overwrite  | ✅ Overwrite     |
 | **Other apps' files** | ✅ Overwrite | ⚠️ Auto-rename* | ⚠️ Duplicate | N/A (sandboxed) |
 
 \* Android 10+ scoped storage cannot detect files from other apps before saving
@@ -344,18 +353,18 @@ try {
 
 ## Exception Reference
 
-| Exception | Description | Error Code |
-|-----------|-------------|------------|
-| `PermissionDeniedException` | Storage access denied | `PERMISSION_DENIED` |
-| `FileExistsException` | File exists with `fail` strategy | `FILE_EXISTS` |
-| `StorageFullException` | Insufficient device storage | `STORAGE_FULL` |
-| `InvalidFileException` | Empty bytes or invalid filename | `INVALID_FILE` |
-| `FileIOException` | File system error | `FILE_IO_ERROR` |
-| `UnsupportedFormatException` | Format not supported on platform | `UNSUPPORTED_FORMAT` |
-| `SourceFileNotFoundException` | Source file not found (saveFile) | `FILE_NOT_FOUND` |
-| `ICloudDownloadException` | iCloud download failed (iOS) | `ICLOUD_DOWNLOAD_FAILED` |
-| `CancelledException` | Operation cancelled by user | `CANCELLED` |
-| `PlatformException` | Generic platform error | `PLATFORM_ERROR` |
+| Exception                     | Description                      | Error Code               |
+|-------------------------------|----------------------------------|--------------------------|
+| `PermissionDeniedException`   | Storage access denied            | `PERMISSION_DENIED`      |
+| `FileExistsException`         | File exists with `fail` strategy | `FILE_EXISTS`            |
+| `StorageFullException`        | Insufficient device storage      | `STORAGE_FULL`           |
+| `InvalidFileException`        | Empty bytes or invalid filename  | `INVALID_FILE`           |
+| `FileIOException`             | File system error                | `FILE_IO_ERROR`          |
+| `UnsupportedFormatException`  | Format not supported on platform | `UNSUPPORTED_FORMAT`     |
+| `SourceFileNotFoundException` | Source file not found (saveFile) | `FILE_NOT_FOUND`         |
+| `ICloudDownloadException`     | iCloud download failed (iOS)     | `ICLOUD_DOWNLOAD_FAILED` |
+| `CancelledException`          | Operation cancelled by user      | `CANCELLED`              |
+| `PlatformException`           | Generic platform error           | `PLATFORM_ERROR`         |
 
 ## API Reference
 
@@ -363,12 +372,13 @@ try {
 
 Save data from memory (`Uint8List`).
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `saveBytes()` | `Stream<SaveProgress>` | Stream API with full control, cancellation, and progress events |
-| `saveBytesAsync()` | `Future<Uri>` | Async API with optional progress callback |
+| Method             | Returns                | Description                                                     |
+|--------------------|------------------------|-----------------------------------------------------------------|
+| `saveBytes()`      | `Stream<SaveProgress>` | Stream API with full control, cancellation, and progress events |
+| `saveBytesAsync()` | `Future<Uri>`          | Async API with optional progress callback                       |
 
 **Common Parameters:**
+
 - `fileBytes` (required) - File content as `Uint8List`
 - `fileName` (required) - File name without extension
 - `fileType` (required) - `ImageType`, `VideoType`, `AudioType`, or `CustomFileType`
@@ -381,12 +391,13 @@ Save data from memory (`Uint8List`).
 
 Save from file path (efficient for large files, no memory loading).
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `saveFile()` | `Stream<SaveProgress>` | Stream API with full control, cancellation, and progress events |
-| `saveFileAsync()` | `Future<Uri>` | Async API with optional progress callback |
+| Method            | Returns                | Description                                                     |
+|-------------------|------------------------|-----------------------------------------------------------------|
+| `saveFile()`      | `Stream<SaveProgress>` | Stream API with full control, cancellation, and progress events |
+| `saveFileAsync()` | `Future<Uri>`          | Async API with optional progress callback                       |
 
 **Common Parameters:**
+
 - `filePath` (required) - Source file path (`file://` or `content://` URI)
 - `fileName` (required) - Target file name without extension
 - `fileType` (required) - `ImageType`, `VideoType`, `AudioType`, or `CustomFileType`
@@ -405,13 +416,13 @@ Save from file path (efficient for large files, no memory loading).
 
 Stream API emits these sealed class events:
 
-| Event | Properties | Description |
-|-------|-----------|-------------|
-| `SaveProgressStarted` | - | Operation began |
-| `SaveProgressUpdate` | `progress: double` | Progress from 0.0 to 1.0 |
-| `SaveProgressComplete` | `uri: Uri` | Success with saved file URI |
-| `SaveProgressError` | `exception: FileSaverException` | Error occurred |
-| `SaveProgressCancelled` | - | User cancelled operation |
+| Event                   | Properties                      | Description                 |
+|-------------------------|---------------------------------|-----------------------------|
+| `SaveProgressStarted`   | -                               | Operation began             |
+| `SaveProgressUpdate`    | `progress: double`              | Progress from 0.0 to 1.0    |
+| `SaveProgressComplete`  | `uri: Uri`                      | Success with saved file URI |
+| `SaveProgressError`     | `exception: FileSaverException` | Error occurred              |
+| `SaveProgressCancelled` | -                               | User cancelled operation    |
 
 ## Contributing
 
