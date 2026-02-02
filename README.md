@@ -154,32 +154,38 @@ The library supports 35+ file formats across 4 categories:
 
 ### Save Locations
 
-Control where files are saved with platform-specific options:
+Control where files are saved using platform-specific `SaveLocation` enums.
 
-| Location | Android | iOS | Use Case |
-|----------|---------|-----|----------|
-| **Default** | Downloads/ | Documents/ | General files (no location specified) |
-| `pictures` | Pictures/ | Photos Library* | Images |
-| `movies` | Movies/ | Photos Library* | Videos |
-| `music` | Music/ | Documents/ | Audio files |
-| `downloads` | Downloads/ | Documents/ | Downloads |
-| `dcim` | DCIM/ | Photos Library* | Camera photos |
-| `photos` | N/A | Photos Library | iOS Photos (requires permission) |
-| `documents` | N/A | Documents/ | iOS Documents (no permission) |
+#### Android (`AndroidSaveLocation`)
 
-\* When using `IosSaveLocation.photos`, otherwise saves to Documents/
+Maps to standard Android MediaStore directories.
+
+| Enum Value | Storage Directory | Use Case |
+|------------|-------------------|----------|
+| `.downloads` (default) | `Downloads/` | General files, PDFs, Docs |
+| `.pictures` | `Pictures/` | Images (png, jpg, etc.) |
+| `.movies` | `Movies/` | Videos (mp4, mov, etc.) |
+| `.music` | `Music/` | Audio files |
+| `.dcim` | `DCIM/` | Camera photos/videos |
+
+#### iOS (`IosSaveLocation`)
+
+Maps to either the Files app (Documents) or Photos app.
+
+| Enum Value | Destination | Use Case |
+|------------|-------------|----------|
+| `.documents` (default) | Documents Directory | Any file type. Visible in **Files** app |
+| `.photos` | Photos Library | Images & Videos only. Requires permission |
 
 **Example:**
 ```dart
 import 'dart:io' show Platform;
 
 final uri = await FileSaver.instance.saveBytesAsync(
-  fileBytes: imageBytes,
-  fileName: 'photo',
-  fileType: ImageType.jpg,
+  // ...
   saveLocation: Platform.isAndroid
-    ? AndroidSaveLocation.pictures
-    : IosSaveLocation.photos,
+    ? AndroidSaveLocation.pictures  // Android-specific
+    : IosSaveLocation.photos,       // iOS-specific
 );
 ```
 
