@@ -1,3 +1,10 @@
+## 0.1.1
+
+### Documentation
+
+- **Save Locations Update**: Split table into separate `AndroidSaveLocation` and `IosSaveLocation` sections to clarify
+  distinct enums
+
 ## 0.1.0
 
 ### Breaking Changes
