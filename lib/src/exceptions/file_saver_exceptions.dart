@@ -20,6 +20,7 @@ sealed class FileSaverException implements Exception {
       _ when contains('FILE_EXISTS') => FileExistsException(msg),
       _ when contains('FILE_NOT_FOUND') => SourceFileNotFoundException(msg),
       _ when contains('ICLOUD_DOWNLOAD_FAILED') => ICloudDownloadException(msg),
+      _ when contains('NETWORK_ERROR') => NetworkException(msg),
       _ when contains('INVALID_FILE') => InvalidFileException(msg),
       _ when contains('UNSUPPORTED_FORMAT') => UnsupportedFormatException(msg),
       _ when contains('STORAGE_FULL') => const StorageFullException(),
@@ -35,6 +36,7 @@ sealed class FileSaverException implements Exception {
       'FILE_EXISTS' => FileExistsException(message),
       'FILE_NOT_FOUND' => SourceFileNotFoundException(message),
       'ICLOUD_DOWNLOAD_FAILED' => ICloudDownloadException(message),
+      'NETWORK_ERROR' => NetworkException(message),
       'INVALID_FILE' || 'INVALID_ARGUMENT' => InvalidFileException(message),
       'UNSUPPORTED_FORMAT' => UnsupportedFormatException(message),
       'STORAGE_FULL' => const StorageFullException(),
@@ -175,6 +177,25 @@ final class ICloudDownloadException extends FileSaverException {
         'iCloud file download failed${details != null ? ": $details" : ""}',
         'ICLOUD_DOWNLOAD_FAILED',
       );
+}
+
+/// Network error occurred during download.
+///
+/// This exception is thrown when:
+/// - The URL is unreachable or invalid
+/// - HTTP response status is not 2xx
+/// - Network connection timed out
+/// - Download was interrupted
+final class NetworkException extends FileSaverException {
+  const NetworkException(String reason, [this.statusCode])
+    : super('Network error: $reason', 'NETWORK_ERROR');
+
+  /// HTTP status code, if available.
+  final int? statusCode;
+
+  @override
+  String toString() =>
+      'NetworkException: $message${statusCode != null ? " (HTTP $statusCode)" : ""}';
 }
 
 /// Operation was cancelled by the user.
