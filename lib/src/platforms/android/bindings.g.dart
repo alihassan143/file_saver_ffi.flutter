@@ -234,6 +234,87 @@ class FileSaver extends jni$_.JObject {
     ).long;
   }
 
+  static final _id_saveNetwork = _class.instanceMethodId(
+    r'saveNetwork',
+    r'(Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;ILcom/vanvixi/file_saver_ffi/models/ProgressCallback;)J',
+  );
+
+  static final _saveNetwork =
+      jni$_.ProtectedJniExtensions.lookup<
+            jni$_.NativeFunction<
+              jni$_.JniResult Function(
+                jni$_.Pointer<jni$_.Void>,
+                jni$_.JMethodIDPtr,
+                jni$_.VarArgs<
+                  (
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Int32,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Int32,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Int32,
+                    jni$_.Pointer<jni$_.Void>,
+                  )
+                >,
+              )
+            >
+          >('globalEnv_CallLongMethod')
+          .asFunction<
+            jni$_.JniResult Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              int,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              int,
+              jni$_.Pointer<jni$_.Void>,
+              int,
+              jni$_.Pointer<jni$_.Void>,
+            )
+          >();
+
+  /// from: `public fun saveNetwork(url: kotlin.String, headersJson: kotlin.String?, timeoutMs: kotlin.Int, baseFileName: kotlin.String, extension: kotlin.String, mimeType: kotlin.String, saveLocationIndex: kotlin.Int, subDir: kotlin.String?, conflictMode: kotlin.Int, callback: com.vanvixi.file_saver_ffi.models.ProgressCallback): kotlin.Long`
+  int saveNetwork(
+    jni$_.JString string,
+    jni$_.JString? string1,
+    int i,
+    jni$_.JString string2,
+    jni$_.JString string3,
+    jni$_.JString string4,
+    int i1,
+    jni$_.JString? string5,
+    int i2,
+    ProgressCallback progressCallback,
+  ) {
+    final _$string = string.reference;
+    final _$string1 = string1?.reference ?? jni$_.jNullReference;
+    final _$string2 = string2.reference;
+    final _$string3 = string3.reference;
+    final _$string4 = string4.reference;
+    final _$string5 = string5?.reference ?? jni$_.jNullReference;
+    final _$progressCallback = progressCallback.reference;
+    return _saveNetwork(
+      reference.pointer,
+      _id_saveNetwork as jni$_.JMethodIDPtr,
+      _$string.pointer,
+      _$string1.pointer,
+      i,
+      _$string2.pointer,
+      _$string3.pointer,
+      _$string4.pointer,
+      i1,
+      _$string5.pointer,
+      i2,
+      _$progressCallback.pointer,
+    ).long;
+  }
+
   static final _id_cancelOperation = _class.instanceMethodId(
     r'cancelOperation',
     r'(J)V',
