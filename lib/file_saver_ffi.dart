@@ -156,6 +156,150 @@ class FileSaver {
     return result;
   }
 
+  /// Downloads a file from a network URL and saves to device storage with progress streaming.
+  ///
+  /// The file is downloaded at the native level to avoid double storage:
+  /// - Android: Streams directly from network to MediaStore OutputStream (zero temp files)
+  /// - iOS Documents: Downloads directly to the target path (zero temp files)
+  /// - iOS Photos: Downloads to tmp, saves to Photos Library, then deletes tmp
+  ///
+  /// Yields progress events during download and save operation:
+  /// - [SaveProgressStarted]: Operation began
+  /// - [SaveProgressUpdate]: Progress from 0.0 to 1.0
+  /// - [SaveProgressComplete]: Success with URI
+  /// - [SaveProgressError]: Failed with exception
+  /// - [SaveProgressCancelled]: User cancelled
+  ///
+  /// Parameters:
+  /// - [url]: The URL to download the file from
+  /// - [fileName]: The name of the file without extension
+  /// - [fileType]: The file type (determines extension and MIME type)
+  /// - [headers]: Optional HTTP headers for the request
+  /// - [timeout]: Timeout for the network request (defaults to 60 seconds)
+  /// - [saveLocation]: Where to save the file (platform-specific, optional)
+  ///   - If not specified, defaults to:
+  ///     - Android: [AndroidSaveLocation.downloads]
+  ///     - iOS: [IosSaveLocation.documents] (app's Documents directory)
+  /// - [subDir]: Optional subdirectory within the save location
+  /// - [conflictResolution]: How to handle filename conflicts
+  ///
+  /// Example:
+  /// ```dart
+  /// await for (final event in FileSaver.instance.saveNetwork(
+  ///   url: 'https://example.com/photo.jpg',
+  ///   headers: {'Authorization': 'Bearer token'},
+  ///   fileName: 'photo',
+  ///   fileType: ImageType.jpg,
+  /// )) {
+  ///   switch (event) {
+  ///     case SaveProgressStarted():
+  ///       showLoadingIndicator();
+  ///     case SaveProgressUpdate(:final progress):
+  ///       updateProgressBar(progress);
+  ///     case SaveProgressComplete(:final uri):
+  ///       handleSuccess(uri);
+  ///     case SaveProgressError(:final exception):
+  ///       handleError(exception);
+  ///     case SaveProgressCancelled():
+  ///       handleCancel();
+  ///   }
+  /// }
+  /// ```
+  Stream<SaveProgress> saveNetwork({
+    required String url,
+    required String fileName,
+    required FileType fileType,
+    Map<String, String>? headers,
+    Duration timeout = const Duration(seconds: 60),
+    SaveLocation? saveLocation,
+    String? subDir,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) {
+    return _platform.saveNetwork(
+      url: url,
+      fileName: fileName,
+      fileType: fileType,
+      headers: headers,
+      timeout: timeout,
+      saveLocation: saveLocation,
+      subDir: subDir,
+      conflictResolution: conflictResolution,
+    );
+  }
+
+  /// Convenience wrapper around [saveNetwork] that returns a [Future].
+  ///
+  /// This method listens to the progress stream from [saveNetwork] and converts it
+  /// into an optional [onProgress] callback.
+  ///
+  /// Parameters:
+  /// - See [saveNetwork] for all parameters except [onProgress].
+  /// - [onProgress]: Optional callback receiving progress from 0.0 to 1.0
+  ///
+  /// Returns the [Uri] where the file was saved.
+  ///
+  /// Throws:
+  /// - [FileSaverException] or subclass if the save operation fails
+  /// - [NetworkException] if the download fails
+  ///
+  /// See also:
+  /// - [saveNetwork] for stream-based progress handling.
+  ///
+  /// Example:
+  /// ```dart
+  /// final uri = await FileSaver.instance.saveNetworkAsync(
+  ///   url: 'https://example.com/photo.jpg',
+  ///   fileName: 'photo',
+  ///   fileType: ImageType.jpg,
+  ///   onProgress: (progress) => print('${(progress * 100).toInt()}%'),
+  /// );
+  /// ```
+  Future<Uri> saveNetworkAsync({
+    required String url,
+    required String fileName,
+    required FileType fileType,
+    Map<String, String>? headers,
+    Duration timeout = const Duration(seconds: 60),
+    SaveLocation? saveLocation,
+    String? subDir,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+    void Function(double progress)? onProgress,
+  }) async {
+    Uri? result;
+
+    await for (final event in saveNetwork(
+      url: url,
+      fileName: fileName,
+      fileType: fileType,
+      headers: headers,
+      timeout: timeout,
+      saveLocation: saveLocation,
+      subDir: subDir,
+      conflictResolution: conflictResolution,
+    )) {
+      switch (event) {
+        case SaveProgressStarted():
+          break;
+        case SaveProgressUpdate(:final progress):
+          onProgress?.call(progress);
+        case SaveProgressComplete(:final uri):
+          result = uri;
+        case SaveProgressError(:final exception):
+          throw exception;
+        case SaveProgressCancelled():
+          throw const CancelledException();
+      }
+    }
+
+    if (result == null) {
+      throw const PlatformException(
+        'Save operation did not complete',
+        'INCOMPLETE',
+      );
+    }
+    return result;
+  }
+
   /// Saves a file from source path to device storage with progress streaming.
   ///
   /// This method reads the source file in chunks without loading it entirely
@@ -286,3 +430,4 @@ class FileSaver {
     return result;
   }
 }
+
