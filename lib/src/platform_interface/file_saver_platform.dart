@@ -77,6 +77,37 @@ abstract class FileSaverPlatform {
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   });
 
+  /// Saves a file from a network URL to device storage with progress streaming.
+  ///
+  /// The file is downloaded at the native level to avoid double storage:
+  /// - Android: Streams directly from network to MediaStore OutputStream
+  /// - iOS Documents: Downloads directly to the target path
+  /// - iOS Photos: Downloads to tmp, saves to Photos Library, then deletes tmp
+  ///
+  /// Parameters:
+  /// - [url]: The URL to download the file from
+  /// - [fileName]: Target file name without extension
+  /// - [fileType]: The type of file being saved (determines extension and MIME type)
+  /// - [headers]: Optional HTTP headers for the request
+  /// - [timeout]: Timeout for the network request (defaults to 60 seconds)
+  /// - [saveLocation]: Where to save the file (platform-specific, optional)
+  /// - [subDir]: Optional subdirectory within the standard save location
+  /// - [conflictResolution]: How to handle filename conflicts
+  ///
+  /// Yields [SaveProgress] events during save operation.
+  ///
+  /// Throws [NetworkException] if the download fails.
+  Stream<SaveProgress> saveNetwork({
+    required String url,
+    required String fileName,
+    required FileType fileType,
+    Map<String, String>? headers,
+    Duration timeout = const Duration(seconds: 60),
+    SaveLocation? saveLocation,
+    String? subDir,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  });
+
   // ─────────────────────────────────────────────────────────────────────────
   // Protected helpers for subclasses
   // ─────────────────────────────────────────────────────────────────────────
@@ -97,6 +128,25 @@ abstract class FileSaverPlatform {
   void validateFilePathInput(String filePath, String fileName) {
     if (filePath.isEmpty) {
       throw const InvalidFileException('File path cannot be empty');
+    }
+    if (fileName.isEmpty) {
+      throw const InvalidFileException('File name cannot be empty');
+    }
+  }
+
+  /// Validates input for [saveNetwork] and [saveNetworkAsync].
+  @protected
+  void validateNetworkInput(String url, String fileName) {
+    if (url.isEmpty) {
+      throw const InvalidFileException('URL cannot be empty');
+    }
+    final uri = Uri.tryParse(url);
+    if (uri == null ||
+        !uri.hasScheme ||
+        (!uri.isScheme('http') && !uri.isScheme('https'))) {
+      throw const InvalidFileException(
+        'URL must use http or https scheme',
+      );
     }
     if (fileName.isEmpty) {
       throw const InvalidFileException('File name cannot be empty');
