@@ -48,6 +48,11 @@ object Constants {
     const val ERROR_PLATFORM = "PLATFORM_ERROR"
 
     /**
+     * Network download error (HTTP error, timeout, connection failed)
+     */
+    const val ERROR_NETWORK = "NETWORK_ERROR"
+
+    /**
      * Operation was cancelled by user
      */
     const val ERROR_CANCELLED = "CANCELLED"
