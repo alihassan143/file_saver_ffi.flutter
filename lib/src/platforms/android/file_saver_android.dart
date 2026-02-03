@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:jni/jni.dart';
@@ -151,6 +152,85 @@ class FileSaverAndroid extends FileSaverPlatform {
       // Call native method - returns operationId for cancellation
       final operationId = _fileSaver.saveFile(
         jFilePath,
+        jFileName,
+        jExtension,
+        jMimeType,
+        jSaveLocationIndex,
+        jSubDir,
+        jConflictMode,
+        callback,
+      );
+
+      controller.onCancel = () {
+        _fileSaver.cancelOperation(operationId);
+        // Fallback cleanup if native doesn't respond with Cancelled event
+        Future.delayed(const Duration(milliseconds: 500), cleanup);
+      };
+    });
+  }
+
+  @override
+  Stream<SaveProgress> saveNetwork({
+    required String url,
+    required String fileName,
+    required FileType fileType,
+    Map<String, String>? headers,
+    Duration timeout = const Duration(seconds: 60),
+    SaveLocation? saveLocation,
+    String? subDir,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) {
+    validateNetworkInput(url, fileName);
+
+    return Stream.multi((controller) {
+      bool cleanedUp = false;
+      late final bindings.ProgressCallback callback;
+
+      final jUrl = url.toJString();
+      final jHeadersJson =
+          headers != null ? jsonEncode(headers).toJString() : null;
+      final jTimeoutMs = timeout.inMilliseconds;
+      final jFileName = fileName.toJString();
+      final jExtension = fileType.ext.toJString();
+      final jMimeType = fileType.mimeType.toJString();
+      final jConflictMode = conflictResolution.index;
+      final jSaveLocationIndex = switch (saveLocation) {
+        AndroidSaveLocation location => location.index,
+        _ => AndroidSaveLocation.downloads.index,
+      };
+      final jSubDir = subDir?.toJString();
+
+      void cleanup() {
+        if (cleanedUp) return;
+        cleanedUp = true;
+
+        // Defer release out of [callback] stack
+        Future.microtask(() {
+          if (!controller.isClosed) controller.closeSync();
+          callback.release();
+        });
+      }
+
+      // Create callback - cleanup happens on terminal events
+      callback = bindings.ProgressCallback.implement(
+        bindings.$ProgressCallback(
+          onEvent: (eventType, progress, data, message) {
+            if (cleanedUp || controller.isClosed) return;
+
+            final event = _parseEvent(eventType, progress, data, message);
+            controller.addSync(event);
+
+            if (isTerminal(event)) cleanup();
+          },
+          onEvent$async: true,
+        ),
+      );
+
+      // Call native method - returns operationId for cancellation
+      final operationId = _fileSaver.saveNetwork(
+        jUrl,
+        jHeadersJson,
+        jTimeoutMs,
         jFileName,
         jExtension,
         jMimeType,
