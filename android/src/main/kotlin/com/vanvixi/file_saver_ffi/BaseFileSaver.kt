@@ -288,8 +288,7 @@ abstract class BaseFileSaver(protected val context: Context) {
                 }
                 trySend(
                     SaveProgressEvent.Error(
-                        Constants.ERROR_FILE_IO,
-                        "Failed to copy file: ${e.message}"
+                        Constants.ERROR_FILE_IO, "Failed to copy file: ${e.message}"
                     )
                 )
                 close()
@@ -366,12 +365,12 @@ abstract class BaseFileSaver(protected val context: Context) {
             val connectionResult = try {
                 NetworkHelper.openConnection(url, headersJson, timeoutMs)
             } catch (e: NetworkDownloadException) {
-                trySend(
-                    SaveProgressEvent.Error(
-                        Constants.ERROR_NETWORK,
-                        e.message ?: "Network download failed",
-                    )
-                )
+                val message = if (e.statusCode != null) {
+                    "Network download failed (HTTP ${e.statusCode}): ${e.message}"
+                } else {
+                    "Network download failed: ${e.message}"
+                }
+                trySend(SaveProgressEvent.Error(Constants.ERROR_NETWORK, message))
                 close()
                 awaitClose {}
                 return@callbackFlow

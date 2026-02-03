@@ -71,7 +71,7 @@ object NetworkHelper {
             if (statusCode !in 200..299) {
                 connection.disconnect()
                 throw NetworkDownloadException(
-                    "HTTP $statusCode: ${connection.responseMessage ?: "Unknown error"}",
+                    connection.responseMessage ?: "Unknown error",
                     statusCode,
                 )
             }
