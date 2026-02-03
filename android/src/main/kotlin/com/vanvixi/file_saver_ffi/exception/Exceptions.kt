@@ -1,5 +1,7 @@
 package com.vanvixi.file_saver_ffi.exception
 
+import java.io.IOException
+
 /**
  * Exception thrown when a file format is not supported on the current device
  *
@@ -19,3 +21,11 @@ class UnsupportedFormatException(
 class FileExistsException(
     message: String
 ) : Exception(message)
+
+/**
+ * Exception thrown when a network download fails.
+ */
+class NetworkDownloadException(
+    message: String,
+    val statusCode: Int? = null,
+) : IOException(message)
