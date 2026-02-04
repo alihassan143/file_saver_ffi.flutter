@@ -5,7 +5,8 @@ private var instanceCounter: UInt = 0
 private var instances: [UInt: FileSaver] = [:]
 private let instanceLock = NSLock()
 
-// Cancellation token registry
+// MARK: - Cancellation Token Registry (for saveBytes, saveFile)
+
 private var tokenCounter: UInt = 0
 private var activeTokens: [UInt: CancellationToken] = [:]
 private let tokenLock = NSLock()
@@ -33,6 +34,44 @@ private func getToken(_ tokenId: UInt) -> CancellationToken? {
     tokenLock.lock()
     defer { tokenLock.unlock() }
     return activeTokens[tokenId]
+}
+
+// MARK: - Active Download Registry (for saveNetwork)
+
+/// Holds cancellation state and handler for an active network download operation
+private class ActiveDownload {
+    let token: CancellationToken
+    var cancelHandler: (() -> Void)?
+
+    init(token: CancellationToken) {
+        self.token = token
+    }
+
+    func cancel() {
+        token.cancel()
+        cancelHandler?()
+    }
+}
+
+private var activeDownloads: [UInt: ActiveDownload] = [:]
+private let downloadLock = NSLock()
+
+private func registerDownload(_ id: UInt, _ download: ActiveDownload) {
+    downloadLock.lock()
+    defer { downloadLock.unlock() }
+    activeDownloads[id] = download
+}
+
+private func getDownload(_ id: UInt) -> ActiveDownload? {
+    downloadLock.lock()
+    defer { downloadLock.unlock() }
+    return activeDownloads[id]
+}
+
+private func unregisterDownload(_ id: UInt) {
+    downloadLock.lock()
+    defer { downloadLock.unlock() }
+    activeDownloads.removeValue(forKey: id)
 }
 
 @_cdecl("file_saver_init_dart_api_dl")
