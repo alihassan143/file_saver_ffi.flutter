@@ -12,7 +12,7 @@ enum Constants {
     static let errorNetwork = "NETWORK_ERROR"
     static let errorPlatform = "PLATFORM_ERROR"
     static let errorCancelled = "CANCELLED"
-
+    
     static let chunkSize = 1024 * 1024
     static let maxRenameAttempts = 1000
     static let iCloudDownloadTimeout: TimeInterval = 60.0
