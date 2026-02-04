@@ -82,6 +82,46 @@ uint64_t file_saver_save_file(
     int64_t native_port
 );
 
+/// Save file from network URL asynchronously with progress reporting via
+/// NativePort.
+///
+/// Downloads file at native level to avoid double storage:
+/// - Documents: Downloads directly to target path
+/// - Photos: Downloads to tmp, saves to Photos Library, deletes tmp
+///
+/// Progress messages sent to native_port:
+/// - Started:    [0]
+/// - Progress:   [1, progress]    (progress is 0.0 to 1.0)
+/// - Error:      [2, errorCode, errorMessage]
+/// - Success:    [3, fileUri]
+/// - Cancelled:  [4]
+///
+/// @param instance FileSaver instance from file_saver_init
+/// @param urlString URL to download from
+/// @param headersJson Optional JSON string of HTTP headers (can be NULL)
+/// @param timeoutSeconds Timeout in seconds for network request
+/// @param baseFileName File name without extension
+/// @param extension File extension without dot
+/// @param mimeType MIME type string
+/// @param saveLocation Save location index (0-1 for iOS)
+/// @param subDir Optional subdirectory (can be NULL)
+/// @param conflictMode Conflict resolution mode (0-3)
+/// @param native_port Dart NativePort for progress reporting
+/// @return Token ID for cancellation
+uint64_t file_saver_save_network(
+    void* instance,
+    const char* urlString,
+    const char* headersJson,
+    int32_t timeoutSeconds,
+    const char* baseFileName,
+    const char* extension,
+    const char* mimeType,
+    int32_t saveLocation,
+    const char* subDir,
+    int32_t conflictMode,
+    int64_t native_port
+);
+
 /// Cancel an ongoing save operation.
 ///
 /// @param tokenId Token ID returned from file_saver_save_bytes or file_saver_save_file
