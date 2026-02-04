@@ -215,6 +215,80 @@ public func fileSaverSaveFile(
     return tokenId
 }
 
+@_cdecl("file_saver_save_network")
+public func fileSaverSaveNetwork(
+    _ instanceId: UInt,
+    _ urlString: UnsafePointer<CChar>,
+    _ headersJson: UnsafePointer<CChar>?,
+    _ timeoutSeconds: Int32,
+    _ baseFileName: UnsafePointer<CChar>,
+    _ ext: UnsafePointer<CChar>,
+    _ mimeType: UnsafePointer<CChar>,
+    _ saveLocation: Int32,
+    _ subDir: UnsafePointer<CChar>?,
+    _ conflictMode: Int32,
+    _ nativePort: Int64
+) -> UInt {
+    let reporter = ProgressReporter(port: nativePort)
+
+    // Create active download entry (holds token + cancel handler)
+    let tokenId = generateTokenId()
+    let token = CancellationToken()
+    let activeDownload = ActiveDownload(token: token)
+    registerDownload(tokenId, activeDownload)
+
+    // Copy strings (must be done synchronously before returning)
+    let url = String(cString: urlString)
+    let headers = headersJson.map { String(cString: $0) }
+    let timeout = Int(timeoutSeconds)
+    let fileName = String(cString: baseFileName)
+    let extStr = String(cString: ext)
+    let mime = String(cString: mimeType)
+    let directory = subDir.map { String(cString: $0) }
+
+    // Get FileSaver instance
+    instanceLock.lock()
+    guard let saver = instances[instanceId] else {
+        instanceLock.unlock()
+        reporter.sendError(
+            code: Constants.errorPlatform,
+            message: "FileSaver instance not found"
+        )
+        unregisterDownload(tokenId)
+        return tokenId
+    }
+    instanceLock.unlock()
+
+    // Send started event
+    reporter.sendStarted()
+
+    // Parse headers from JSON string
+    let parsedHeaders = NetworkHelper.parseHeaders(headers)
+
+    // Perform save - saveNetwork is non-blocking, no DispatchQueue needed
+    saver.saveNetwork(
+        urlString: url,
+        headers: parsedHeaders,
+        timeoutSeconds: timeout,
+        baseFileName: fileName,
+        extension: extStr,
+        mimeType: mime,
+        subDir: directory,
+        saveLocationValue: Int(saveLocation),
+        conflictMode: Int(conflictMode),
+        reporter: reporter,
+        cancellationToken: token,
+        onCancelHandlerReady: { cancelHandler in
+            activeDownload.cancelHandler = cancelHandler
+        },
+        onComplete: {
+            unregisterDownload(tokenId)
+        }
+    )
+
+    return tokenId
+}
+
 @_cdecl("file_saver_cancel")
 public func fileSaverCancel(_ tokenId: UInt) {
     // Try to cancel as download first (saveNetwork)
