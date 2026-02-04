@@ -149,3 +149,95 @@ class FileDemoConfig {
     };
   }
 }
+
+/// Configuration for each media type for Save Network (download) demos
+class NetworkDemoConfig {
+  const NetworkDemoConfig({
+    required this.category,
+    required this.title,
+    required this.description,
+    required this.downloadUrl,
+    required this.fileNamePrefix,
+    required this.fileType,
+    required this.getSaveLocation,
+    this.defaultUseStreamApi = false,
+  });
+
+  final MediaCategory category;
+  final String title;
+  final String description;
+  final String downloadUrl;
+  final String fileNamePrefix;
+  final FileType fileType;
+  final SaveLocation? Function() getSaveLocation;
+  final bool defaultUseStreamApi;
+
+  static final image = NetworkDemoConfig(
+    category: MediaCategory.image,
+    title: 'Image Network Demo',
+    description: 'Downloads a random image and saves to Photos library.',
+    downloadUrl: 'https://picsum.photos/800/1200',
+    fileNamePrefix: 'image',
+    fileType: ImageType.jpg,
+    getSaveLocation: () => Platform.isAndroid
+        ? AndroidSaveLocation.pictures
+        : Platform.isIOS
+        ? IosSaveLocation.photos
+        : null,
+  );
+
+  static final video = NetworkDemoConfig(
+    category: MediaCategory.video,
+    title: 'Video Network Demo',
+    description: 'Downloads a sample video and saves to Photos library.',
+    downloadUrl: 'https://download.samplelib.com/mp4/sample-30s.mp4',
+    fileNamePrefix: 'video',
+    fileType: VideoType.mp4,
+    getSaveLocation: () => Platform.isAndroid
+        ? AndroidSaveLocation.movies
+        : Platform.isIOS
+        ? IosSaveLocation.documents
+        : null,
+    defaultUseStreamApi: true,
+  );
+
+  static final audio = NetworkDemoConfig(
+    category: MediaCategory.audio,
+    title: 'Audio Network Demo',
+    description: 'Downloads a sample audio file and saves to Music folder.',
+    downloadUrl: 'https://download.samplelib.com/mp3/sample-15s.mp3',
+    fileNamePrefix: 'audio',
+    fileType: AudioType.mp3,
+    getSaveLocation: () => Platform.isAndroid
+        ? AndroidSaveLocation.music
+        : Platform.isIOS
+        ? IosSaveLocation.documents
+        : null,
+    defaultUseStreamApi: true,
+  );
+
+  static final document = NetworkDemoConfig(
+    category: MediaCategory.document,
+    title: 'Document Network Demo',
+    description: 'Downloads a PDF file and saves to Downloads/Documents.',
+    downloadUrl:
+        'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    fileNamePrefix: 'document',
+    fileType: const CustomFileType(ext: 'pdf', mimeType: 'application/pdf'),
+    getSaveLocation: () => Platform.isAndroid
+        ? AndroidSaveLocation.downloads
+        : Platform.isIOS
+        ? IosSaveLocation.documents
+        : null,
+    defaultUseStreamApi: true,
+  );
+
+  static NetworkDemoConfig forCategory(MediaCategory category) {
+    return switch (category) {
+      MediaCategory.image => image,
+      MediaCategory.video => video,
+      MediaCategory.audio => audio,
+      MediaCategory.document => document,
+    };
+  }
+}
