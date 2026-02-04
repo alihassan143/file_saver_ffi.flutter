@@ -57,13 +57,17 @@ class _SaveMultiNetworkScreenState extends State<SaveMultiNetworkScreen>
 
     final hasPermission = await _ensurePermission(item.config);
     if (!hasPermission) {
-      showAppSnackBar(context, 'Permission denied', isSuccess: false);
+      if (mounted) {
+        showAppSnackBar(context, 'Permission denied', isSuccess: false);
+      }
+
       setState(() => item.status = _DownloadStatus.failed);
       return;
     }
 
-    if (item.config.category == MediaCategory.video ||
-        item.config.category == MediaCategory.audio) {
+    if (mounted &&
+        (item.config.category == MediaCategory.video ||
+            item.config.category == MediaCategory.audio)) {
       showAppSnackBar(
         context,
         'Downloading ${item.config.category.label.toLowerCase()}... This may take a while',
@@ -71,8 +75,8 @@ class _SaveMultiNetworkScreenState extends State<SaveMultiNetworkScreen>
       );
     }
 
-    final stream = FileSaver.instance.saveNetwork(
-      url: item.config.downloadUrl,
+    final stream = FileSaver.instance.save(
+      input: SaveInput.network(url: item.config.downloadUrl),
       fileName: _buildFileName(item.config),
       fileType: item.config.fileType,
       saveLocation: item.config.getSaveLocation(),
@@ -185,7 +189,7 @@ class _SaveMultiNetworkScreenState extends State<SaveMultiNetworkScreen>
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final item = _items[index];
                 return _DownloadItemTile(

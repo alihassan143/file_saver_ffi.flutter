@@ -168,8 +168,8 @@ class _SaveFileScreenState extends State<SaveFileScreen>
     SaveLocation? saveLocation,
   ) async {
     await runSaveCatching(
-      () => FileSaver.instance.saveFileAsync(
-        filePath: filePath,
+      () => FileSaver.instance.saveAsync(
+        input: SaveInput.file(filePath),
         fileName: fileName,
         fileType: fileType,
         saveLocation: saveLocation,
@@ -187,8 +187,8 @@ class _SaveFileScreenState extends State<SaveFileScreen>
     FileType fileType,
     SaveLocation? saveLocation,
   ) async {
-    final stream = FileSaver.instance.saveFile(
-      filePath: filePath,
+    final stream = FileSaver.instance.save(
+      input: SaveInput.file(filePath),
       fileName: fileName,
       fileType: fileType,
       saveLocation: saveLocation,

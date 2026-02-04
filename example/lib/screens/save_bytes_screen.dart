@@ -116,8 +116,8 @@ class _SaveBytesScreenState extends State<SaveBytesScreen>
     BytesDemoConfig config,
   ) async {
     await runSaveCatching(
-      () => FileSaver.instance.saveBytesAsync(
-        fileBytes: bytes,
+      () => FileSaver.instance.saveAsync(
+        input: SaveInput.bytes(bytes),
         fileName: fileName,
         fileType: config.fileType,
         saveLocation: config.getSaveLocation(),
@@ -134,8 +134,8 @@ class _SaveBytesScreenState extends State<SaveBytesScreen>
     String fileName,
     BytesDemoConfig config,
   ) async {
-    final stream = FileSaver.instance.saveBytes(
-      fileBytes: bytes,
+    final stream = FileSaver.instance.save(
+      input: SaveInput.bytes(bytes),
       fileName: fileName,
       fileType: config.fileType,
       saveLocation: config.getSaveLocation(),
