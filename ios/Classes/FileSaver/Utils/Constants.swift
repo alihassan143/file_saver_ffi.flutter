@@ -9,6 +9,7 @@ enum Constants {
     static let errorFileIO = "FILE_IO_ERROR"
     static let errorFileNotFound = "FILE_NOT_FOUND"
     static let errorICloudDownloadFailed = "ICLOUD_DOWNLOAD_FAILED"
+    static let errorNetwork = "NETWORK_ERROR"
     static let errorPlatform = "PLATFORM_ERROR"
     static let errorCancelled = "CANCELLED"
 
