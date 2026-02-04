@@ -46,7 +46,7 @@ class FileSaverDemoPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('File Saver FFI Demo'),
@@ -55,10 +55,13 @@ class FileSaverDemoPage extends StatelessWidget {
             tabs: [
               Tab(icon: Icon(Icons.memory), text: 'Save Bytes'),
               Tab(icon: Icon(Icons.file_open), text: 'Save File'),
+              Tab(icon: Icon(Icons.downloading_rounded), text: 'Save Network'),
             ],
           ),
         ),
-        body: const TabBarView(children: [SaveBytesScreen(), SaveFileScreen()]),
+        body: const TabBarView(
+          children: [SaveBytesScreen(), SaveFileScreen(), SaveNetworkScreen()],
+        ),
       ),
     );
   }
