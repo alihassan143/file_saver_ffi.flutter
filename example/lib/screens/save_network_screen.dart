@@ -102,8 +102,8 @@ class _SaveNetworkScreenState extends State<SaveNetworkScreen>
     NetworkDemoConfig config,
   ) async {
     await runSaveCatching(
-      () => FileSaver.instance.saveNetworkAsync(
-        url: config.downloadUrl,
+      () => FileSaver.instance.saveAsync(
+        input: SaveInput.network(url: config.downloadUrl),
         fileName: fileName,
         fileType: config.fileType,
         saveLocation: config.getSaveLocation(),
@@ -121,8 +121,8 @@ class _SaveNetworkScreenState extends State<SaveNetworkScreen>
     String fileName,
     NetworkDemoConfig config,
   ) async {
-    final stream = FileSaver.instance.saveNetwork(
-      url: config.downloadUrl,
+    final stream = FileSaver.instance.save(
+      input: SaveInput.network(url: config.downloadUrl),
       fileName: fileName,
       fileType: config.fileType,
       saveLocation: config.getSaveLocation(),
