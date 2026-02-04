@@ -61,7 +61,7 @@ class AudioSaver: BaseFileSaver {
     ) throws {
         try FormatValidator.validateAudioFormat(fileType)
 
-        // Phase 1 (0.0 → 0.5): iCloud download progress
+        // Phase 1 (0.0 → 0.8): iCloud download progress
         let downloadProgressHandler: ((Double) -> Void)? = onProgress.map { handler in
             { downloadProgress in
                 handler(downloadProgress * 0.5)
@@ -91,10 +91,10 @@ class AudioSaver: BaseFileSaver {
             conflictResolution: conflictResolution
         )
 
-        // Phase 2 (0.5 → 1.0): Copy progress
+        // Phase 2 (0.8 → 1.0): Copy progress
         let copyProgressHandler: ((Double) -> Void)? = onProgress.map { handler in
             { copyProgress in
-                handler(0.5 + copyProgress * 0.5)
+                handler(0.8 + copyProgress * 0.2)
             }
         }
 

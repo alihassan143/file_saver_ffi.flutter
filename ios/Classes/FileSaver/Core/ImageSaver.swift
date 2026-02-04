@@ -146,10 +146,10 @@ class ImageSaver: BaseFileSaver {
 
         switch saveLocation {
         case .photos:
-            // Phase 1 (0.0 → 0.5): iCloud download progress
+            // Phase 1 (0.0 → 0.8): iCloud download progress
             let downloadProgressHandler: ((Double) -> Void)? = onProgress.map { handler in
                 { downloadProgress in
-                    handler(downloadProgress * 0.5)
+                    handler(downloadProgress * 0.8)
                 }
             }
 
@@ -173,8 +173,8 @@ class ImageSaver: BaseFileSaver {
             )
             defer { sourceFile.close() }
 
-            // Phase 2 (0.5 → 1.0): Photos Library save (no granular progress available)
-            onProgress?(0.5)
+            // Phase 2 (0.8 → 1.0): Photos Library save (no granular progress available)
+            onProgress?(0.8)
 
             let uri = try saveToPhotosLibraryFromURL(
                 sourceURL: sourceFile.url,
@@ -241,10 +241,10 @@ class ImageSaver: BaseFileSaver {
         onProgress: ((Double) -> Void)?,
         cancellationToken: CancellationToken?
     ) throws -> String {
-        // Phase 1 (0.0 → 0.5): iCloud download progress
+        // Phase 1 (0.0 → 0.8): iCloud download progress
         let downloadProgressHandler: ((Double) -> Void)? = onProgress.map { handler in
             { downloadProgress in
-                handler(downloadProgress * 0.5)
+                handler(downloadProgress * 0.8)
             }
         }
 
@@ -269,10 +269,10 @@ class ImageSaver: BaseFileSaver {
             conflictResolution: conflictResolution
         )
 
-        // Phase 2 (0.5 → 1.0): Copy progress
+        // Phase 2 (0.8 → 1.0): Copy progress
         let copyProgressHandler: ((Double) -> Void)? = onProgress.map { handler in
             { copyProgress in
-                handler(0.5 + copyProgress * 0.5)
+                handler(0.8 + copyProgress * 0.2)
             }
         }
 
