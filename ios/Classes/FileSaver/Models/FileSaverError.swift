@@ -9,9 +9,10 @@ enum FileSaverError: Error {
     case fileIO(String)
     case fileNotFound(String)
     case iCloudDownloadFailed(String)
+    case networkError(String, statusCode: Int? = nil)
     case platformError(String)
     case cancelled
-
+    
     var code: String {
         switch self {
         case .permissionDenied: return Constants.errorPermissionDenied
@@ -22,11 +23,12 @@ enum FileSaverError: Error {
         case .fileIO: return Constants.errorFileIO
         case .fileNotFound: return Constants.errorFileNotFound
         case .iCloudDownloadFailed: return Constants.errorICloudDownloadFailed
+        case .networkError: return Constants.errorNetwork
         case .platformError: return Constants.errorPlatform
         case .cancelled: return Constants.errorCancelled
         }
     }
-
+    
     var message: String {
         switch self {
         case .permissionDenied(let msg): return msg
@@ -41,6 +43,11 @@ enum FileSaverError: Error {
         case .fileIO(let msg): return msg
         case .fileNotFound(let path): return "Source file not found: \(path)"
         case .iCloudDownloadFailed(let msg): return "iCloud download failed: \(msg)"
+        case .networkError(let msg, let statusCode):
+            if let statusCode = statusCode {
+                return "Network download failed (HTTP \(statusCode)): \(msg)"
+            }
+            return "Network download failed: \(msg)"
         case .platformError(let msg): return msg
         case .cancelled: return "Operation was cancelled"
         }
