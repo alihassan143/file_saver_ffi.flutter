@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import '/src/exceptions/file_saver_exceptions.dart';
 import 'src/models/conflict_resolution.dart';
 import 'src/models/file_type.dart';
+import 'src/models/save_input.dart';
 import 'src/models/save_location.dart';
 import 'src/models/save_progress.dart';
 import 'src/platform_interface/file_saver_platform.dart';
@@ -13,6 +14,7 @@ import 'src/platform_interface/file_saver_platform.dart';
 export 'src/exceptions/file_saver_exceptions.dart';
 export 'src/models/conflict_resolution.dart';
 export 'src/models/file_type.dart';
+export 'src/models/save_input.dart';
 export 'src/models/save_location.dart';
 export 'src/models/save_progress.dart';
 
@@ -27,6 +29,96 @@ class FileSaver {
   /// but call dispose() for timely cleanup.
   void dispose() {
     _platform.dispose();
+  }
+
+  /// Unified save entrypoint for all input sources.
+  ///
+  /// Delegates to [saveBytes], [saveFile], or [saveNetwork] based on [input].
+  /// See those APIs for detailed behavior and platform notes.
+  Stream<SaveProgress> save({
+    required SaveInput input,
+    required FileType fileType,
+    required String fileName,
+    SaveLocation? saveLocation,
+    String? subDir,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) {
+    return switch (input) {
+      SaveBytesInput(:final fileBytes) => saveBytes(
+        fileBytes: fileBytes,
+        fileType: fileType,
+        fileName: fileName,
+        saveLocation: saveLocation,
+        subDir: subDir,
+        conflictResolution: conflictResolution,
+      ),
+      SaveFileInput(:final filePath) => saveFile(
+        filePath: filePath,
+        fileType: fileType,
+        fileName: fileName,
+        saveLocation: saveLocation,
+        subDir: subDir,
+        conflictResolution: conflictResolution,
+      ),
+      SaveNetworkInput(:final url, :final headers, :final timeout) =>
+        saveNetwork(
+          url: url,
+          fileType: fileType,
+          fileName: fileName,
+          headers: headers,
+          timeout: timeout,
+          saveLocation: saveLocation,
+          subDir: subDir,
+          conflictResolution: conflictResolution,
+        ),
+    };
+  }
+
+  /// Async wrapper for [save] with optional progress callback.
+  ///
+  /// Delegates to [saveBytesAsync], [saveFileAsync], or [saveNetworkAsync]
+  /// based on [input]. See those APIs for detailed behavior and errors.
+  Future<Uri> saveAsync({
+    required SaveInput input,
+    required FileType fileType,
+    required String fileName,
+    SaveLocation? saveLocation,
+    String? subDir,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+    void Function(double progress)? onProgress,
+  }) async {
+    return switch (input) {
+      SaveBytesInput(:final fileBytes) => saveBytesAsync(
+        fileBytes: fileBytes,
+        fileType: fileType,
+        fileName: fileName,
+        saveLocation: saveLocation,
+        subDir: subDir,
+        conflictResolution: conflictResolution,
+        onProgress: onProgress,
+      ),
+      SaveFileInput(:final filePath) => saveFileAsync(
+        filePath: filePath,
+        fileType: fileType,
+        fileName: fileName,
+        saveLocation: saveLocation,
+        subDir: subDir,
+        conflictResolution: conflictResolution,
+        onProgress: onProgress,
+      ),
+      SaveNetworkInput(:final url, :final headers, :final timeout) =>
+        saveNetworkAsync(
+          url: url,
+          fileType: fileType,
+          fileName: fileName,
+          headers: headers,
+          timeout: timeout,
+          saveLocation: saveLocation,
+          subDir: subDir,
+          conflictResolution: conflictResolution,
+          onProgress: onProgress,
+        ),
+    };
   }
 
   /// Saves file bytes to device storage with progress streaming.
@@ -52,7 +144,7 @@ class FileSaver {
   /// Example:
   /// ```dart
   /// await for (final event in FileSaver.instance.saveBytes(
-  ///   bytes: imageBytes,
+  ///   fileBytes: imageBytes,
   ///   fileName: 'photo',
   ///   fileType: ImageType.jpg,
   /// )) {
