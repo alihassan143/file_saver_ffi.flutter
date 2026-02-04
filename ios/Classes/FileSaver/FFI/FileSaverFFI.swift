@@ -217,6 +217,12 @@ public func fileSaverSaveFile(
 
 @_cdecl("file_saver_cancel")
 public func fileSaverCancel(_ tokenId: UInt) {
+    // Try to cancel as download first (saveNetwork)
+    if let download = getDownload(tokenId) {
+        download.cancel()
+        return
+    }
+    // Fall back to token cancellation (saveBytes, saveFile)
     getToken(tokenId)?.cancel()
 }
 
