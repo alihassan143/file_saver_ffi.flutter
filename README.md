@@ -101,8 +101,8 @@ import 'package:file_saver_ffi/file_saver_ffi.dart';
 
 try {
   // Save image bytes
-  final uri = await FileSaver.instance.saveBytesAsync(
-    fileBytes: imageBytes,
+  final uri = await FileSaver.instance.saveAsync(
+    fileBytes: SaveBytesInput(imageBytes),
     fileName: 'my_image',
     fileType: ImageType.jpg,
   );
@@ -117,35 +117,30 @@ try {
 
 ## Core Concepts
 
-### API Methods
+### Unified API
 
-The library provides methods organized by **input source** and **API style**:
+The library provides a single, consistent API for all save operations using `SaveInput` polymorphism:
 
-#### Input Sources
+- **`save(input: ...)`**: Stream-based API with full control (progress, cancellation).
+- **`saveAsync(input: ...)`**: Future-based API for simple usage.
 
-- **Bytes** (`save*Bytes*`) - Save data from memory (`Uint8List`)
-- **File** (`save*File*`) - Save from file path (efficient for large files)
-- **Network** - Download and save from URL *(planned)*
+#### Input Sources (`SaveInput`)
 
-#### API Styles
+Use the appropriate input class for your data source:
 
-- **Stream** (`save*`) - Full control with progress events and cancellation
-- **Async** (`save*Async`) - Simple Future-based API with optional progress callback
-- **Interactive** (`save*As`) - User picks save location *(planned)*
+| Input Type             | Data Source     | Use Case                                       |
+|------------------------|-----------------|------------------------------------------------|
+| **`SaveBytesInput`**   | `Uint8List`     | Small files in memory (images, generated PDFs) |
+| **`SaveFileInput`**    | `String` (path) | Large files from disk (videos, recordings)     |
+| **`SaveNetworkInput`** | `String` (URL)  | Download and save directly from internet       |
 
 #### API Matrix
 
-| Input Source | Stream API          | Async API                | Interactive           |
-|--------------|---------------------|--------------------------|-----------------------|
-| **Bytes**    | `saveBytes()`       | `saveBytesAsync()`       | `saveBytesAs()`       |
-| **File**     | `saveFile()`        | `saveFileAsync()`        | `saveFileAs()`        |
-| **Network**  | `saveNetworkFile()` | `saveNetworkFileAsync()` | `saveNetworkFileAs()` |
-
-**When to use:**
-
-- `save*()` - Need real-time progress, cancellation, or full event control
-- `save*Async()` - Simple save with optional progress callback
-- `save*As()` - Let user choose save location via system picker
+| Input Source | Stream API               | Async API                     | Interactive 🔮 |
+|--------------|--------------------------|-------------------------------|----------------|
+| **Bytes**    | `save(SaveBytesInput)`   | `saveAsync(SaveBytesInput)`   | `saveAs()`     |
+| **File**     | `save(SaveFileInput)`    | `saveAsync(SaveFileInput)`    | `saveAs()`     |
+| **Network**  | `save(SaveNetworkInput)` | `saveAsync(SaveNetworkInput)` | `saveAs()`     |
 
 ### File Types
 
@@ -160,41 +155,22 @@ The library supports 35+ file formats across 4 categories:
 
 ### Save Locations
 
-Control where files are saved using platform-specific `SaveLocation` enums.
+Control where files are saved using platform-specific enum values:
 
 #### Android (`AndroidSaveLocation`)
-
-Maps to standard Android MediaStore directories.
-
-| Enum Value             | Storage Directory | Use Case                  |
-|------------------------|-------------------|---------------------------|
-| `.downloads` (default) | `Downloads/`      | General files, PDFs, Docs |
-| `.pictures`            | `Pictures/`       | Images (png, jpg, etc.)   |
-| `.movies`              | `Movies/`         | Videos (mp4, mov, etc.)   |
-| `.music`               | `Music/`          | Audio files               |
-| `.dcim`                | `DCIM/`           | Camera photos/videos      |
+| Value        | Directory    | Use Case                |
+|--------------|--------------|-------------------------|
+| `.downloads` | `Downloads/` | General files (default) |
+| `.pictures`  | `Pictures/`  | Images                  |
+| `.movies`    | `Movies/`    | Videos                  |
+| `.music`     | `Music/`     | Audio                   |
+| `.dcim`      | `DCIM/`      | Camera media            |
 
 #### iOS (`IosSaveLocation`)
-
-Maps to either the Files app (Documents) or Photos app.
-
-| Enum Value             | Destination         | Use Case                                  |
-|------------------------|---------------------|-------------------------------------------|
-| `.documents` (default) | Documents Directory | Any file type. Visible in **Files** app   |
-| `.photos`              | Photos Library      | Images & Videos only. Requires permission |
-
-**Example:**
-
-```dart
-import 'dart:io' show Platform;
-
-final uri = await FileSaver.instance.saveBytesAsync(
-  // ...
-  saveLocation: Platform.isAndroid
-    ? AndroidSaveLocation.pictures  // Android-specific
-    : IosSaveLocation.photos,       // iOS-specific
-);
-```
+| Value        | Destination    | Use Case                |
+|--------------|----------------|-------------------------|
+| `.documents` | Documents Dir  | General files (default) |
+| `.photos`    | Photos Library | Images/Videos only      |
 
 ### Conflict Resolution
 
@@ -214,203 +190,106 @@ Handle existing files with 4 strategies:
 
 ## Common Use Cases
 
-### Save to Gallery
+### Download video from Network to Gallery
 
 ```dart
-import 'dart:io' show Platform;
-
-// Save image to Photos Library (iOS) or Pictures (Android)
-final uri = await FileSaver.instance.saveBytesAsync(
-  fileBytes: imageBytes,
-  fileName: 'photo',
-  fileType: ImageType.jpg,
+final uri = await FileSaver.instance.saveAsync(
+  input: SaveNetworkInput(
+    url: 'https://example.com/video.mp4',
+    headers: {'Authorization': 'Bearer token'}, // Optional headers
+    timeout: Duration(minutes: 5), // Custom timeout
+  ),
+  fileName: 'downloaded_video',
+  fileType: VideoType.mp4,
   saveLocation: Platform.isAndroid
-    ? AndroidSaveLocation.pictures
+    ? AndroidSaveLocation.movies
     : IosSaveLocation.photos,
-  subDir: 'My App', // Creates album (iOS) or folder (Android)
 );
 ```
 
 ### Progress Tracking
 
 ```dart
-// Stream API - Full control
-await for (final event in FileSaver.instance.saveBytes(
-  fileBytes: largeVideoBytes,
-  fileName: 'video',
-  fileType: VideoType.mp4,
-)) {
-  switch (event) {
-    case SaveProgressStarted():
-      showLoadingIndicator();
-    case SaveProgressUpdate(:final progress):
-      updateProgressBar(progress); // 0.0 to 1.0
-    case SaveProgressComplete(:final uri):
-      hideLoadingIndicator();
-      showSuccess('Saved to: $uri');
-    case SaveProgressError(:final exception):
-      hideLoadingIndicator();
-      showError(exception.message);
-    case SaveProgressCancelled():
-      showCancelled();
-  }
-}
-
-// Async API - Simple callback
-final uri = await FileSaver.instance.saveBytesAsync(
-  fileBytes: largeVideoBytes,
+// Using Unified API
+await FileSaver.instance.saveAsync(
+  input: SaveNetworkInput(url: '...'),
   fileName: 'video',
   fileType: VideoType.mp4,
   onProgress: (progress) {
-    print('Progress: ${(progress * 100).toInt()}%');
+    print('Download progress: ${(progress * 100).toInt()}%');
   },
 );
 ```
 
-> **Note:** Progress is reported in 1MB chunks. For iOS Photos Library saves, progress jumps from 0% to 100% due to API 
-> limitations.
-
 ### Cancellation
 
 ```dart
-StreamSubscription<SaveProgress>? subscription;
-
-subscription = FileSaver.instance.saveBytes(
-  fileBytes: largeVideoBytes,
+// Stream API allows cancellation
+final subscription = FileSaver.instance.save(
+  input: SaveNetworkInput(url: '...'), // Works for all inputs
   fileName: 'video',
   fileType: VideoType.mp4,
 ).listen((event) {
-  switch (event) {
-    case SaveProgressUpdate(:final progress):
-      updateProgressBar(progress);
-    case SaveProgressCancelled():
-      showMessage('Cancelled and cleaned up!');
-    // ... handle other events
-  }
+    if (event is SaveProgressCancelled) {
+      print('Cancelled!');
+    }
 });
 
-// Cancel when needed
-cancelButton.onPressed = () {
-  subscription?.cancel(); // Stops I/O, deletes partial file, emits SaveProgressCancelled
-};
+// Cancel anytime
+subscription.cancel();
 ```
-
-### Error Handling
-
-```dart
-try {
-  final uri = await FileSaver.instance.saveBytesAsync(
-    fileBytes: pdfBytes,
-    fileName: 'document',
-    fileType: CustomFileType(ext: 'pdf', mimeType: 'application/pdf'),
-  );
-  
-  print('✅ Saved: $uri');
-
-} on PermissionDeniedException catch (e) {
-  print('❌ Permission denied: ${e.message}');
-  // Request permissions
-
-} on FileExistsException catch (e) {
-  print('❌ File exists: ${e.fileName}');
-  // Handle conflict
-
-} on StorageFullException catch (e) {
-  print('❌ Storage full: ${e.message}');
-  // Show storage full message
-
-} on FileSaverException catch (e) {
-  print('❌ Save failed: ${e.message}');
-  // Generic error handling
-}
-```
-
-## Platform Differences
-
-### Storage Locations
-
-| Aspect               | Android                           | iOS                                            |
-|----------------------|-----------------------------------|------------------------------------------------|
-| **Default location** | Downloads/                        | Documents/                                     |
-| **Gallery access**   | MediaStore (no permission on 10+) | Photos Library (requires permission)           |
-| **Custom files**     | Public directories via MediaStore | App sandbox (Documents/)                       |
-| **File visibility**  | Visible in file managers          | Visible in Files app if `UIFileSharingEnabled` |
-
-### Overwrite Behavior
-
-| Scenario              | Android 9-  | Android 10+     | iOS Photos   | iOS Documents   |
-|-----------------------|-------------|-----------------|--------------|-----------------|
-| **Own files**         | ✅ Overwrite | ✅ Overwrite     | ✅ Overwrite  | ✅ Overwrite     |
-| **Other apps' files** | ✅ Overwrite | ⚠️ Auto-rename* | ⚠️ Duplicate | N/A (sandboxed) |
-
-\* Android 10+ scoped storage cannot detect files from other apps before saving
-
-### SubDir Parameter
-
-- **Android:** Creates folder in MediaStore collection (e.g., `Pictures/My App/`)
-- **iOS Photos:** Creates album with specified name
-- **iOS Documents:** Creates subdirectory (e.g., `Documents/My App/`)
-
-## Exception Reference
-
-| Exception                     | Description                      | Error Code               |
-|-------------------------------|----------------------------------|--------------------------|
-| `PermissionDeniedException`   | Storage access denied            | `PERMISSION_DENIED`      |
-| `FileExistsException`         | File exists with `fail` strategy | `FILE_EXISTS`            |
-| `StorageFullException`        | Insufficient device storage      | `STORAGE_FULL`           |
-| `InvalidFileException`        | Empty bytes or invalid filename  | `INVALID_FILE`           |
-| `FileIOException`             | File system error                | `FILE_IO_ERROR`          |
-| `UnsupportedFormatException`  | Format not supported on platform | `UNSUPPORTED_FORMAT`     |
-| `SourceFileNotFoundException` | Source file not found (saveFile) | `FILE_NOT_FOUND`         |
-| `ICloudDownloadException`     | iCloud download failed (iOS)     | `ICLOUD_DOWNLOAD_FAILED` |
-| `CancelledException`          | Operation cancelled by user      | `CANCELLED`              |
-| `PlatformException`           | Generic platform error           | `PLATFORM_ERROR`         |
 
 ## API Reference
 
-### Bytes Methods
+### Unified API (Recommended)
 
-Save data from memory (`Uint8List`).
+#### `saveAsync`
+Future-based API for simple usage.
 
-| Method             | Returns                | Description                                                     |
-|--------------------|------------------------|-----------------------------------------------------------------|
-| `saveBytes()`      | `Stream<SaveProgress>` | Stream API with full control, cancellation, and progress events |
-| `saveBytesAsync()` | `Future<Uri>`          | Async API with optional progress callback                       |
+```dart
+Future<Uri> saveAsync({
+  required SaveInput input,
+  required String fileName,
+  required FileType fileType,
+  SaveLocation? saveLocation,
+  String? subDir,
+  ConflictResolution conflictResolution,
+  Function(double)? onProgress,
+})
+```
 
-**Common Parameters:**
+#### `save`
+Stream-based API for advanced control (cancellation, detailed events).
 
-- `fileBytes` (required) - File content as `Uint8List`
-- `fileName` (required) - File name without extension
-- `fileType` (required) - `ImageType`, `VideoType`, `AudioType`, or `CustomFileType`
-- `saveLocation` (optional) - Platform-specific save location (defaults: Android=Downloads, iOS=Documents)
-- `subDir` (optional) - Subdirectory/album name
-- `conflictResolution` (optional) - Default: `ConflictResolution.autoRename`
-- `onProgress` (optional, Async only) - Progress callback `(double progress) => void`
+```dart
+Stream<SaveProgress> save({
+  required SaveInput input,
+  required String fileName,
+  required FileType fileType,
+  // ... same optional params
+})
+```
 
-### File Methods
+### Input Models
 
-Save from file path (efficient for large files, no memory loading).
+#### `SaveBytesInput`
+- `fileBytes`: `Uint8List` (Required)
 
-| Method            | Returns                | Description                                                     |
-|-------------------|------------------------|-----------------------------------------------------------------|
-| `saveFile()`      | `Stream<SaveProgress>` | Stream API with full control, cancellation, and progress events |
-| `saveFileAsync()` | `Future<Uri>`          | Async API with optional progress callback                       |
+#### `SaveFileInput`
+- `filePath`: `String` (Required - absolute path)
 
-**Common Parameters:**
+#### `SaveNetworkInput`
+- `url`: `String` (Required)
+- `headers`: `Map<String, String>?` (Optional)
+- `timeout`: `Duration` (Default: 60s)
 
-- `filePath` (required) - Source file path (`file://` or `content://` URI)
-- `fileName` (required) - Target file name without extension
-- `fileType` (required) - `ImageType`, `VideoType`, `AudioType`, or `CustomFileType`
-- `saveLocation` (optional) - Platform-specific save location
-- `subDir` (optional) - Subdirectory/album name
-- `conflictResolution` (optional) - Default: `ConflictResolution.autoRename`
-- `onProgress` (optional, Async only) - Progress callback `(double progress) => void`
+### Direct API
 
-**iOS iCloud Support:** When saving files from iCloud Drive, progress shows download (0-50%) + save (50-100%).
+Specific methods are still available but `save/saveAsync` is recommended.
 
-### Network Methods
-
-*Planned for future release - download and save files from URLs.*
+- `saveBytes` / `saveBytesAsync`
+- `saveFile` / `saveFileAsync`
+- `saveNetwork` / `saveNetworkAsync`
 
 ### SaveProgress Events
 
@@ -424,6 +303,22 @@ Stream API emits these sealed class events:
 | `SaveProgressError`     | `exception: FileSaverException` | Error occurred              |
 | `SaveProgressCancelled` | -                               | User cancelled operation    |
 
+## Exception Reference
+
+| Exception                     | Description                             | Error Code               |
+|-------------------------------|-----------------------------------------|--------------------------|
+| `PermissionDeniedException`   | Storage access denied                   | `PERMISSION_DENIED`      |
+| `FileExistsException`         | File exists with `fail` strategy        | `FILE_EXISTS`            |
+| `StorageFullException`        | Insufficient device storage             | `STORAGE_FULL`           |
+| `InvalidFileException`        | Empty bytes or invalid filename         | `INVALID_FILE`           |
+| `FileIOException`             | File system error                       | `FILE_IO_ERROR`          |
+| `UnsupportedFormatException`  | Format not supported on platform        | `UNSUPPORTED_FORMAT`     |
+| `SourceFileNotFoundException` | Source file not found (saveFile)        | `FILE_NOT_FOUND`         |
+| `ICloudDownloadException`     | iCloud download failed (iOS)            | `ICLOUD_DOWNLOAD_FAILED` |
+| `NetworkException`            | Network error occurred during download. | `NETWORK_ERROR`          |
+| `CancelledException`          | Operation cancelled by user             | `CANCELLED`              |
+| `PlatformException`           | Generic platform error                  | `PLATFORM_ERROR`         |
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
@@ -431,7 +326,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Future Features
 
 * ~~File Input Methods~~
-* Save from Network URL
+* ~~Save from Network URL~~
 * User-Selected Location Android (SAF), iOS (Document Picker)
 * Custom Path Support
 * ~~Progress Tracking~~
