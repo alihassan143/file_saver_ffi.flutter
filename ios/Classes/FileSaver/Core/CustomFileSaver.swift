@@ -58,11 +58,11 @@ class CustomFileSaver: BaseFileSaver {
         onSuccess: (String) -> Void,
         cancellationToken: CancellationToken?
     ) throws {
-        // Phase 1 (0.0 → 0.5): iCloud download progress
+        // Phase 1 (0.0 → 0.8): iCloud download progress
         let downloadProgressHandler: ((Double) -> Void)? = onProgress.map { handler in
             { downloadProgress in
-                // Map download progress (0.0-1.0) to overall progress (0.0-0.5)
-                handler(downloadProgress * 0.5)
+                // Map download progress (0.0-1.0) to overall progress (0.0-0.8)
+                handler(downloadProgress * 0.8)
             }
         }
 
@@ -89,11 +89,11 @@ class CustomFileSaver: BaseFileSaver {
             conflictResolution: conflictResolution
         )
 
-        // Phase 2 (0.5 → 1.0): Copy progress
+        // Phase 2 (0.8 → 1.0): Copy progress
         let copyProgressHandler: ((Double) -> Void)? = onProgress.map { handler in
             { copyProgress in
-                // Map copy progress (0.0-1.0) to overall progress (0.5-1.0)
-                handler(0.5 + copyProgress * 0.5)
+                // Map copy progress (0.0-1.0) to overall progress (0.8-1.0)
+                handler(0.8 + copyProgress * 0.2)
             }
         }
 
