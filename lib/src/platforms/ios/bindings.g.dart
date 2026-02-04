@@ -212,6 +212,95 @@ class FileSaverFfiBindings {
             )
           >();
 
+  /// Save file from network URL asynchronously with progress reporting via
+  /// NativePort.
+  ///
+  /// Downloads file at native level to avoid double storage:
+  /// - Documents: Downloads directly to target path
+  /// - Photos: Downloads to tmp, saves to Photos Library, deletes tmp
+  ///
+  /// Progress messages sent to native_port:
+  /// - Started:    [0]
+  /// - Progress:   [1, progress]    (progress is 0.0 to 1.0)
+  /// - Error:      [2, errorCode, errorMessage]
+  /// - Success:    [3, fileUri]
+  /// - Cancelled:  [4]
+  ///
+  /// @param instance FileSaver instance from file_saver_init
+  /// @param urlString URL to download from
+  /// @param headersJson Optional JSON string of HTTP headers (can be NULL)
+  /// @param timeoutSeconds Timeout in seconds for network request
+  /// @param baseFileName File name without extension
+  /// @param extension File extension without dot
+  /// @param mimeType MIME type string
+  /// @param saveLocation Save location index (0-1 for iOS)
+  /// @param subDir Optional subdirectory (can be NULL)
+  /// @param conflictMode Conflict resolution mode (0-3)
+  /// @param native_port Dart NativePort for progress reporting
+  /// @return Token ID for cancellation
+  int file_saver_save_network(
+    ffi.Pointer<ffi.Void> instance,
+    ffi.Pointer<ffi.Char> urlString,
+    ffi.Pointer<ffi.Char> headersJson,
+    int timeoutSeconds,
+    ffi.Pointer<ffi.Char> baseFileName,
+    ffi.Pointer<ffi.Char> extension,
+    ffi.Pointer<ffi.Char> mimeType,
+    int saveLocation,
+    ffi.Pointer<ffi.Char> subDir,
+    int conflictMode,
+    int native_port,
+  ) {
+    return _file_saver_save_network(
+      instance,
+      urlString,
+      headersJson,
+      timeoutSeconds,
+      baseFileName,
+      extension,
+      mimeType,
+      saveLocation,
+      subDir,
+      conflictMode,
+      native_port,
+    );
+  }
+
+  late final _file_saver_save_networkPtr = _lookup<
+    ffi.NativeFunction<
+      ffi.Uint64 Function(
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Int32,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Int32,
+        ffi.Pointer<ffi.Char>,
+        ffi.Int32,
+        ffi.Int64,
+      )
+    >
+  >('file_saver_save_network');
+  late final _file_saver_save_network =
+      _file_saver_save_networkPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              int,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int,
+              int,
+            )
+          >();
+
   /// Cancel an ongoing save operation.
   ///
   /// @param tokenId Token ID returned from file_saver_save_bytes or file_saver_save_file

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ffi';
 import 'dart:isolate';
 import 'dart:typed_data';
@@ -179,6 +180,79 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
       final tokenId = _bindings.file_saver_save_file(
         _saverInstance,
         filePathCStr.cast(),
+        fileNameCStr.cast(),
+        extCStr.cast(),
+        mimeCStr.cast(),
+        saveLocationIndex,
+        subDirCStr?.cast() ?? nullptr,
+        conflictResolution.index,
+        nativePort,
+      );
+
+      controller.onCancel = () {
+        _bindings.file_saver_cancel(tokenId);
+        // Fallback cleanup if native doesn't respond with Cancelled event
+        Future.delayed(const Duration(milliseconds: 500), cleanup);
+      };
+    });
+  }
+
+  @override
+  Stream<SaveProgress> saveNetwork({
+    required String url,
+    required String fileName,
+    required FileType fileType,
+    Map<String, String>? headers,
+    Duration timeout = const Duration(seconds: 60),
+    SaveLocation? saveLocation,
+    String? subDir,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) {
+    validateNetworkInput(url, fileName);
+
+    return Stream.multi((controller) {
+      final receivePort = ReceivePort();
+      final arena = Arena();
+      final nativePort = receivePort.sendPort.nativePort;
+      bool cleanedUp = false;
+
+      void cleanup() {
+        if (cleanedUp) return;
+        cleanedUp = true;
+        receivePort.close();
+        arena.releaseAll();
+        controller.closeSync();
+      }
+
+      // Allocate in arena - all freed together with arena.releaseAll()
+      final urlCStr = url.toNativeUtf8(allocator: arena);
+      final headersJsonCStr =
+          headers != null ? jsonEncode(headers).toNativeUtf8(allocator: arena) : null;
+      final fileNameCStr = fileName.toNativeUtf8(allocator: arena);
+      final extCStr = fileType.ext.toNativeUtf8(allocator: arena);
+      final mimeCStr = fileType.mimeType.toNativeUtf8(allocator: arena);
+      final saveLocationIndex = switch (saveLocation) {
+        IosSaveLocation location => location.index,
+        _ => IosSaveLocation.documents.index,
+      };
+      final subDirCStr = subDir?.toNativeUtf8(allocator: arena);
+
+      // Listen to native port - cleanup happens here on terminal events
+      receivePort.listen((message) {
+        if (cleanedUp || controller.isClosed) return;
+
+        final event = _parseMessage(message);
+        controller.addSync(event);
+
+        if (isTerminal(event)) cleanup();
+      });
+
+      // Call native function - returns tokenId for cancellation
+      final tokenId = _bindings.file_saver_save_network(
+        _saverInstance,
+        urlCStr.cast(),
+        headersJsonCStr?.cast() ?? nullptr,
+        timeout.inSeconds,
         fileNameCStr.cast(),
         extCStr.cast(),
         mimeCStr.cast(),
