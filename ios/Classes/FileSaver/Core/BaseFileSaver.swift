@@ -147,9 +147,9 @@ extension BaseFileSaver {
             // Photos Library API doesn't support progress, report 0 → 1
             onProgress?(0.0)
             
-            let hasReadAccess = try requestPhotosPermission()
+            let hasReadAccess = try PhotosHelper.requestPermission()
             
-            if let existingUri = try handlePhotosConflictResolution(
+            if let existingUri = try PhotosHelper.handleConflictResolution(
                 fileName: fileName,
                 subDir: subDir,
                 conflictResolution: conflictResolution,
@@ -253,9 +253,9 @@ extension BaseFileSaver {
                 }
             }
             
-            let hasReadAccess = try requestPhotosPermission()
+            let hasReadAccess = try PhotosHelper.requestPermission()
             
-            if let existingUri = try handlePhotosConflictResolution(
+            if let existingUri = try PhotosHelper.handleConflictResolution(
                 fileName: fileName,
                 subDir: subDir,
                 conflictResolution: conflictResolution,
@@ -670,103 +670,8 @@ extension BaseFileSaver {
         return FileHelper.buildFileName(fileName: base, extension: ext)
     }
     
-    /// Requests photo library permission from the user.
-    func requestPhotosPermission() throws -> Bool {
-        if #available(iOS 14, *) {
-            var status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
-            
-            if status == .notDetermined {
-                var result: PHAuthorizationStatus = .notDetermined
-                let semaphore = DispatchSemaphore(value: 0)
-                
-                PHPhotoLibrary.requestAuthorization(for: .addOnly) { authStatus in
-                    result = authStatus
-                    semaphore.signal()
-                }
-                
-                semaphore.wait()
-                status = result
-                Thread.sleep(forTimeInterval: 0.5)
-            }
-            
-            guard status == .authorized || status == .limited else {
-                throw FileSaverError.permissionDenied("Photo library access denied")
-            }
-            
-            return status == .authorized
-        } else {
-            var status = PHPhotoLibrary.authorizationStatus()
-            
-            if status == .notDetermined {
-                var result: PHAuthorizationStatus = .notDetermined
-                let semaphore = DispatchSemaphore(value: 0)
-                
-                PHPhotoLibrary.requestAuthorization { authStatus in
-                    result = authStatus
-                    semaphore.signal()
-                }
-                
-                semaphore.wait()
-                status = result
-                Thread.sleep(forTimeInterval: 0.5)
-            }
-            
-            guard status == .authorized else {
-                throw FileSaverError.permissionDenied("Photo library access denied")
-            }
-            
-            return true
-        }
-    }
-    
+    /// Find or create album with given name (used by ImageSaver/VideoSaver)
     func findOrCreateAlbum(name: String) throws -> PHAssetCollection {
-        let options = PHFetchOptions()
-        options.predicate = NSPredicate(format: "title = %@", name)
-        let collections = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: options)
-        
-        if let existing = collections.firstObject {
-            return existing
-        }
-        
-        var albumId: String?
-        try PHPhotoLibrary.shared().performChangesAndWait {
-            let request = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: name)
-            albumId = request.placeholderForCreatedAssetCollection.localIdentifier
-        }
-        
-        guard let albumId = albumId,
-              let album = PHAssetCollection.fetchAssetCollections(withLocalIdentifiers: [albumId], options: nil).firstObject else {
-            throw FileSaverError.fileIO("Failed to create album: \(name)")
-        }
-        
-        return album
-    }
-    
-    func handlePhotosConflictResolution(
-        fileName: String,
-        subDir: String?,
-        conflictResolution: ConflictResolution,
-        hasReadAccess: Bool
-    ) throws -> String? {
-        guard hasReadAccess else {
-            return nil
-        }
-        
-        if conflictResolution == .skip || conflictResolution == .fail {
-            if let existing = PhotosConflictResolver.findExistingAsset(fileName: fileName, inAlbum: subDir) {
-                if conflictResolution == .fail {
-                    throw FileSaverError.fileExists(fileName)
-                }
-                return "ph://\(existing.localIdentifier)"
-            }
-        }
-        
-        if conflictResolution == .overwrite {
-            if let existing = PhotosConflictResolver.findExistingAsset(fileName: fileName, inAlbum: subDir) {
-                try PhotosConflictResolver.overwriteAsset(existing)
-            }
-        }
-        
-        return nil
+        return try PhotosHelper.findOrCreateAlbum(name: name)
     }
 }
