@@ -115,4 +115,54 @@ class AudioSaver: BaseFileSaver {
 
         onSuccess(finalURL.absoluteString)
     }
+
+    // MARK: - Save from Network
+    
+    func saveNetwork(
+        urlString: String,
+        headers: [String: String]?,
+        timeoutSeconds: Int,
+        fileType: FileType,
+        baseFileName: String,
+        saveLocation: SaveLocation,
+        subDir: String?,
+        conflictResolution: ConflictResolution,
+        onProgress: ((Double) -> Void)?,
+        onSuccess: @escaping (String) -> Void,
+        onError: @escaping (String, String) -> Void,
+        onCancelled: @escaping () -> Void,
+        onCancelHandlerReady: @escaping (@escaping () -> Void) -> Void,
+        onComplete: @escaping () -> Void,
+        cancellationToken: CancellationToken?
+    ) {
+        do {
+            try FormatValidator.validateAudioFormat(fileType)
+        } catch let error as FileSaverError {
+            onError(error.code, error.message)
+            onComplete()
+            return
+        } catch {
+            onError(Constants.errorPlatform, error.localizedDescription)
+            onComplete()
+            return
+        }
+        
+        saveNetworkImpl(
+            urlString: urlString,
+            headers: headers,
+            timeoutSeconds: timeoutSeconds,
+            fileType: fileType,
+            baseFileName: baseFileName,
+            saveLocation: saveLocation,
+            subDir: subDir,
+            conflictResolution: conflictResolution,
+            onProgress: onProgress,
+            onSuccess: onSuccess,
+            onError: onError,
+            onCancelled: onCancelled,
+            onCancelHandlerReady: onCancelHandlerReady,
+            onComplete: onComplete,
+            cancellationToken: cancellationToken
+        )
+    }
 }
