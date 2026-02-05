@@ -38,18 +38,40 @@ private func getToken(_ tokenId: UInt) -> CancellationToken? {
 
 // MARK: - Active Download Registry (for saveNetwork)
 
-/// Holds cancellation state and handler for an active network download operation
+/// Holds cancellation state and handler for an active network download operation.
+/// Thread-safe to handle race condition when cancel() is called before cancelHandler is set.
 private class ActiveDownload {
     let token: CancellationToken
-    var cancelHandler: (() -> Void)?
+    private var _cancelHandler: (() -> Void)?
+    private let lock = NSLock()
 
     init(token: CancellationToken) {
         self.token = token
     }
 
+    /// Thread-safe setter for cancelHandler.
+    /// If cancel() was already called, executes handler immediately.
+    func setCancelHandler(_ handler: @escaping () -> Void) {
+        lock.lock()
+        _cancelHandler = handler
+        let alreadyCancelled = token.isCancelled
+        lock.unlock()
+
+        if alreadyCancelled {
+            handler()
+        }
+    }
+
+    /// Thread-safe cancel.
+    /// Sets token.isCancelled and calls handler if available.
     func cancel() {
         token.cancel()
-        cancelHandler?()
+
+        lock.lock()
+        let handler = _cancelHandler
+        lock.unlock()
+
+        handler?()
     }
 }
 
@@ -246,45 +268,54 @@ public func fileSaverSaveNetwork(
     let mime = String(cString: mimeType)
     let directory = subDir.map { String(cString: $0) }
 
-    // Get FileSaver instance
-    instanceLock.lock()
-    guard let saver = instances[instanceId] else {
-        instanceLock.unlock()
-        reporter.sendError(
-            code: Constants.errorPlatform,
-            message: "FileSaver instance not found"
-        )
-        unregisterDownload(tokenId)
-        return tokenId
-    }
-    instanceLock.unlock()
-
-    // Send started event
-    reporter.sendStarted()
-
-    // Parse headers from JSON string
-    let parsedHeaders = NetworkHelper.parseHeaders(headers)
-
-    // Perform save - saveNetwork is non-blocking, no DispatchQueue needed
-    saver.saveNetwork(
-        urlString: url,
-        headers: parsedHeaders,
-        timeoutSeconds: timeout,
-        baseFileName: fileName,
-        extension: extStr,
-        mimeType: mime,
-        subDir: directory,
-        saveLocationValue: Int(saveLocation),
-        conflictMode: Int(conflictMode),
-        reporter: reporter,
-        cancellationToken: token,
-        onCancelHandlerReady: { cancelHandler in
-            activeDownload.cancelHandler = cancelHandler
-        },
-        onComplete: {
+    DispatchQueue.global(qos: .userInitiated).async {
+        // Get FileSaver instance
+        instanceLock.lock()
+        guard let saver = instances[instanceId] else {
+            instanceLock.unlock()
+            reporter.sendError(
+                code: Constants.errorPlatform,
+                message: "FileSaver instance not found"
+            )
             unregisterDownload(tokenId)
+            return
         }
-    )
+        instanceLock.unlock()
+
+        // Check if already cancelled before starting
+        if token.isCancelled {
+            reporter.sendCancelled()
+            unregisterDownload(tokenId)
+            return
+        }
+
+        // Send started event
+        reporter.sendStarted()
+
+        // Parse headers from JSON string
+        let parsedHeaders = NetworkHelper.parseHeaders(headers)
+
+        // Perform save
+        saver.saveNetwork(
+            urlString: url,
+            headers: parsedHeaders,
+            timeoutSeconds: timeout,
+            baseFileName: fileName,
+            extension: extStr,
+            mimeType: mime,
+            subDir: directory,
+            saveLocationValue: Int(saveLocation),
+            conflictMode: Int(conflictMode),
+            reporter: reporter,
+            cancellationToken: token,
+            onCancelHandlerReady: { cancelHandler in
+                activeDownload.setCancelHandler(cancelHandler)
+            },
+            onComplete: {
+                unregisterDownload(tokenId)
+            }
+        )
+    }
 
     return tokenId
 }
