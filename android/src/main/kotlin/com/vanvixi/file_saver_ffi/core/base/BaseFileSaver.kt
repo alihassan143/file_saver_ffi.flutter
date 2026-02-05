@@ -1,4 +1,4 @@
-package com.vanvixi.file_saver_ffi
+package com.vanvixi.file_saver_ffi.core.base
 
 import android.content.Context
 import com.vanvixi.file_saver_ffi.exception.FileExistsException

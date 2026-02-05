@@ -1,6 +1,7 @@
-package com.vanvixi.file_saver_ffi
+package com.vanvixi.file_saver_ffi.core
 
 import android.content.Context
+import com.vanvixi.file_saver_ffi.core.base.BaseFileSaver
 import com.vanvixi.file_saver_ffi.exception.UnsupportedFormatException
 import com.vanvixi.file_saver_ffi.models.ConflictResolution
 import com.vanvixi.file_saver_ffi.models.FileType
@@ -13,7 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 
-class VideoSaver(context: Context) : BaseFileSaver(context) {
+class ImageSaver(context: Context) : BaseFileSaver(context) {
 
     override fun saveBytes(
         fileData: ByteArray,
@@ -24,7 +25,7 @@ class VideoSaver(context: Context) : BaseFileSaver(context) {
         conflictResolution: ConflictResolution,
     ): Flow<SaveProgressEvent> = flow {
         try {
-            FormatValidator.validateVideoFormat(fileType)
+            FormatValidator.validateImageFormat(fileType)
         } catch (e: UnsupportedFormatException) {
             emit(
                 SaveProgressEvent.Error(
@@ -48,7 +49,7 @@ class VideoSaver(context: Context) : BaseFileSaver(context) {
         conflictResolution: ConflictResolution,
     ): Flow<SaveProgressEvent> = flow {
         try {
-            FormatValidator.validateVideoFormat(fileType)
+            FormatValidator.validateImageFormat(fileType)
         } catch (e: UnsupportedFormatException) {
             emit(
                 SaveProgressEvent.Error(
@@ -74,7 +75,7 @@ class VideoSaver(context: Context) : BaseFileSaver(context) {
         conflictResolution: ConflictResolution,
     ): Flow<SaveProgressEvent> = flow {
         try {
-            FormatValidator.validateVideoFormat(fileType)
+            FormatValidator.validateImageFormat(fileType)
         } catch (e: UnsupportedFormatException) {
             emit(
                 SaveProgressEvent.Error(
