@@ -144,9 +144,7 @@ abstract class FileSaverPlatform {
     if (uri == null ||
         !uri.hasScheme ||
         (!uri.isScheme('http') && !uri.isScheme('https'))) {
-      throw const InvalidFileException(
-        'URL must use http or https scheme',
-      );
+      throw const InvalidFileException('URL must use http or https scheme');
     }
     if (fileName.isEmpty) {
       throw const InvalidFileException('File name cannot be empty');

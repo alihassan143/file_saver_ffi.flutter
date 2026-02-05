@@ -9,8 +9,7 @@ import 'dart:typed_data';
 sealed class SaveInput {
   const SaveInput();
 
-  static SaveBytesInput bytes(Uint8List fileBytes) =>
-      SaveBytesInput(fileBytes);
+  static SaveBytesInput bytes(Uint8List fileBytes) => SaveBytesInput(fileBytes);
 
   static SaveFileInput file(String filePath) => SaveFileInput(filePath);
 
