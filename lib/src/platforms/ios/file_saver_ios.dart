@@ -227,7 +227,9 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
       // Allocate in arena - all freed together with arena.releaseAll()
       final urlCStr = url.toNativeUtf8(allocator: arena);
       final headersJsonCStr =
-          headers != null ? jsonEncode(headers).toNativeUtf8(allocator: arena) : null;
+          headers != null
+              ? jsonEncode(headers).toNativeUtf8(allocator: arena)
+              : null;
       final fileNameCStr = fileName.toNativeUtf8(allocator: arena);
       final extCStr = fileType.ext.toNativeUtf8(allocator: arena);
       final mimeCStr = fileType.mimeType.toNativeUtf8(allocator: arena);
