@@ -1,13 +1,15 @@
 package com.vanvixi.file_saver_ffi.core.base
 
 import android.content.Context
-import com.vanvixi.file_saver_ffi.exception.FileExistsException
 import com.vanvixi.file_saver_ffi.exception.NetworkDownloadException
 import com.vanvixi.file_saver_ffi.models.ConflictResolution
 import com.vanvixi.file_saver_ffi.models.FileType
 import com.vanvixi.file_saver_ffi.models.SaveLocation
 import com.vanvixi.file_saver_ffi.models.SaveProgressEvent
-import com.vanvixi.file_saver_ffi.utils.*
+import com.vanvixi.file_saver_ffi.utils.Constants
+import com.vanvixi.file_saver_ffi.utils.FileHelper
+import com.vanvixi.file_saver_ffi.utils.NetworkHelper
+import com.vanvixi.file_saver_ffi.utils.saveFlow
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import java.io.FileNotFoundException
@@ -17,14 +19,6 @@ abstract class BaseFileSaver(protected val context: Context) {
 
     /**
      * Saves file to MediaStore with real-time progress streaming
-     *
-     * @param fileData File content as byte array
-     * @param fileType File type (e.g., ImageType, VideoType, AudioType, CustomFileType)
-     * @param baseFileName File name WITHOUT extension
-     * @param saveLocation Target save location (e.g., PICTURES, DOWNLOADS, DCIM)
-     * @param subDir Optional album name (null → Pictures folder)
-     * @param conflictResolution Conflict resolution mode
-     * @return Flow of SaveProgressEvent with real-time progress updates
      */
     open fun saveBytes(
         fileData: ByteArray,
@@ -35,104 +29,37 @@ abstract class BaseFileSaver(protected val context: Context) {
         conflictResolution: ConflictResolution,
     ): Flow<SaveProgressEvent> = saveFlow {
         if (fileData.isEmpty()) {
-            trySend(
-                SaveProgressEvent.Error(Constants.ERROR_INVALID_FILE, "File data cannot be empty")
-            )
+            sendError(Constants.ERROR_INVALID_FILE, "File data cannot be empty")
             return@saveFlow
         }
 
-        // Progress: 0.05 (preparing)
-        trySend(SaveProgressEvent.Progress(0.05))
+        sendProgress(0.05)
 
-        val (uri, outputStream) = try {
-            StoreHelper.createEntry(
-                context,
-                fileType,
-                baseFileName,
-                saveLocation,
-                subDir,
-                conflictResolution,
-            )
-        } catch (e: IOException) {
-            trySend(
-                SaveProgressEvent.Error(
-                    Constants.ERROR_FILE_IO,
-                    "Failed to create MediaStore entry: ${e.message}",
-                )
-            )
-            return@saveFlow
-        } catch (e: FileExistsException) {
-            trySend(
-                SaveProgressEvent.Error(
-                    Constants.ERROR_FILE_EXISTS,
-                    e.message ?: "File already exists",
-                )
-            )
-            return@saveFlow
-        }
+        val (uri, outputStream) = createStoreEntry(
+            context, fileType, baseFileName, saveLocation, subDir, conflictResolution
+        ) ?: return@saveFlow
 
-        // Progress: 0.1 (entry created)
-        trySend(SaveProgressEvent.Progress(0.1))
+        sendProgress(0.1)
 
         try {
-            // Write with real-time progress (0.1 - 0.9)
             FileHelper.writeStream(outputStream, fileData) { writeProgress ->
-                // Map write progress (0.0-1.0) to overall progress (0.1-0.9)
-                val overallProgress = 0.1 + (writeProgress * 0.8)
-                trySend(SaveProgressEvent.Progress(overallProgress))
+                sendProgress(mapProgress(writeProgress, 0.1, 0.9))
             }
         } catch (e: CancellationException) {
-            // Operation was cancelled - cleanup partial file
-            try {
-                context.contentResolver.delete(uri, null, null)
-            } catch (_: Exception) {
-                // Ignore delete errors
-            }
-            trySend(SaveProgressEvent.Cancelled)
-            throw e  // Re-throw to properly cancel coroutine
+            context.deleteEntry(uri)
+            sendCancelled()
+            throw e
         } catch (e: IOException) {
-            // If write fails, try to delete the MediaStore entry
-            try {
-                context.contentResolver.delete(uri, null, null)
-            } catch (_: Exception) {
-                // Ignore delete errors
-            }
-            trySend(
-                SaveProgressEvent.Error(
-                    Constants.ERROR_FILE_IO,
-                    "Failed to write file data: ${e.message}",
-                )
-            )
+            context.deleteEntry(uri)
+            sendError(Constants.ERROR_FILE_IO, "Failed to write file data: ${e.message}")
             return@saveFlow
         }
 
-        // Progress: 0.9 (write complete)
-        trySend(SaveProgressEvent.Progress(0.9))
-
-        try {
-            StoreHelper.markEntryComplete(context, uri)
-        } catch (_: Exception) {
-            // If marking complete fails, file is still saved
-        }
-
-        // Progress: 1.0 (complete)
-        trySend(SaveProgressEvent.Progress(1.0))
-
-        trySend(SaveProgressEvent.Success(uri.toString()))
+        finishSave(context, uri)
     }
 
     /**
      * Saves file from source path to MediaStore with real-time progress streaming
-     *
-     * Reads source file in chunks without loading into memory - suitable for large files.
-     *
-     * @param filePath Source file path (file:// or content:// URI)
-     * @param fileType File type (e.g., ImageType, VideoType, AudioType, CustomFileType)
-     * @param baseFileName Target file name WITHOUT extension
-     * @param saveLocation Target save location (e.g., PICTURES, DOWNLOADS, DCIM)
-     * @param subDir Optional album name (null → default folder)
-     * @param conflictResolution Conflict resolution mode
-     * @return Flow of SaveProgressEvent with real-time progress updates
      */
     open fun saveFile(
         filePath: String,
@@ -142,135 +69,53 @@ abstract class BaseFileSaver(protected val context: Context) {
         subDir: String?,
         conflictResolution: ConflictResolution,
     ): Flow<SaveProgressEvent> = saveFlow {
-        // Progress: 0.05 (preparing)
-        trySend(SaveProgressEvent.Progress(0.05))
+        sendProgress(0.05)
 
-        // Open source file
         val sourceFile = try {
             FileHelper.openSourceFile(context, filePath)
         } catch (_: FileNotFoundException) {
-            trySend(
-                SaveProgressEvent.Error(
-                    Constants.ERROR_FILE_NOT_FOUND,
-                    "Source file not found: $filePath",
-                )
-            )
+            sendError(Constants.ERROR_FILE_NOT_FOUND, "Source file not found: $filePath")
             return@saveFlow
         } catch (e: SecurityException) {
-            trySend(
-                SaveProgressEvent.Error(
-                    Constants.ERROR_PERMISSION_DENIED,
-                    "Permission denied: ${e.message}",
-                )
-            )
+            sendError(Constants.ERROR_PERMISSION_DENIED, "Permission denied: ${e.message}")
             return@saveFlow
         } catch (e: IllegalArgumentException) {
-            trySend(
-                SaveProgressEvent.Error(
-                    Constants.ERROR_INVALID_FILE,
-                    e.message ?: "Invalid file path",
-                )
-            )
+            sendError(Constants.ERROR_INVALID_FILE, e.message ?: "Invalid file path")
             return@saveFlow
         }
 
-        // Progress: 0.1 (source file opened)
-        trySend(SaveProgressEvent.Progress(0.1))
+        sendProgress(0.1)
 
-        // Create MediaStore entry
-        val (uri, outputStream) = try {
-            StoreHelper.createEntry(
-                context,
-                fileType,
-                baseFileName,
-                saveLocation,
-                subDir,
-                conflictResolution,
-            )
-        } catch (e: IOException) {
-            sourceFile.inputStream.close()
-            trySend(
-                SaveProgressEvent.Error(
-                    Constants.ERROR_FILE_IO,
-                    "Failed to create MediaStore entry: ${e.message}",
-                )
-            )
-            return@saveFlow
-        } catch (e: FileExistsException) {
-            sourceFile.inputStream.close()
-            trySend(
-                SaveProgressEvent.Error(
-                    Constants.ERROR_FILE_EXISTS,
-                    e.message ?: "File already exists",
-                )
-            )
-            return@saveFlow
+        val (uri, outputStream) = run {
+            val result = createStoreEntry(context, fileType, baseFileName, saveLocation, subDir, conflictResolution)
+            if (result == null) {
+                sourceFile.inputStream.close()
+                return@saveFlow
+            }
+            result
         }
 
-        // Progress: 0.15 (entry created)
-        trySend(SaveProgressEvent.Progress(0.15))
+        sendProgress(0.15)
 
         try {
-            // Copy with real-time progress (0.15 - 0.9)
             FileHelper.copyStream(sourceFile.inputStream, outputStream, sourceFile.totalSize) { copyProgress ->
-                // Map copy progress (0.0-1.0) to overall progress (0.15-0.9)
-                val overallProgress = 0.15 + (copyProgress * 0.75)
-                trySend(SaveProgressEvent.Progress(overallProgress))
+                sendProgress(mapProgress(copyProgress, 0.15, 0.9))
             }
         } catch (e: CancellationException) {
-            // Operation was cancelled - cleanup partial file
-            try {
-                context.contentResolver.delete(uri, null, null)
-            } catch (_: Exception) {
-                // Ignore delete errors
-            }
-            trySend(SaveProgressEvent.Cancelled)
-            throw e  // Re-throw to properly cancel coroutine
+            context.deleteEntry(uri)
+            sendCancelled()
+            throw e
         } catch (e: IOException) {
-            // If copy fails, try to delete the MediaStore entry
-            try {
-                context.contentResolver.delete(uri, null, null)
-            } catch (_: Exception) {
-                // Ignore delete errors
-            }
-            trySend(
-                SaveProgressEvent.Error(
-                    Constants.ERROR_FILE_IO, "Failed to copy file: ${e.message}"
-                )
-            )
+            context.deleteEntry(uri)
+            sendError(Constants.ERROR_FILE_IO, "Failed to copy file: ${e.message}")
             return@saveFlow
         }
 
-        // Progress: 0.9 (copy complete)
-        trySend(SaveProgressEvent.Progress(0.9))
-
-        try {
-            StoreHelper.markEntryComplete(context, uri)
-        } catch (_: Exception) {
-            // If marking complete fails, file is still saved
-        }
-
-        // Progress: 1.0 (complete)
-        trySend(SaveProgressEvent.Progress(1.0))
-
-        trySend(SaveProgressEvent.Success(uri.toString()))
+        finishSave(context, uri)
     }
 
     /**
-     * Downloads file from network URL and saves directly to MediaStore (zero temp files).
-     *
-     * Streams data from HttpURLConnection directly into MediaStore OutputStream,
-     * providing continuous progress from 0.0 to 1.0.
-     *
-     * @param url Network URL to download from
-     * @param headersJson Optional JSON string of HTTP headers
-     * @param timeoutMs Timeout in milliseconds for network connection
-     * @param fileType File type (e.g., ImageType, VideoType, AudioType, CustomFileType)
-     * @param baseFileName Target file name WITHOUT extension
-     * @param saveLocation Target save location (e.g., PICTURES, DOWNLOADS, DCIM)
-     * @param subDir Optional subdirectory within target location
-     * @param conflictResolution Conflict resolution mode
-     * @return Flow of SaveProgressEvent with real-time progress updates
+     * Downloads file from network URL and saves directly to MediaStore
      */
     open fun saveNetwork(
         url: String,
@@ -282,10 +127,8 @@ abstract class BaseFileSaver(protected val context: Context) {
         subDir: String?,
         conflictResolution: ConflictResolution,
     ): Flow<SaveProgressEvent> = saveFlow {
-        // Progress: 0.02 (connecting)
-        trySend(SaveProgressEvent.Progress(0.02))
+        sendProgress(0.02)
 
-        // 1. Open network connection
         val connectionResult = try {
             NetworkHelper.openConnection(url, headersJson, timeoutMs)
         } catch (e: NetworkDownloadException) {
@@ -294,100 +137,40 @@ abstract class BaseFileSaver(protected val context: Context) {
             } else {
                 "Network download failed: ${e.message}"
             }
-            trySend(SaveProgressEvent.Error(Constants.ERROR_NETWORK, message))
+            sendError(Constants.ERROR_NETWORK, message)
             return@saveFlow
         }
 
         try {
-            // Progress: 0.05 (connected, creating entry)
-            trySend(SaveProgressEvent.Progress(0.05))
+            sendProgress(0.05)
 
-            // 2. Create MediaStore entry
-            val (uri, outputStream) = try {
-                StoreHelper.createEntry(
-                    context,
-                    fileType,
-                    baseFileName,
-                    saveLocation,
-                    subDir,
-                    conflictResolution,
-                )
-            } catch (e: IOException) {
-                trySend(
-                    SaveProgressEvent.Error(
-                        Constants.ERROR_FILE_IO,
-                        "Failed to create MediaStore entry: ${e.message}",
-                    )
-                )
-                return@saveFlow
-            } catch (e: FileExistsException) {
-                trySend(
-                    SaveProgressEvent.Error(
-                        Constants.ERROR_FILE_EXISTS,
-                        e.message ?: "File already exists",
-                    )
-                )
-                return@saveFlow
-            }
+            val (uri, outputStream) = createStoreEntry(
+                context, fileType, baseFileName, saveLocation, subDir, conflictResolution
+            ) ?: return@saveFlow
 
-            // Progress: 0.1 (entry created, streaming)
-            trySend(SaveProgressEvent.Progress(0.1))
+            sendProgress(0.1)
 
             try {
-                // 3. Stream directly: network → MediaStore (single pass)
                 FileHelper.copyStream(
-                    connectionResult.inputStream,
-                    outputStream,
-                    connectionResult.contentLength,
+                    connectionResult.inputStream, outputStream, connectionResult.contentLength
                 ) { copyProgress ->
-                    // Map copy progress (0.0-1.0) to overall progress (0.1-0.9)
-                    val overallProgress = 0.1 + (copyProgress * 0.8)
-                    trySend(SaveProgressEvent.Progress(overallProgress))
+                    sendProgress(mapProgress(copyProgress, 0.1, 0.9))
                 }
             } catch (e: CancellationException) {
-                // Operation was cancelled - cleanup partial file
-                try {
-                    context.contentResolver.delete(uri, null, null)
-                } catch (_: Exception) {
-                    // Ignore delete errors
-                }
-                trySend(SaveProgressEvent.Cancelled)
-                throw e  // Re-throw to properly cancel coroutine
+                context.deleteEntry(uri)
+                sendCancelled()
+                throw e
             } catch (e: IOException) {
-                // If copy fails, try to delete the MediaStore entry
-                try {
-                    context.contentResolver.delete(uri, null, null)
-                } catch (_: Exception) {
-                    // Ignore delete errors
-                }
-                trySend(
-                    SaveProgressEvent.Error(
-                        Constants.ERROR_FILE_IO,
-                        "Failed to stream network data: ${e.message}",
-                    )
-                )
+                context.deleteEntry(uri)
+                sendError(Constants.ERROR_FILE_IO, "Failed to stream network data: ${e.message}")
                 return@saveFlow
             }
 
-            // Progress: 0.9 (stream complete)
-            trySend(SaveProgressEvent.Progress(0.9))
-
-            try {
-                StoreHelper.markEntryComplete(context, uri)
-            } catch (_: Exception) {
-                // If marking complete fails, file is still saved
-            }
-
-            // Progress: 1.0 (complete)
-            trySend(SaveProgressEvent.Progress(1.0))
-
-            trySend(SaveProgressEvent.Success(uri.toString()))
+            finishSave(context, uri)
         } finally {
-            // Always disconnect the HTTP connection
             try {
                 connectionResult.connection.disconnect()
             } catch (_: Exception) {
-                // Ignore disconnect errors
             }
         }
     }
