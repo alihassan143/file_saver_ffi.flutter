@@ -1,3 +1,23 @@
+## 0.2.0
+
+### Added
+
+- **Network Save Support**:
+    - `saveNetwork()`: Stream-based API to download and save files directly from URLs
+    - `saveNetworkAsync()`: Future-based API for network downloads with optional progress callback
+    - Native optimization: Downloads directly to storage to avoid double storage (memory + disk)
+    - Supports custom HTTP headers and timeouts
+
+- **Unified API Entrypoints**:
+    - `save()`: Single stream-based entrypoint using `SaveInput` sealed class (`SaveBytesInput`, `SaveFileInput`,
+      `SaveNetworkInput`)
+    - `saveAsync()`: Single future-based entrypoint using `SaveInput`
+    - Allows polymorphic usage: `FileSaver.instance.save(input: SaveNetworkInput(...))`
+
+### Refactored
+
+- Source code refactoring
+
 ## 0.1.1
 
 ### Documentation
