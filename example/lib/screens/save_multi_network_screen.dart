@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:file_saver_ffi/file_saver_ffi.dart';
 import 'package:flutter/material.dart';
