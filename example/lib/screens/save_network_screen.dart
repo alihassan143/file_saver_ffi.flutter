@@ -106,10 +106,7 @@ class _SaveNetworkScreenState extends State<SaveNetworkScreen>
         input: SaveInput.network(url: config.downloadUrl),
         fileName: fileName,
         fileType: config.fileType,
-        saveLocation: config.getSaveLocation(),
-        subDir: Platform.isIOS && config.category == MediaCategory.document
-            ? 'PDF'
-            : 'FileSaverFFI Demo',
+        saveLocation: config.saveLocation,
         onProgress: (value) {
           setState(() => progress = value * 100);
         },
@@ -125,10 +122,8 @@ class _SaveNetworkScreenState extends State<SaveNetworkScreen>
       input: SaveInput.network(url: config.downloadUrl),
       fileName: fileName,
       fileType: config.fileType,
-      saveLocation: config.getSaveLocation(),
-      subDir: Platform.isIOS && config.category == MediaCategory.document
-          ? 'PDF'
-          : 'FileSaverFFI Demo',
+      saveLocation: config.saveLocation,
+      subDir: config.subDir,
       conflictResolution: ConflictResolution.autoRename,
     );
 
