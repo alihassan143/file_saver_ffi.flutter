@@ -62,4 +62,32 @@ class ImageSaver(context: Context) : BaseFileSaver(context) {
         super.saveFile(filePath, fileType, baseFileName, saveLocation, subDir, conflictResolution)
             .collect { event -> emit(event) }
     }.flowOn(Dispatchers.IO)
+
+    override fun saveNetwork(
+        url: String,
+        headersJson: String?,
+        timeoutMs: Int,
+        fileType: FileType,
+        baseFileName: String,
+        saveLocation: SaveLocation,
+        subDir: String?,
+        conflictResolution: ConflictResolution,
+    ): Flow<SaveProgressEvent> = flow {
+        try {
+            FormatValidator.validateImageFormat(fileType)
+        } catch (e: UnsupportedFormatException) {
+            emit(
+                SaveProgressEvent.Error(
+                    Constants.ERROR_UNSUPPORTED_FORMAT,
+                    e.message ?: "Unsupported format: ${fileType.ext}",
+                )
+            )
+            return@flow
+        }
+
+        super.saveNetwork(
+            url, headersJson, timeoutMs,
+            fileType, baseFileName, saveLocation, subDir, conflictResolution,
+        ).collect { event -> emit(event) }
+    }.flowOn(Dispatchers.IO)
 }
