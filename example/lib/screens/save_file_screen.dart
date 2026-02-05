@@ -173,7 +173,7 @@ class _SaveFileScreenState extends State<SaveFileScreen>
         fileName: fileName,
         fileType: fileType,
         saveLocation: saveLocation,
-        subDir: 'FileSaverFFI Demo',
+        subDir: _config.subDir,
         onProgress: (value) {
           setState(() => progress = value * 100);
         },
@@ -192,7 +192,7 @@ class _SaveFileScreenState extends State<SaveFileScreen>
       fileName: fileName,
       fileType: fileType,
       saveLocation: saveLocation,
-      subDir: 'FileSaverFFI Demo',
+      subDir: _config.subDir,
     );
 
     _saveSubscription = stream.listen(

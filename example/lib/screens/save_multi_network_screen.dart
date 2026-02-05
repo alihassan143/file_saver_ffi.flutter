@@ -45,13 +45,6 @@ class _SaveMultiNetworkScreenState extends State<SaveMultiNetworkScreen>
     return '${config.fileNamePrefix}_${DateTime.now().millisecondsSinceEpoch}';
   }
 
-  String? _resolveSubDir(NetworkDemoConfig config) {
-    if (Platform.isIOS && config.category == MediaCategory.document) {
-      return 'PDF';
-    }
-    return 'FileSaverFFI Demo';
-  }
-
   Future<void> _startItem(_DownloadItem item) async {
     if (item.status == _DownloadStatus.downloading) return;
 
@@ -79,8 +72,8 @@ class _SaveMultiNetworkScreenState extends State<SaveMultiNetworkScreen>
       input: SaveInput.network(url: item.config.downloadUrl),
       fileName: _buildFileName(item.config),
       fileType: item.config.fileType,
-      saveLocation: item.config.getSaveLocation(),
-      subDir: _resolveSubDir(item.config),
+      saveLocation: item.config.saveLocation,
+      subDir: item.config.subDir,
       conflictResolution: ConflictResolution.autoRename,
     );
 

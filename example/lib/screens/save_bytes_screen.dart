@@ -120,8 +120,8 @@ class _SaveBytesScreenState extends State<SaveBytesScreen>
         input: SaveInput.bytes(bytes),
         fileName: fileName,
         fileType: config.fileType,
-        saveLocation: config.getSaveLocation(),
-        subDir: 'FileSaverFFI Demo',
+        saveLocation: config.saveLocation,
+        subDir: config.subDir,
         onProgress: (value) {
           setState(() => progress = value);
         },
@@ -138,10 +138,8 @@ class _SaveBytesScreenState extends State<SaveBytesScreen>
       input: SaveInput.bytes(bytes),
       fileName: fileName,
       fileType: config.fileType,
-      saveLocation: config.getSaveLocation(),
-      subDir: Platform.isIOS && config.category == MediaCategory.document
-          ? 'PDF'
-          : 'FileSaverFFI Demo',
+      saveLocation: config.saveLocation,
+      subDir: config.subDir,
       conflictResolution: ConflictResolution.autoRename,
     );
 
