@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:file_saver_ffi/file_saver_ffi.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Enum for selectable media types in the example app
@@ -15,27 +14,41 @@ enum MediaCategory {
   final IconData icon;
 }
 
-/// Configuration for each media type for Save Bytes (download) demos
-class BytesDemoConfig {
-  const BytesDemoConfig({
+abstract class MediaConfig {
+  const MediaConfig({
     required this.category,
     required this.title,
     required this.description,
-    required this.downloadUrl,
-    required this.fileNamePrefix,
-    required this.fileType,
-    required this.getSaveLocation,
+    required this.saveLocation,
+    this.subDir = "FileSaverFFI Demo",
     this.defaultUseStreamApi = false,
   });
 
   final MediaCategory category;
   final String title;
   final String description;
+  final SaveLocation? saveLocation;
+  final String? subDir;
+  final bool defaultUseStreamApi;
+}
+
+/// Configuration for each media type for Save Bytes (download) demos
+class BytesDemoConfig extends MediaConfig {
+  const BytesDemoConfig({
+    required super.category,
+    required super.title,
+    required super.description,
+    required this.downloadUrl,
+    required this.fileNamePrefix,
+    required this.fileType,
+    required super.saveLocation,
+    super.defaultUseStreamApi,
+    super.subDir,
+  });
+
   final String downloadUrl;
   final String fileNamePrefix;
   final FileType fileType;
-  final SaveLocation? Function() getSaveLocation;
-  final bool defaultUseStreamApi;
 
   static final image = BytesDemoConfig(
     category: MediaCategory.image,
@@ -44,11 +57,11 @@ class BytesDemoConfig {
     downloadUrl: 'https://picsum.photos/800/1200',
     fileNamePrefix: 'image',
     fileType: ImageType.jpg,
-    getSaveLocation: () => Platform.isAndroid
-        ? AndroidSaveLocation.pictures
-        : Platform.isIOS
-        ? IosSaveLocation.photos
-        : null,
+    saveLocation: switch (defaultTargetPlatform) {
+      TargetPlatform.android => AndroidSaveLocation.pictures,
+      TargetPlatform.iOS => IosSaveLocation.photos,
+      _ => null,
+    },
   );
 
   static final video = BytesDemoConfig(
@@ -58,11 +71,12 @@ class BytesDemoConfig {
     downloadUrl: 'https://download.samplelib.com/mp4/sample-5s.mp4',
     fileNamePrefix: 'video',
     fileType: VideoType.mp4,
-    getSaveLocation: () => Platform.isAndroid
-        ? AndroidSaveLocation.movies
-        : Platform.isIOS
-        ? IosSaveLocation.photos
-        : null,
+    saveLocation: switch (defaultTargetPlatform) {
+      TargetPlatform.android => AndroidSaveLocation.movies,
+      TargetPlatform.iOS => IosSaveLocation.photos,
+      _ => null,
+    },
+    defaultUseStreamApi: true,
   );
 
   static final audio = BytesDemoConfig(
@@ -73,11 +87,15 @@ class BytesDemoConfig {
         'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
     fileNamePrefix: 'audio',
     fileType: AudioType.mp3,
-    getSaveLocation: () => Platform.isAndroid
-        ? AndroidSaveLocation.music
-        : Platform.isIOS
-        ? IosSaveLocation.documents
-        : null,
+    saveLocation: switch (defaultTargetPlatform) {
+      TargetPlatform.android => AndroidSaveLocation.music,
+      TargetPlatform.iOS => IosSaveLocation.documents,
+      _ => null,
+    },
+    subDir: switch (defaultTargetPlatform) {
+      TargetPlatform.iOS => 'Music',
+      _ => 'FileSaverFFI Demo',
+    },
     defaultUseStreamApi: true,
   );
 
@@ -89,12 +107,15 @@ class BytesDemoConfig {
         'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     fileNamePrefix: 'document',
     fileType: const CustomFileType(ext: 'pdf', mimeType: 'application/pdf'),
-    getSaveLocation: () => Platform.isAndroid
-        ? AndroidSaveLocation.downloads
-        : Platform.isIOS
-        ? IosSaveLocation.documents
-        : null,
-    defaultUseStreamApi: true,
+    saveLocation: switch (defaultTargetPlatform) {
+      TargetPlatform.android => AndroidSaveLocation.downloads,
+      TargetPlatform.iOS => IosSaveLocation.documents,
+      _ => null,
+    },
+    subDir: switch (defaultTargetPlatform) {
+      TargetPlatform.iOS => 'Documents',
+      _ => 'FileSaverFFI Demo',
+    },
   );
 
   static BytesDemoConfig forCategory(MediaCategory category) {
@@ -108,29 +129,44 @@ class BytesDemoConfig {
 }
 
 /// Configuration for Save File (file picker) demos
-class FileDemoConfig {
+class FileDemoConfig extends MediaConfig {
   const FileDemoConfig({
-    required this.category,
-    required this.title,
-    required this.description,
-    this.defaultUseStreamApi = false,
+    required super.category,
+    required super.title,
+    required super.description,
+    required super.saveLocation,
+    super.subDir,
+    super.defaultUseStreamApi = false,
   });
-
-  final MediaCategory category;
-  final String title;
-  final String description;
-  final bool defaultUseStreamApi;
 
   static final image = FileDemoConfig(
     category: MediaCategory.image,
     title: 'Image File Demo',
     description: 'Pick image from gallery and save.',
+    saveLocation: switch (defaultTargetPlatform) {
+      TargetPlatform.android => AndroidSaveLocation.pictures,
+      TargetPlatform.iOS => IosSaveLocation.documents,
+      _ => null,
+    },
+    subDir: switch (defaultTargetPlatform) {
+      TargetPlatform.iOS => 'Images',
+      _ => 'FileSaverFFI Demo',
+    },
   );
 
   static final video = FileDemoConfig(
     category: MediaCategory.video,
     title: 'Video File Demo',
     description: 'Pick video from gallery and save.',
+    saveLocation: switch (defaultTargetPlatform) {
+      TargetPlatform.android => AndroidSaveLocation.movies,
+      TargetPlatform.iOS => IosSaveLocation.documents,
+      _ => null,
+    },
+    subDir: switch (defaultTargetPlatform) {
+      TargetPlatform.iOS => 'Videos',
+      _ => 'FileSaverFFI Demo',
+    },
   );
 
   static final document = FileDemoConfig(
@@ -138,6 +174,15 @@ class FileDemoConfig {
     title: 'Document File Demo',
     description: 'Pick any file and save with cancellation support.',
     defaultUseStreamApi: true,
+    saveLocation: switch (defaultTargetPlatform) {
+      TargetPlatform.android => AndroidSaveLocation.downloads,
+      TargetPlatform.iOS => IosSaveLocation.documents,
+      _ => null,
+    },
+    subDir: switch (defaultTargetPlatform) {
+      TargetPlatform.iOS => 'Documents',
+      _ => 'FileSaverFFI Demo',
+    },
   );
 
   static FileDemoConfig forCategory(MediaCategory category) {
@@ -151,26 +196,22 @@ class FileDemoConfig {
 }
 
 /// Configuration for each media type for Save Network (download) demos
-class NetworkDemoConfig {
+class NetworkDemoConfig extends MediaConfig {
   const NetworkDemoConfig({
-    required this.category,
-    required this.title,
-    required this.description,
+    required super.category,
+    required super.title,
+    required super.description,
     required this.downloadUrl,
     required this.fileNamePrefix,
     required this.fileType,
-    required this.getSaveLocation,
-    this.defaultUseStreamApi = false,
+    required super.saveLocation,
+    super.subDir,
+    super.defaultUseStreamApi = false,
   });
 
-  final MediaCategory category;
-  final String title;
-  final String description;
   final String downloadUrl;
   final String fileNamePrefix;
   final FileType fileType;
-  final SaveLocation? Function() getSaveLocation;
-  final bool defaultUseStreamApi;
 
   static final image = NetworkDemoConfig(
     category: MediaCategory.image,
@@ -179,11 +220,11 @@ class NetworkDemoConfig {
     downloadUrl: 'https://picsum.photos/800/1200',
     fileNamePrefix: 'image',
     fileType: ImageType.jpg,
-    getSaveLocation: () => Platform.isAndroid
-        ? AndroidSaveLocation.pictures
-        : Platform.isIOS
-        ? IosSaveLocation.photos
-        : null,
+    saveLocation: switch (defaultTargetPlatform) {
+      TargetPlatform.android => AndroidSaveLocation.pictures,
+      TargetPlatform.iOS => IosSaveLocation.photos,
+      _ => null,
+    },
   );
 
   static final video = NetworkDemoConfig(
@@ -193,11 +234,11 @@ class NetworkDemoConfig {
     downloadUrl: 'https://download.samplelib.com/mp4/sample-30s.mp4',
     fileNamePrefix: 'video',
     fileType: VideoType.mp4,
-    getSaveLocation: () => Platform.isAndroid
-        ? AndroidSaveLocation.movies
-        : Platform.isIOS
-        ? IosSaveLocation.documents
-        : null,
+    saveLocation: switch (defaultTargetPlatform) {
+      TargetPlatform.android => AndroidSaveLocation.movies,
+      TargetPlatform.iOS => IosSaveLocation.photos,
+      _ => null,
+    },
     defaultUseStreamApi: true,
   );
 
@@ -208,11 +249,15 @@ class NetworkDemoConfig {
     downloadUrl: 'https://download.samplelib.com/mp3/sample-15s.mp3',
     fileNamePrefix: 'audio',
     fileType: AudioType.mp3,
-    getSaveLocation: () => Platform.isAndroid
-        ? AndroidSaveLocation.music
-        : Platform.isIOS
-        ? IosSaveLocation.documents
-        : null,
+    saveLocation: switch (defaultTargetPlatform) {
+      TargetPlatform.android => AndroidSaveLocation.music,
+      TargetPlatform.iOS => IosSaveLocation.documents,
+      _ => null,
+    },
+    subDir: switch (defaultTargetPlatform) {
+      TargetPlatform.iOS => 'Music',
+      _ => 'FileSaverFFI Demo',
+    },
     defaultUseStreamApi: true,
   );
 
@@ -224,11 +269,15 @@ class NetworkDemoConfig {
         'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     fileNamePrefix: 'document',
     fileType: const CustomFileType(ext: 'pdf', mimeType: 'application/pdf'),
-    getSaveLocation: () => Platform.isAndroid
-        ? AndroidSaveLocation.downloads
-        : Platform.isIOS
-        ? IosSaveLocation.documents
-        : null,
+    saveLocation: switch (defaultTargetPlatform) {
+      TargetPlatform.android => AndroidSaveLocation.downloads,
+      TargetPlatform.iOS => IosSaveLocation.documents,
+      _ => null,
+    },
+    subDir: switch (defaultTargetPlatform) {
+      TargetPlatform.iOS => 'Documents',
+      _ => 'FileSaverFFI Demo',
+    },
     defaultUseStreamApi: true,
   );
 
