@@ -1,6 +1,7 @@
-package com.vanvixi.file_saver_ffi
+package com.vanvixi.file_saver_ffi.core
 
 import android.content.Context
+import com.vanvixi.file_saver_ffi.core.base.BaseFileSaver
 import com.vanvixi.file_saver_ffi.exception.UnsupportedFormatException
 import com.vanvixi.file_saver_ffi.models.ConflictResolution
 import com.vanvixi.file_saver_ffi.models.FileType
@@ -13,7 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 
-class ImageSaver(context: Context) : BaseFileSaver(context) {
+class AudioSaver(context: Context) : BaseFileSaver(context) {
 
     override fun saveBytes(
         fileData: ByteArray,
@@ -24,12 +25,12 @@ class ImageSaver(context: Context) : BaseFileSaver(context) {
         conflictResolution: ConflictResolution,
     ): Flow<SaveProgressEvent> = flow {
         try {
-            FormatValidator.validateImageFormat(fileType)
+            FormatValidator.validateAudioFormat(fileType)
         } catch (e: UnsupportedFormatException) {
             emit(
                 SaveProgressEvent.Error(
                     Constants.ERROR_UNSUPPORTED_FORMAT,
-                    e.message ?: "Unsupported format: ${fileType.ext}",
+                    e.message ?: "Unsupported format: ${fileType.ext}"
                 )
             )
             return@flow
@@ -48,7 +49,7 @@ class ImageSaver(context: Context) : BaseFileSaver(context) {
         conflictResolution: ConflictResolution,
     ): Flow<SaveProgressEvent> = flow {
         try {
-            FormatValidator.validateImageFormat(fileType)
+            FormatValidator.validateAudioFormat(fileType)
         } catch (e: UnsupportedFormatException) {
             emit(
                 SaveProgressEvent.Error(
@@ -74,7 +75,7 @@ class ImageSaver(context: Context) : BaseFileSaver(context) {
         conflictResolution: ConflictResolution,
     ): Flow<SaveProgressEvent> = flow {
         try {
-            FormatValidator.validateImageFormat(fileType)
+            FormatValidator.validateAudioFormat(fileType)
         } catch (e: UnsupportedFormatException) {
             emit(
                 SaveProgressEvent.Error(
