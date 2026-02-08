@@ -1,3 +1,20 @@
+## 0.3.0
+
+### Breaking Changes
+
+- **Renamed `InvalidFileException` to `InvalidInputException`**
+    - Error code changed from `INVALID_FILE` to `INVALID_INPUT`
+    - This aligns error codes between iOS and Android platforms
+    - Migration: Replace `InvalidFileException` with `InvalidInputException` in your catch blocks
+
+### Added
+
+- **User-Selected Directory Support**:
+    - `pickDirectory()`: Show system directory picker (Android SAF / iOS Document Picker)
+    - `saveAs()`: Stream-based API to save to user-selected directory using `SaveInput`
+    - `saveAsync()`: Async wrapper for [saveAs] with optional progress callback.
+- **Save Locations Update**: Add UserSelectedLocation for User-selected directory location
+
 ## 0.2.0
 
 ### Added
