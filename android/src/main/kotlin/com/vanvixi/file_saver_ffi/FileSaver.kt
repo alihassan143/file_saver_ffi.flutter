@@ -1,7 +1,12 @@
 package com.vanvixi.file_saver_ffi
 
 import android.content.Context
-import com.vanvixi.file_saver_ffi.core.*
+import androidx.core.net.toUri
+import com.vanvixi.file_saver_ffi.core.AudioSaver
+import com.vanvixi.file_saver_ffi.core.CustomFileSaver
+import com.vanvixi.file_saver_ffi.core.ImageSaver
+import com.vanvixi.file_saver_ffi.core.VideoSaver
+import com.vanvixi.file_saver_ffi.core.base.SaveEntryFactory
 import com.vanvixi.file_saver_ffi.models.*
 import com.vanvixi.file_saver_ffi.utils.Constants
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +28,15 @@ class FileSaver(context: Context) {
     // Job tracking for cancellation support
     private val activeJobs = ConcurrentHashMap<Long, Job>()
     private val operationIdCounter = AtomicLong(0)
+
+    /**
+     * Cancels an ongoing save operation.
+     *
+     * @param operationId The operation ID returned by saveBytes, saveFile, or saveNetwork
+     */
+    fun cancelOperation(operationId: Long) {
+        activeJobs[operationId]?.cancel()
+    }
 
     /**
      * Saves file data with progress streaming (internal)
@@ -50,14 +64,15 @@ class FileSaver(context: Context) {
             val conflictResolution = ConflictResolution.fromInt(conflictMode)
             val saveLocation = SaveLocation.fromInt(saveLocationIndex)
 
-            val saver = when {
-                fileType.isImage -> imageSaver
-                fileType.isVideo -> videoSaver
-                fileType.isAudio -> audioSaver
-                else -> customFileSaver
-            }
+            val saver = getSaverForFileType(fileType)
+            val entryFactory = SaveEntryFactory.MediaStore(
+                fileType = fileType,
+                baseFileName = baseFileName,
+                saveLocation = saveLocation,
+                subDir = subDir
+            )
 
-            saver.saveBytes(fileData, fileType, baseFileName, saveLocation, subDir, conflictResolution)
+            saver.saveBytes(fileData, entryFactory, conflictResolution)
                 .collect { event -> emit(event) }
         } catch (e: Exception) {
             emit(
@@ -91,38 +106,10 @@ class FileSaver(context: Context) {
         subDir: String?,
         conflictMode: Int,
         callback: ProgressCallback,
-    ): Long {
-        val operationId = operationIdCounter.incrementAndGet()
-
-        val job = CoroutineScope(Dispatchers.IO).launch {
-            saveBytes(
-                fileData,
-                baseFileName,
-                extension,
-                mimeType,
-                saveLocationIndex,
-                subDir,
-                conflictMode,
-            ).collect { event ->
-                when (event) {
-                    is SaveProgressEvent.Started -> callback.onEvent(0, 0.0, null, null)
-
-                    is SaveProgressEvent.Progress -> callback.onEvent(1, event.value, null, null)
-
-                    is SaveProgressEvent.Error -> callback.onEvent(2, 0.0, event.code, event.message)
-
-                    is SaveProgressEvent.Success -> callback.onEvent(3, 1.0, event.uri, null)
-
-                    is SaveProgressEvent.Cancelled -> callback.onEvent(4, 0.0, null, null)
-                }
-            }
-        }
-
-        activeJobs[operationId] = job
-        job.invokeOnCompletion { activeJobs.remove(operationId) }
-
-        return operationId
-    }
+    ): Long = launchWithCallback(
+        saveBytes(fileData, baseFileName, extension, mimeType, saveLocationIndex, subDir, conflictMode),
+        callback
+    )
 
     /**
      * Saves file from source path with progress streaming (internal)
@@ -150,14 +137,15 @@ class FileSaver(context: Context) {
             val conflictResolution = ConflictResolution.fromInt(conflictMode)
             val saveLocation = SaveLocation.fromInt(saveLocationIndex)
 
-            val saver = when {
-                fileType.isImage -> imageSaver
-                fileType.isVideo -> videoSaver
-                fileType.isAudio -> audioSaver
-                else -> customFileSaver
-            }
+            val saver = getSaverForFileType(fileType)
+            val entryFactory = SaveEntryFactory.MediaStore(
+                fileType = fileType,
+                baseFileName = baseFileName,
+                saveLocation = saveLocation,
+                subDir = subDir
+            )
 
-            saver.saveFile(filePath, fileType, baseFileName, saveLocation, subDir, conflictResolution)
+            saver.saveFile(filePath, entryFactory, conflictResolution)
                 .collect { event -> emit(event) }
         } catch (e: Exception) {
             emit(
@@ -191,38 +179,10 @@ class FileSaver(context: Context) {
         subDir: String?,
         conflictMode: Int,
         callback: ProgressCallback,
-    ): Long {
-        val operationId = operationIdCounter.incrementAndGet()
-
-        val job = CoroutineScope(Dispatchers.IO).launch {
-            saveFile(
-                filePath,
-                baseFileName,
-                extension,
-                mimeType,
-                saveLocationIndex,
-                subDir,
-                conflictMode
-            ).collect { event ->
-                when (event) {
-                    is SaveProgressEvent.Started -> callback.onEvent(0, 0.0, null, null)
-
-                    is SaveProgressEvent.Progress -> callback.onEvent(1, event.value, null, null)
-
-                    is SaveProgressEvent.Error -> callback.onEvent(2, 0.0, event.code, event.message)
-
-                    is SaveProgressEvent.Success -> callback.onEvent(3, 1.0, event.uri, null)
-
-                    is SaveProgressEvent.Cancelled -> callback.onEvent(4, 0.0, null, null)
-                }
-            }
-        }
-
-        activeJobs[operationId] = job
-        job.invokeOnCompletion { activeJobs.remove(operationId) }
-
-        return operationId
-    }
+    ): Long = launchWithCallback(
+        saveFile(filePath, baseFileName, extension, mimeType, saveLocationIndex, subDir, conflictMode),
+        callback
+    )
 
     /**
      * Downloads file from network URL and saves directly to storage (internal)
@@ -254,17 +214,16 @@ class FileSaver(context: Context) {
             val conflictResolution = ConflictResolution.fromInt(conflictMode)
             val saveLocation = SaveLocation.fromInt(saveLocationIndex)
 
-            val saver = when {
-                fileType.isImage -> imageSaver
-                fileType.isVideo -> videoSaver
-                fileType.isAudio -> audioSaver
-                else -> customFileSaver
-            }
+            val saver = getSaverForFileType(fileType)
+            val entryFactory = SaveEntryFactory.MediaStore(
+                fileType = fileType,
+                baseFileName = baseFileName,
+                saveLocation = saveLocation,
+                subDir = subDir
+            )
 
-            saver.saveNetwork(
-                url, headersJson, timeoutMs,
-                fileType, baseFileName, saveLocation, subDir, conflictResolution,
-            ).collect { event -> emit(event) }
+            saver.saveNetwork(url, headersJson, timeoutMs, entryFactory, conflictResolution)
+                .collect { event -> emit(event) }
         } catch (e: Exception) {
             emit(
                 SaveProgressEvent.Error(
@@ -301,30 +260,180 @@ class FileSaver(context: Context) {
         subDir: String?,
         conflictMode: Int,
         callback: ProgressCallback,
+    ): Long = launchWithCallback(
+        saveNetwork(url, headersJson, timeoutMs, baseFileName, extension, mimeType, saveLocationIndex, subDir, conflictMode),
+        callback
+    )
+
+    /**
+     * Saves file data to user-selected directory (internal)
+     *
+     * @param fileData File content as byte array
+     * @param directoryUri Directory URI from SAF picker
+     * @param baseFileName File name WITHOUT extension
+     * @param extension File extension WITHOUT dot
+     * @param mimeType MIME type string (e.g., "image/jpeg")
+     * @param conflictMode Conflict resolution mode (0-3)
+     * @return Flow of SaveProgressEvent
+     */
+    internal fun saveBytesAs(
+        fileData: ByteArray,
+        directoryUri: String,
+        baseFileName: String,
+        extension: String,
+        mimeType: String,
+        conflictMode: Int,
+    ): Flow<SaveProgressEvent> {
+        val conflictResolution = ConflictResolution.fromInt(conflictMode)
+        val entryFactory = SaveEntryFactory.SAF(
+            treeUri = directoryUri.toUri(),
+            fileType = FileType(extension, mimeType),
+            baseFileName = baseFileName
+        )
+        return customFileSaver.saveBytes(fileData, entryFactory, conflictResolution)
+    }
+
+    /**
+     * Saves file data to user-selected directory (for Dart consumption via JNI)
+     */
+    fun saveBytesAs(
+        fileData: ByteArray,
+        directoryUri: String,
+        baseFileName: String,
+        extension: String,
+        mimeType: String,
+        conflictMode: Int,
+        callback: ProgressCallback,
+    ): Long = launchWithCallback(
+        saveBytesAs(fileData, directoryUri, baseFileName, extension, mimeType, conflictMode),
+        callback
+    )
+
+    /**
+     * Saves file from source path to user-selected directory (internal)
+     *
+     * @param filePath Source file path (file:// or content:// URI)
+     * @param directoryUri Directory URI from SAF picker
+     * @param baseFileName File name WITHOUT extension
+     * @param extension File extension WITHOUT dot
+     * @param mimeType MIME type string (e.g., "image/jpeg")
+     * @param conflictMode Conflict resolution mode (0-3)
+     * @return Flow of SaveProgressEvent
+     */
+    internal fun saveFileAs(
+        filePath: String,
+        directoryUri: String,
+        baseFileName: String,
+        extension: String,
+        mimeType: String,
+        conflictMode: Int,
+    ): Flow<SaveProgressEvent> {
+        val conflictResolution = ConflictResolution.fromInt(conflictMode)
+        val entryFactory = SaveEntryFactory.SAF(
+            treeUri = directoryUri.toUri(),
+            fileType = FileType(extension, mimeType),
+            baseFileName = baseFileName
+        )
+        return customFileSaver.saveFile(filePath, entryFactory, conflictResolution)
+    }
+
+    /**
+     * Saves file from source path to user-selected directory (for Dart consumption via JNI)
+     */
+    fun saveFileAs(
+        filePath: String,
+        directoryUri: String,
+        baseFileName: String,
+        extension: String,
+        mimeType: String,
+        conflictMode: Int,
+        callback: ProgressCallback,
+    ): Long = launchWithCallback(
+        saveFileAs(filePath, directoryUri, baseFileName, extension, mimeType, conflictMode),
+        callback
+    )
+
+    /**
+     * Downloads file from network and saves to user-selected directory (internal)
+     *
+     * @param url Network URL to download from
+     * @param headersJson Optional JSON string of HTTP headers
+     * @param timeoutMs Timeout in milliseconds for network connection
+     * @param directoryUri Directory URI from SAF picker
+     * @param baseFileName File name WITHOUT extension
+     * @param extension File extension WITHOUT dot
+     * @param mimeType MIME type string (e.g., "image/jpeg")
+     * @param conflictMode Conflict resolution mode (0-3)
+     * @return Flow of SaveProgressEvent
+     */
+    internal fun saveNetworkAs(
+        url: String,
+        headersJson: String?,
+        timeoutMs: Int,
+        directoryUri: String,
+        baseFileName: String,
+        extension: String,
+        mimeType: String,
+        conflictMode: Int,
+    ): Flow<SaveProgressEvent> {
+        val conflictResolution = ConflictResolution.fromInt(conflictMode)
+        val entryFactory = SaveEntryFactory.SAF(
+            treeUri = directoryUri.toUri(),
+            fileType = FileType(extension, mimeType),
+            baseFileName = baseFileName
+        )
+        return customFileSaver.saveNetwork(url, headersJson, timeoutMs, entryFactory, conflictResolution)
+    }
+
+    /**
+     * Downloads file from network and saves to user-selected directory (for Dart consumption via JNI)
+     */
+    fun saveNetworkAs(
+        url: String,
+        headersJson: String?,
+        timeoutMs: Int,
+        directoryUri: String,
+        baseFileName: String,
+        extension: String,
+        mimeType: String,
+        conflictMode: Int,
+        callback: ProgressCallback,
+    ): Long = launchWithCallback(
+        saveNetworkAs(url, headersJson, timeoutMs, directoryUri, baseFileName, extension, mimeType, conflictMode),
+        callback
+    )
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Private Helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Returns appropriate saver based on file type.
+     */
+    private fun getSaverForFileType(fileType: FileType) = when {
+        fileType.isImage -> imageSaver
+        fileType.isVideo -> videoSaver
+        fileType.isAudio -> audioSaver
+        else -> customFileSaver
+    }
+
+    /**
+     * Launches a coroutine to collect events from a Flow and forward them to a callback.
+     * Handles job tracking for cancellation support.
+     */
+    private fun launchWithCallback(
+        flow: Flow<SaveProgressEvent>,
+        callback: ProgressCallback
     ): Long {
         val operationId = operationIdCounter.incrementAndGet()
 
         val job = CoroutineScope(Dispatchers.IO).launch {
-            saveNetwork(
-                url,
-                headersJson,
-                timeoutMs,
-                baseFileName,
-                extension,
-                mimeType,
-                saveLocationIndex,
-                subDir,
-                conflictMode,
-            ).collect { event ->
+            flow.collect { event ->
                 when (event) {
                     is SaveProgressEvent.Started -> callback.onEvent(0, 0.0, null, null)
-
                     is SaveProgressEvent.Progress -> callback.onEvent(1, event.value, null, null)
-
                     is SaveProgressEvent.Error -> callback.onEvent(2, 0.0, event.code, event.message)
-
                     is SaveProgressEvent.Success -> callback.onEvent(3, 1.0, event.uri, null)
-
                     is SaveProgressEvent.Cancelled -> callback.onEvent(4, 0.0, null, null)
                 }
             }
@@ -334,14 +443,5 @@ class FileSaver(context: Context) {
         job.invokeOnCompletion { activeJobs.remove(operationId) }
 
         return operationId
-    }
-
-    /**
-     * Cancels an ongoing save operation.
-     *
-     * @param operationId The operation ID returned by saveBytes, saveFile, or saveNetwork
-     */
-    fun cancelOperation(operationId: Long) {
-        activeJobs[operationId]?.cancel()
     }
 }

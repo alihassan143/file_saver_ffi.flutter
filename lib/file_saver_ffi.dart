@@ -521,4 +521,193 @@ class FileSaver {
     }
     return result;
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // User-Selected Location (SAF / Document Picker)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Pick a directory for saving files.
+  ///
+  /// Shows the system directory picker:
+  /// - **Android**: Storage Access Framework (ACTION_OPEN_DOCUMENT_TREE)
+  /// - **iOS**: UIDocumentPickerViewController
+  ///
+  /// Parameters:
+  /// - [shouldPersist]: Whether to persist write permission to the selected
+  ///   directory. Defaults to `true`.
+  ///   - **Android**: If `true`, calls `takePersistableUriPermission` so the
+  ///     app can write to this directory across app restarts without re-picking.
+  ///   - **iOS**: Ignored (iOS doesn't support persistent URI permissions).
+  ///
+  /// Returns [UserSelectedLocation] with the selected directory URI,
+  /// or `null` if the user cancelled.
+  ///
+  /// Example:
+  /// ```dart
+  /// final location = await FileSaver.instance.pickDirectory();
+  /// if (location == null) {
+  ///   print('User cancelled');
+  ///   return;
+  /// }
+  ///
+  /// // Save a file to the selected directory
+  /// await FileSaver.instance.saveAsAsync(
+  ///   input: SaveInput.bytes(imageBytes),
+  ///   fileType: ImageType.png,
+  ///   fileName: 'screenshot',
+  ///   saveLocation: location,
+  /// );
+  /// ```
+  Future<UserSelectedLocation?> pickDirectory({bool shouldPersist = true}) {
+    return _platform.pickDirectory(shouldPersist: shouldPersist);
+  }
+
+  /// Save to user-selected directory with progress streaming.
+  ///
+  /// If [saveLocation] is null, shows the system picker first (auto pickDirectory).
+  /// Returns [SaveProgressCancelled] if picker is cancelled.
+  ///
+  /// Parameters:
+  /// - [input]: The save input (bytes, file path, or network URL)
+  /// - [fileType]: The type of file being saved
+  /// - [fileName]: The file name without extension
+  /// - [saveLocation]: Optional user-selected directory. If null, shows picker.
+  /// - [conflictResolution]: How to handle filename conflicts
+  ///
+  /// Yields [SaveProgress] events during save operation.
+  ///
+  /// Example (auto picker):
+  /// ```dart
+  /// await for (final event in FileSaver.instance.saveAs(
+  ///   input: SaveInput.bytes(imageBytes),
+  ///   fileType: ImageType.png,
+  ///   fileName: 'screenshot',
+  ///   // saveLocation: null → shows picker first
+  /// )) {
+  ///   switch (event) {
+  ///     case SaveProgressStarted():
+  ///       showLoading();
+  ///     case SaveProgressUpdate(:final progress):
+  ///       updateProgressBar(progress);
+  ///     case SaveProgressComplete(:final uri):
+  ///       showSuccess('Saved to $uri');
+  ///     case SaveProgressCancelled():
+  ///       showMessage('Cancelled');
+  ///     case SaveProgressError(:final exception):
+  ///       showError(exception.message);
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Example (batch save with picked location):
+  /// ```dart
+  /// final location = await FileSaver.instance.pickDirectory();
+  /// if (location == null) return;
+  ///
+  /// for (final file in files) {
+  ///   await for (final event in FileSaver.instance.saveAs(
+  ///     input: SaveInput.bytes(file.bytes),
+  ///     fileType: file.type,
+  ///     fileName: file.name,
+  ///     saveLocation: location,  // Reuse picked location
+  ///   )) {
+  ///     // handle events...
+  ///   }
+  /// }
+  /// ```
+  Stream<SaveProgress> saveAs({
+    required SaveInput input,
+    required FileType fileType,
+    required String fileName,
+    UserSelectedLocation? saveLocation,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) async* {
+    yield const SaveProgressStarted();
+
+    // Resolve location
+    final UserSelectedLocation resolvedLocation;
+    if (saveLocation == null) {
+      final picked = await pickDirectory();
+      if (picked == null) {
+        yield const SaveProgressCancelled();
+        return;
+      }
+      resolvedLocation = picked;
+    } else {
+      resolvedLocation = saveLocation;
+    }
+
+    // Delegate to platform
+    yield* _platform.saveAs(
+      input: input,
+      fileType: fileType,
+      fileName: fileName,
+      saveLocation: resolvedLocation,
+      conflictResolution: conflictResolution,
+    );
+  }
+
+  /// Async wrapper for [saveAs] with optional progress callback.
+  ///
+  /// If [saveLocation] is null, shows the system picker first (auto pickDirectory).
+  /// Returns `null` if picker is cancelled.
+  ///
+  /// Parameters:
+  /// - [input]: The save input (bytes, file path, or network URL)
+  /// - [fileType]: The type of file being saved
+  /// - [fileName]: The file name without extension
+  /// - [saveLocation]: Optional user-selected directory. If null, shows picker.
+  /// - [conflictResolution]: How to handle filename conflicts
+  /// - [onProgress]: Optional callback receiving progress from 0.0 to 1.0
+  ///
+  /// Returns the [Uri] where the file was saved, or `null` if cancelled.
+  ///
+  /// Example:
+  /// ```dart
+  /// final uri = await FileSaver.instance.saveAsAsync(
+  ///   input: SaveInput.bytes(imageBytes),
+  ///   fileType: ImageType.png,
+  ///   fileName: 'screenshot',
+  ///   onProgress: (p) => print('${(p * 100).toInt()}%'),
+  /// );
+  ///
+  /// if (uri == null) {
+  ///   print('User cancelled');
+  /// } else {
+  ///   print('Saved to: $uri');
+  /// }
+  /// ```
+  Future<Uri?> saveAsAsync({
+    required SaveInput input,
+    required FileType fileType,
+    required String fileName,
+    UserSelectedLocation? saveLocation,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+    void Function(double progress)? onProgress,
+  }) async {
+    Uri? result;
+
+    await for (final event in saveAs(
+      input: input,
+      fileType: fileType,
+      fileName: fileName,
+      saveLocation: saveLocation,
+      conflictResolution: conflictResolution,
+    )) {
+      switch (event) {
+        case SaveProgressStarted():
+          break;
+        case SaveProgressUpdate(:final progress):
+          onProgress?.call(progress);
+        case SaveProgressComplete(:final uri):
+          result = uri;
+        case SaveProgressError(:final exception):
+          throw exception;
+        case SaveProgressCancelled():
+          return null;
+      }
+    }
+
+    return result;
+  }
 }

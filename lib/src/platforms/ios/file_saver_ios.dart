@@ -9,6 +9,7 @@ import 'package:ffi/ffi.dart';
 import '../../exceptions/file_saver_exceptions.dart';
 import '../../models/conflict_resolution.dart';
 import '../../models/file_type.dart';
+import '../../models/save_input.dart';
 import '../../models/save_location.dart';
 import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
@@ -314,5 +315,249 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
           PlatformException('Unknown message type: $type', 'UNKNOWN_TYPE'),
         );
     }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // User-Selected Location (Document Picker)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  @override
+  Future<UserSelectedLocation?> pickDirectory({
+    bool shouldPersist = true,
+  }) async {
+    // Note: shouldPersist is ignored on iOS - no persistent URI permissions support
+    final completer = Completer<UserSelectedLocation?>();
+    final receivePort = ReceivePort();
+    final nativePort = receivePort.sendPort.nativePort;
+
+    receivePort.listen((message) {
+      receivePort.close();
+
+      if (message is! List || message.isEmpty) {
+        completer.completeError(
+          const PlatformException('Invalid message format', 'INVALID_MESSAGE'),
+        );
+        return;
+      }
+
+      final type = message[0] as int;
+      switch (type) {
+        case 3: // Success
+          final dirUri = message[1] as String;
+          completer.complete(UserSelectedLocation(uri: Uri.parse(dirUri)));
+        case 4: // Cancelled
+          completer.complete(null);
+        case 2: // Error
+          final errorCode = message[1] as String;
+          final errorMessage = message[2] as String;
+          completer.completeError(
+            FileSaverException.fromErrorResult(errorCode, errorMessage),
+          );
+        default:
+          completer.completeError(
+            PlatformException('Unknown message type: $type', 'UNKNOWN_TYPE'),
+          );
+      }
+    });
+
+    _bindings.file_saver_pick_directory(_saverInstance, nativePort);
+
+    return completer.future;
+  }
+
+  @override
+  Stream<SaveProgress> saveAs({
+    required SaveInput input,
+    required FileType fileType,
+    required String fileName,
+    required UserSelectedLocation saveLocation,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) {
+    return switch (input) {
+      SaveBytesInput(:final fileBytes) => _saveBytesAs(
+        fileBytes: fileBytes,
+        directoryUri: saveLocation.uri.toString(),
+        baseFileName: fileName,
+        extension: fileType.ext,
+        conflictResolution: conflictResolution,
+      ),
+      SaveFileInput(:final filePath) => _saveFileAs(
+        filePath: filePath,
+        directoryUri: saveLocation.uri.toString(),
+        baseFileName: fileName,
+        extension: fileType.ext,
+        conflictResolution: conflictResolution,
+      ),
+      SaveNetworkInput(:final url, :final headers, :final timeout) =>
+        _saveNetworkAs(
+          url: url,
+          headers: headers,
+          timeout: timeout,
+          directoryUri: saveLocation.uri.toString(),
+          baseFileName: fileName,
+          extension: fileType.ext,
+          conflictResolution: conflictResolution,
+        ),
+    };
+  }
+
+  Stream<SaveProgress> _saveBytesAs({
+    required Uint8List fileBytes,
+    required String directoryUri,
+    required String baseFileName,
+    required String extension,
+    required ConflictResolution conflictResolution,
+  }) {
+    return Stream.multi((controller) {
+      final receivePort = ReceivePort();
+      final arena = Arena();
+      final nativePort = receivePort.sendPort.nativePort;
+      bool cleanedUp = false;
+
+      void cleanup() {
+        if (cleanedUp) return;
+        cleanedUp = true;
+        receivePort.close();
+        arena.releaseAll();
+        controller.closeSync();
+      }
+
+      final dataPointer = arena<Uint8>(fileBytes.length);
+      dataPointer.asTypedList(fileBytes.length).setAll(0, fileBytes);
+      final dirUriCStr = directoryUri.toNativeUtf8(allocator: arena);
+      final baseFileNameCStr = baseFileName.toNativeUtf8(allocator: arena);
+      final extCStr = extension.toNativeUtf8(allocator: arena);
+
+      receivePort.listen((message) {
+        if (cleanedUp || controller.isClosed) return;
+        final event = _parseMessage(message);
+        controller.addSync(event);
+        if (isTerminal(event)) cleanup();
+      });
+
+      final tokenId = _bindings.file_saver_save_bytes_as(
+        _saverInstance,
+        dataPointer,
+        fileBytes.length,
+        dirUriCStr.cast(),
+        baseFileNameCStr.cast(),
+        extCStr.cast(),
+        conflictResolution.index,
+        nativePort,
+      );
+
+      controller.onCancel = () {
+        _bindings.file_saver_cancel(tokenId);
+        Future.delayed(const Duration(milliseconds: 500), cleanup);
+      };
+    });
+  }
+
+  Stream<SaveProgress> _saveFileAs({
+    required String filePath,
+    required String directoryUri,
+    required String baseFileName,
+    required String extension,
+    required ConflictResolution conflictResolution,
+  }) {
+    return Stream.multi((controller) {
+      final receivePort = ReceivePort();
+      final arena = Arena();
+      final nativePort = receivePort.sendPort.nativePort;
+      bool cleanedUp = false;
+
+      void cleanup() {
+        if (cleanedUp) return;
+        cleanedUp = true;
+        receivePort.close();
+        arena.releaseAll();
+        controller.closeSync();
+      }
+
+      final filePathCStr = filePath.toNativeUtf8(allocator: arena);
+      final dirUriCStr = directoryUri.toNativeUtf8(allocator: arena);
+      final baseFileNameCStr = baseFileName.toNativeUtf8(allocator: arena);
+      final extCStr = extension.toNativeUtf8(allocator: arena);
+
+      receivePort.listen((message) {
+        if (cleanedUp || controller.isClosed) return;
+        final event = _parseMessage(message);
+        controller.addSync(event);
+        if (isTerminal(event)) cleanup();
+      });
+
+      final tokenId = _bindings.file_saver_save_file_as(
+        _saverInstance,
+        filePathCStr.cast(),
+        dirUriCStr.cast(),
+        baseFileNameCStr.cast(),
+        extCStr.cast(),
+        conflictResolution.index,
+        nativePort,
+      );
+
+      controller.onCancel = () {
+        _bindings.file_saver_cancel(tokenId);
+        Future.delayed(const Duration(milliseconds: 500), cleanup);
+      };
+    });
+  }
+
+  Stream<SaveProgress> _saveNetworkAs({
+    required String url,
+    required Map<String, String>? headers,
+    required Duration timeout,
+    required String directoryUri,
+    required String baseFileName,
+    required String extension,
+    required ConflictResolution conflictResolution,
+  }) {
+    return Stream.multi((controller) {
+      final receivePort = ReceivePort();
+      final arena = Arena();
+      final nativePort = receivePort.sendPort.nativePort;
+      bool cleanedUp = false;
+
+      void cleanup() {
+        if (cleanedUp) return;
+        cleanedUp = true;
+        receivePort.close();
+        arena.releaseAll();
+        controller.closeSync();
+      }
+
+      final urlCStr = url.toNativeUtf8(allocator: arena);
+      final headersJsonCStr =
+          headers != null
+              ? jsonEncode(headers).toNativeUtf8(allocator: arena)
+              : null;
+      final dirUriCStr = directoryUri.toNativeUtf8(allocator: arena);
+      final baseFileNameCStr = baseFileName.toNativeUtf8(allocator: arena);
+      final extCStr = extension.toNativeUtf8(allocator: arena);
+
+      receivePort.listen((message) {
+        if (cleanedUp || controller.isClosed) return;
+        final event = _parseMessage(message);
+        controller.addSync(event);
+        if (isTerminal(event)) cleanup();
+      });
+
+      final tokenId = _bindings.file_saver_save_network_as(
+        _saverInstance,
+        urlCStr.cast(),
+        headersJsonCStr?.cast() ?? nullptr,
+        timeout.inSeconds,
+        dirUriCStr.cast(),
+        baseFileNameCStr.cast(),
+        extCStr.cast(),
+        conflictResolution.index,
+        nativePort,
+      );
+
+      controller.onCancel = () {
+        _bindings.file_saver_cancel(tokenId);
+        Future.delayed(const Duration(milliseconds: 500), cleanup);
+      };
+    });
   }
 }

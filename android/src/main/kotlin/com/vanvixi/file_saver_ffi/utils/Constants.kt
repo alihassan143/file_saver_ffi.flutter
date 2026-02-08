@@ -7,9 +7,9 @@ object Constants {
     // ===========================================
 
     /**
-     * File data is empty or invalid
+     * Invalid input (empty data, malformed URI, invalid file path)
      */
-    const val ERROR_INVALID_FILE = "INVALID_FILE"
+    const val ERROR_INVALID_INPUT = "INVALID_INPUT"
 
     /**
      * Storage permission denied by user

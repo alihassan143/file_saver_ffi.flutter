@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
+import 'package:flutter/services.dart' hide PlatformException;
 import 'package:jni/jni.dart';
 
 import '../../exceptions/file_saver_exceptions.dart';
 import '../../models/conflict_resolution.dart';
 import '../../models/file_type.dart';
+import '../../models/save_input.dart';
 import '../../models/save_location.dart';
 import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
@@ -19,6 +20,9 @@ class FileSaverAndroid extends FileSaverPlatform {
 
   /// Native FileSaver instance
   late final bindings.FileSaver _fileSaver;
+
+  /// Method channel for directory picker (requires Activity)
+  static const _pickerChannel = MethodChannel('com.vanvixi/file_saver_ffi');
 
   @override
   void dispose() {
@@ -243,6 +247,239 @@ class FileSaverAndroid extends FileSaverPlatform {
       controller.onCancel = () {
         _fileSaver.cancelOperation(operationId);
         // Fallback cleanup if native doesn't respond with Cancelled event
+        Future.delayed(const Duration(milliseconds: 500), cleanup);
+      };
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // User-Selected Location (SAF)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  @override
+  Future<UserSelectedLocation?> pickDirectory({
+    bool shouldPersist = true,
+  }) async {
+    final result = await _pickerChannel.invokeMethod<String?>('pickDirectory', {
+      'shouldPersist': shouldPersist,
+    });
+
+    if (result == null) return null;
+    return UserSelectedLocation(uri: Uri.parse(result));
+  }
+
+  @override
+  Stream<SaveProgress> saveAs({
+    required SaveInput input,
+    required FileType fileType,
+    required String fileName,
+    required UserSelectedLocation saveLocation,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) {
+    return switch (input) {
+      SaveBytesInput(:final fileBytes) => _saveBytesAs(
+        fileBytes: fileBytes,
+        directoryUri: saveLocation.uri.toString(),
+        baseFileName: fileName,
+        extension: fileType.ext,
+        mimeType: fileType.mimeType,
+        conflictResolution: conflictResolution,
+      ),
+      SaveFileInput(:final filePath) => _saveFileAs(
+        filePath: filePath,
+        directoryUri: saveLocation.uri.toString(),
+        baseFileName: fileName,
+        extension: fileType.ext,
+        mimeType: fileType.mimeType,
+        conflictResolution: conflictResolution,
+      ),
+      SaveNetworkInput(:final url, :final headers, :final timeout) =>
+        _saveNetworkAs(
+          url: url,
+          headers: headers,
+          timeout: timeout,
+          directoryUri: saveLocation.uri.toString(),
+          baseFileName: fileName,
+          extension: fileType.ext,
+          mimeType: fileType.mimeType,
+          conflictResolution: conflictResolution,
+        ),
+    };
+  }
+
+  Stream<SaveProgress> _saveBytesAs({
+    required Uint8List fileBytes,
+    required String directoryUri,
+    required String baseFileName,
+    required String extension,
+    required String mimeType,
+    required ConflictResolution conflictResolution,
+  }) {
+    return Stream.multi((controller) {
+      bool cleanedUp = false;
+      late final bindings.ProgressCallback callback;
+
+      final jByteArray = JByteArray.from(fileBytes);
+      final jDirectoryUri = directoryUri.toJString();
+      final jBaseFileName = baseFileName.toJString();
+      final jExtension = extension.toJString();
+      final jMimeType = mimeType.toJString();
+      final jConflictMode = conflictResolution.index;
+
+      void cleanup() {
+        if (cleanedUp) return;
+        cleanedUp = true;
+        Future.microtask(() {
+          if (!controller.isClosed) controller.closeSync();
+          callback.release();
+        });
+      }
+
+      callback = bindings.ProgressCallback.implement(
+        bindings.$ProgressCallback(
+          onEvent: (eventType, progress, data, message) {
+            if (cleanedUp || controller.isClosed) return;
+            final event = _parseEvent(eventType, progress, data, message);
+            controller.addSync(event);
+            if (isTerminal(event)) cleanup();
+          },
+          onEvent$async: true,
+        ),
+      );
+
+      final operationId = _fileSaver.saveBytesAs(
+        jByteArray,
+        jDirectoryUri,
+        jBaseFileName,
+        jExtension,
+        jMimeType,
+        jConflictMode,
+        callback,
+      );
+
+      controller.onCancel = () {
+        _fileSaver.cancelOperation(operationId);
+        Future.delayed(const Duration(milliseconds: 500), cleanup);
+      };
+    });
+  }
+
+  Stream<SaveProgress> _saveFileAs({
+    required String filePath,
+    required String directoryUri,
+    required String baseFileName,
+    required String extension,
+    required String mimeType,
+    required ConflictResolution conflictResolution,
+  }) {
+    return Stream.multi((controller) {
+      bool cleanedUp = false;
+      late final bindings.ProgressCallback callback;
+
+      final jFilePath = filePath.toJString();
+      final jDirectoryUri = directoryUri.toJString();
+      final jBaseFileName = baseFileName.toJString();
+      final jExtension = extension.toJString();
+      final jMimeType = mimeType.toJString();
+      final jConflictMode = conflictResolution.index;
+
+      void cleanup() {
+        if (cleanedUp) return;
+        cleanedUp = true;
+        Future.microtask(() {
+          if (!controller.isClosed) controller.closeSync();
+          callback.release();
+        });
+      }
+
+      callback = bindings.ProgressCallback.implement(
+        bindings.$ProgressCallback(
+          onEvent: (eventType, progress, data, message) {
+            if (cleanedUp || controller.isClosed) return;
+            final event = _parseEvent(eventType, progress, data, message);
+            controller.addSync(event);
+            if (isTerminal(event)) cleanup();
+          },
+          onEvent$async: true,
+        ),
+      );
+
+      final operationId = _fileSaver.saveFileAs(
+        jFilePath,
+        jDirectoryUri,
+        jBaseFileName,
+        jExtension,
+        jMimeType,
+        jConflictMode,
+        callback,
+      );
+
+      controller.onCancel = () {
+        _fileSaver.cancelOperation(operationId);
+        Future.delayed(const Duration(milliseconds: 500), cleanup);
+      };
+    });
+  }
+
+  Stream<SaveProgress> _saveNetworkAs({
+    required String url,
+    required Map<String, String>? headers,
+    required Duration timeout,
+    required String directoryUri,
+    required String baseFileName,
+    required String extension,
+    required String mimeType,
+    required ConflictResolution conflictResolution,
+  }) {
+    return Stream.multi((controller) {
+      bool cleanedUp = false;
+      late final bindings.ProgressCallback callback;
+
+      final jUrl = url.toJString();
+      final jHeadersJson =
+          headers != null ? jsonEncode(headers).toJString() : null;
+      final jTimeoutMs = timeout.inMilliseconds;
+      final jDirectoryUri = directoryUri.toJString();
+      final jBaseFileName = baseFileName.toJString();
+      final jExtension = extension.toJString();
+      final jMimeType = mimeType.toJString();
+      final jConflictMode = conflictResolution.index;
+
+      void cleanup() {
+        if (cleanedUp) return;
+        cleanedUp = true;
+        Future.microtask(() {
+          if (!controller.isClosed) controller.closeSync();
+          callback.release();
+        });
+      }
+
+      callback = bindings.ProgressCallback.implement(
+        bindings.$ProgressCallback(
+          onEvent: (eventType, progress, data, message) {
+            if (cleanedUp || controller.isClosed) return;
+            final event = _parseEvent(eventType, progress, data, message);
+            controller.addSync(event);
+            if (isTerminal(event)) cleanup();
+          },
+          onEvent$async: true,
+        ),
+      );
+
+      final operationId = _fileSaver.saveNetworkAs(
+        jUrl,
+        jHeadersJson,
+        jTimeoutMs,
+        jDirectoryUri,
+        jBaseFileName,
+        jExtension,
+        jMimeType,
+        jConflictMode,
+        callback,
+      );
+
+      controller.onCancel = () {
+        _fileSaver.cancelOperation(operationId);
         Future.delayed(const Duration(milliseconds: 500), cleanup);
       };
     });
