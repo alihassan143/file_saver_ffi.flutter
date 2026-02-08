@@ -1,7 +1,7 @@
 import Foundation
 
 enum Constants {
-    static let errorInvalidFile = "INVALID_FILE"
+    static let errorInvalidInput = "INVALID_INPUT"
     static let errorPermissionDenied = "PERMISSION_DENIED"
     static let errorUnsupportedFormat = "UNSUPPORTED_FORMAT"
     static let errorStorageFull = "STORAGE_FULL"
