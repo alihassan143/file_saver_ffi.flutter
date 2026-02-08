@@ -1,5 +1,5 @@
 # JNI bindings configuration for Android
-# Run with `cd android && ./gradlew assembleRelease && cd .. && fvm dart run jnigen --config jnigen.yaml`.
+# Run with `cd example && flutter build apk --debug && cd .. && fvm dart run jnigen --config jnigen.yaml`.
 output:
   dart:
     path: lib/src/platforms/android/bindings.g.dart
@@ -16,4 +16,4 @@ classes:
   - 'com.vanvixi.file_saver_ffi.models.ProgressCallback'
 
 class_path:
-  - android/build/tmp/kotlin-classes/release
+  - example/build/file_saver_ffi/tmp/kotlin-classes/debug
