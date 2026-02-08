@@ -46,4 +46,3 @@ String fileNameWithoutExt(String name) {
   if (idx <= 0) return name;
   return name.substring(0, idx);
 }
-
