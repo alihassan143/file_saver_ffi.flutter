@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
-class FileSaver(context: Context) {
+class FileSaver(private val context: Context) {
     private val imageSaver = ImageSaver(context)
     private val videoSaver = VideoSaver(context)
     private val audioSaver = AudioSaver(context)
@@ -23,6 +23,15 @@ class FileSaver(context: Context) {
     // Job tracking for cancellation support
     private val activeJobs = ConcurrentHashMap<Long, Job>()
     private val operationIdCounter = AtomicLong(0)
+
+    /**
+     * Cancels an ongoing save operation.
+     *
+     * @param operationId The operation ID returned by saveBytes, saveFile, or saveNetwork
+     */
+    fun cancelOperation(operationId: Long) {
+        activeJobs[operationId]?.cancel()
+    }
 
     /**
      * Saves file data with progress streaming (internal)
