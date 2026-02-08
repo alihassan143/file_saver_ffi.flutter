@@ -315,6 +315,247 @@ class FileSaverFfiBindings {
   late final _file_saver_cancel =
       _file_saver_cancelPtr.asFunction<void Function(int)>();
 
+  /// Pick a directory via system Document Picker.
+  ///
+  /// Shows the system directory picker and returns the selected directory URI.
+  ///
+  /// Messages sent to native_port:
+  /// - Success:    [3, directoryUri]
+  /// - Cancelled:  [4]
+  /// - Error:      [2, errorCode, errorMessage]
+  ///
+  /// @param instance FileSaver instance from file_saver_init
+  /// @param native_port Dart NativePort for result reporting
+  void file_saver_pick_directory(
+    ffi.Pointer<ffi.Void> instance,
+    int native_port,
+  ) {
+    return _file_saver_pick_directory(instance, native_port);
+  }
+
+  late final _file_saver_pick_directoryPtr = _lookup<
+    ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>, ffi.Int64)>
+  >('file_saver_pick_directory');
+  late final _file_saver_pick_directory =
+      _file_saver_pick_directoryPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>, int)>();
+
+  /// Save bytes to user-selected directory (saveAs).
+  ///
+  /// Saves file bytes to a directory previously selected via file_saver_pick_directory.
+  /// Uses security-scoped resource access for the selected directory.
+  ///
+  /// Progress messages sent to native_port:
+  /// - Started:    [0]
+  /// - Progress:   [1, progress]    (progress is 0.0 to 1.0)
+  /// - Error:      [2, errorCode, errorMessage]
+  /// - Success:    [3, fileUri]
+  /// - Cancelled:  [4]
+  ///
+  /// @param instance FileSaver instance from file_saver_init
+  /// @param fileData Byte array of file content
+  /// @param fileDataLength Length of fileData
+  /// @param directoryUri Directory URI from file_saver_pick_directory
+  /// @param baseFileName File name without extension
+  /// @param extension File extension without dot
+  /// @param conflictMode Conflict resolution mode (0-3)
+  /// @param native_port Dart NativePort for progress reporting
+  /// @return Token ID for cancellation
+  int file_saver_save_bytes_as(
+    ffi.Pointer<ffi.Void> instance,
+    ffi.Pointer<ffi.Uint8> fileData,
+    int fileDataLength,
+    ffi.Pointer<ffi.Char> directoryUri,
+    ffi.Pointer<ffi.Char> baseFileName,
+    ffi.Pointer<ffi.Char> extension,
+    int conflictMode,
+    int native_port,
+  ) {
+    return _file_saver_save_bytes_as(
+      instance,
+      fileData,
+      fileDataLength,
+      directoryUri,
+      baseFileName,
+      extension,
+      conflictMode,
+      native_port,
+    );
+  }
+
+  late final _file_saver_save_bytes_asPtr = _lookup<
+    ffi.NativeFunction<
+      ffi.Uint64 Function(
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Uint8>,
+        ffi.Int64,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Int32,
+        ffi.Int64,
+      )
+    >
+  >('file_saver_save_bytes_as');
+  late final _file_saver_save_bytes_as =
+      _file_saver_save_bytes_asPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Uint8>,
+              int,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              int,
+              int,
+            )
+          >();
+
+  /// Save file to user-selected directory (saveAs).
+  ///
+  /// Copies a file to a directory previously selected via file_saver_pick_directory.
+  /// Uses security-scoped resource access for the selected directory.
+  ///
+  /// Progress messages sent to native_port:
+  /// - Started:    [0]
+  /// - Progress:   [1, progress]    (progress is 0.0 to 1.0)
+  /// - Error:      [2, errorCode, errorMessage]
+  /// - Success:    [3, fileUri]
+  /// - Cancelled:  [4]
+  ///
+  /// @param instance FileSaver instance from file_saver_init
+  /// @param filePath Source file path (file:// URI)
+  /// @param directoryUri Directory URI from file_saver_pick_directory
+  /// @param baseFileName File name without extension
+  /// @param extension File extension without dot
+  /// @param conflictMode Conflict resolution mode (0-3)
+  /// @param native_port Dart NativePort for progress reporting
+  /// @return Token ID for cancellation
+  int file_saver_save_file_as(
+    ffi.Pointer<ffi.Void> instance,
+    ffi.Pointer<ffi.Char> filePath,
+    ffi.Pointer<ffi.Char> directoryUri,
+    ffi.Pointer<ffi.Char> baseFileName,
+    ffi.Pointer<ffi.Char> extension,
+    int conflictMode,
+    int native_port,
+  ) {
+    return _file_saver_save_file_as(
+      instance,
+      filePath,
+      directoryUri,
+      baseFileName,
+      extension,
+      conflictMode,
+      native_port,
+    );
+  }
+
+  late final _file_saver_save_file_asPtr = _lookup<
+    ffi.NativeFunction<
+      ffi.Uint64 Function(
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Int32,
+        ffi.Int64,
+      )
+    >
+  >('file_saver_save_file_as');
+  late final _file_saver_save_file_as =
+      _file_saver_save_file_asPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              int,
+              int,
+            )
+          >();
+
+  /// Save network file to user-selected directory (saveAs).
+  ///
+  /// Downloads and saves a file to a directory previously selected via
+  /// file_saver_pick_directory. Uses security-scoped resource access.
+  ///
+  /// Progress messages sent to native_port:
+  /// - Started:    [0]
+  /// - Progress:   [1, progress]    (progress is 0.0 to 1.0)
+  /// - Error:      [2, errorCode, errorMessage]
+  /// - Success:    [3, fileUri]
+  /// - Cancelled:  [4]
+  ///
+  /// @param instance FileSaver instance from file_saver_init
+  /// @param urlString URL to download from
+  /// @param headersJson Optional JSON string of HTTP headers (can be NULL)
+  /// @param timeoutSeconds Timeout in seconds for network request
+  /// @param directoryUri Directory URI from file_saver_pick_directory
+  /// @param baseFileName File name without extension
+  /// @param extension File extension without dot
+  /// @param conflictMode Conflict resolution mode (0-3)
+  /// @param native_port Dart NativePort for progress reporting
+  /// @return Token ID for cancellation
+  int file_saver_save_network_as(
+    ffi.Pointer<ffi.Void> instance,
+    ffi.Pointer<ffi.Char> urlString,
+    ffi.Pointer<ffi.Char> headersJson,
+    int timeoutSeconds,
+    ffi.Pointer<ffi.Char> directoryUri,
+    ffi.Pointer<ffi.Char> baseFileName,
+    ffi.Pointer<ffi.Char> extension,
+    int conflictMode,
+    int native_port,
+  ) {
+    return _file_saver_save_network_as(
+      instance,
+      urlString,
+      headersJson,
+      timeoutSeconds,
+      directoryUri,
+      baseFileName,
+      extension,
+      conflictMode,
+      native_port,
+    );
+  }
+
+  late final _file_saver_save_network_asPtr = _lookup<
+    ffi.NativeFunction<
+      ffi.Uint64 Function(
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Int32,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Int32,
+        ffi.Int64,
+      )
+    >
+  >('file_saver_save_network_as');
+  late final _file_saver_save_network_as =
+      _file_saver_save_network_asPtr
+          .asFunction<
+            int Function(
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              int,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              int,
+              int,
+            )
+          >();
+
   void file_saver_dispose(ffi.Pointer<ffi.Void> instance) {
     return _file_saver_dispose(instance);
   }
