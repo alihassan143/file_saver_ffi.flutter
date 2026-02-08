@@ -13,8 +13,7 @@ class SaveMultiNetworkScreen extends StatefulWidget {
   State<SaveMultiNetworkScreen> createState() => _SaveMultiNetworkScreenState();
 }
 
-class _SaveMultiNetworkScreenState extends State<SaveMultiNetworkScreen>
-    with MediaSaverStateMixin {
+class _SaveMultiNetworkScreenState extends State<SaveMultiNetworkScreen> {
   final List<_DownloadItem> _items = [
     _DownloadItem(config: NetworkDemoConfig.image),
     _DownloadItem(config: NetworkDemoConfig.video),
