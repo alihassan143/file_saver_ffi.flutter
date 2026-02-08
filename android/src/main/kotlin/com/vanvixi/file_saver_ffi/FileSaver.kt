@@ -64,14 +64,15 @@ class FileSaver(private val context: Context) {
             val conflictResolution = ConflictResolution.fromInt(conflictMode)
             val saveLocation = SaveLocation.fromInt(saveLocationIndex)
 
-            val saver = when {
-                fileType.isImage -> imageSaver
-                fileType.isVideo -> videoSaver
-                fileType.isAudio -> audioSaver
-                else -> customFileSaver
-            }
+            val saver = getSaverForFileType(fileType)
+            val entryFactory = SaveEntryFactory.MediaStore(
+                fileType = fileType,
+                baseFileName = baseFileName,
+                saveLocation = saveLocation,
+                subDir = subDir
+            )
 
-            saver.saveBytes(fileData, fileType, baseFileName, saveLocation, subDir, conflictResolution)
+            saver.saveBytes(fileData, entryFactory, conflictResolution)
                 .collect { event -> emit(event) }
         } catch (e: Exception) {
             emit(
@@ -164,14 +165,15 @@ class FileSaver(private val context: Context) {
             val conflictResolution = ConflictResolution.fromInt(conflictMode)
             val saveLocation = SaveLocation.fromInt(saveLocationIndex)
 
-            val saver = when {
-                fileType.isImage -> imageSaver
-                fileType.isVideo -> videoSaver
-                fileType.isAudio -> audioSaver
-                else -> customFileSaver
-            }
+            val saver = getSaverForFileType(fileType)
+            val entryFactory = SaveEntryFactory.MediaStore(
+                fileType = fileType,
+                baseFileName = baseFileName,
+                saveLocation = saveLocation,
+                subDir = subDir
+            )
 
-            saver.saveFile(filePath, fileType, baseFileName, saveLocation, subDir, conflictResolution)
+            saver.saveFile(filePath, entryFactory, conflictResolution)
                 .collect { event -> emit(event) }
         } catch (e: Exception) {
             emit(
@@ -268,17 +270,16 @@ class FileSaver(private val context: Context) {
             val conflictResolution = ConflictResolution.fromInt(conflictMode)
             val saveLocation = SaveLocation.fromInt(saveLocationIndex)
 
-            val saver = when {
-                fileType.isImage -> imageSaver
-                fileType.isVideo -> videoSaver
-                fileType.isAudio -> audioSaver
-                else -> customFileSaver
-            }
+            val saver = getSaverForFileType(fileType)
+            val entryFactory = SaveEntryFactory.MediaStore(
+                fileType = fileType,
+                baseFileName = baseFileName,
+                saveLocation = saveLocation,
+                subDir = subDir
+            )
 
-            saver.saveNetwork(
-                url, headersJson, timeoutMs,
-                fileType, baseFileName, saveLocation, subDir, conflictResolution,
-            ).collect { event -> emit(event) }
+            saver.saveNetwork(url, headersJson, timeoutMs, entryFactory, conflictResolution)
+                .collect { event -> emit(event) }
         } catch (e: Exception) {
             emit(
                 SaveProgressEvent.Error(
@@ -358,4 +359,19 @@ class FileSaver(private val context: Context) {
     fun cancelOperation(operationId: Long) {
         activeJobs[operationId]?.cancel()
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Private Helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Returns appropriate saver based on file type.
+     */
+    private fun getSaverForFileType(fileType: FileType) = when {
+        fileType.isImage -> imageSaver
+        fileType.isVideo -> videoSaver
+        fileType.isAudio -> audioSaver
+        else -> customFileSaver
+    }
+
 }
