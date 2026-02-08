@@ -28,7 +28,7 @@ abstract class BaseFileSaver(protected val context: Context) {
         conflictResolution: ConflictResolution,
     ): Flow<SaveProgressEvent> = saveFlow {
         if (fileData.isEmpty()) {
-            sendError(Constants.ERROR_INVALID_FILE, "File data cannot be empty")
+            sendError(Constants.ERROR_INVALID_INPUT, "File data cannot be empty")
             return@saveFlow
         }
 
@@ -79,7 +79,7 @@ abstract class BaseFileSaver(protected val context: Context) {
             sendError(Constants.ERROR_PERMISSION_DENIED, "Permission denied: ${e.message}")
             return@saveFlow
         } catch (e: IllegalArgumentException) {
-            sendError(Constants.ERROR_INVALID_FILE, e.message ?: "Invalid file path")
+            sendError(Constants.ERROR_INVALID_INPUT, e.message ?: "Invalid file path")
             return@saveFlow
         }
 
