@@ -6,14 +6,14 @@ import 'utils.dart';
 class InfoCard extends StatelessWidget {
   const InfoCard({
     super.key,
-    required this.title,
     required this.description,
     required this.url,
+    this.urlLabel = 'URL',
   });
 
-  final String title;
   final String description;
   final String url;
+  final String urlLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -23,12 +23,10 @@ class InfoCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 8),
             Text(description),
             const SizedBox(height: 8),
             Text(
-              'URL: $url',
+              '$urlLabel: $url',
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: Colors.grey),
@@ -177,21 +175,26 @@ class MediaCategorySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SegmentedButton<dynamic>(
-      segments: categories
-          .map(
-            (c) => ButtonSegment<dynamic>(
-              value: c.value,
-              icon: Icon(c.icon),
-              tooltip: c.label,
-            ),
-          )
-          .toList(),
-      selected: {selected},
-      onSelectionChanged: enabled ? (s) => onChanged(s.first) : null,
-      showSelectedIcon: false,
-      style: SegmentedButton.styleFrom(
-        selectedBackgroundColor: Theme.of(context).colorScheme.primaryContainer,
+    return Padding(
+      padding: const .symmetric(horizontal: 16),
+      child: SegmentedButton<dynamic>(
+        segments: categories
+            .map(
+              (c) => ButtonSegment<dynamic>(
+                value: c.value,
+                icon: Icon(c.icon),
+                tooltip: c.label,
+              ),
+            )
+            .toList(),
+        selected: {selected},
+        onSelectionChanged: enabled ? (s) => onChanged(s.first) : null,
+        showSelectedIcon: false,
+        style: SegmentedButton.styleFrom(
+          selectedBackgroundColor: Theme.of(
+            context,
+          ).colorScheme.primaryContainer,
+        ),
       ),
     );
   }

@@ -3,8 +3,6 @@ package com.vanvixi.file_saver_ffi.core.base
 import android.content.Context
 import com.vanvixi.file_saver_ffi.exception.NetworkDownloadException
 import com.vanvixi.file_saver_ffi.models.ConflictResolution
-import com.vanvixi.file_saver_ffi.models.FileType
-import com.vanvixi.file_saver_ffi.models.SaveLocation
 import com.vanvixi.file_saver_ffi.models.SaveProgressEvent
 import com.vanvixi.file_saver_ffi.utils.Constants
 import com.vanvixi.file_saver_ffi.utils.FileHelper
@@ -18,26 +16,26 @@ import java.io.IOException
 abstract class BaseFileSaver(protected val context: Context) {
 
     /**
-     * Saves file to MediaStore with real-time progress streaming
+     * Saves byte array data with real-time progress streaming.
+     *
+     * @param fileData File data to save
+     * @param entryFactory Factory for creating save entry (MediaStore or SAF)
+     * @param conflictResolution Strategy for handling existing files
      */
     open fun saveBytes(
         fileData: ByteArray,
-        fileType: FileType,
-        baseFileName: String,
-        saveLocation: SaveLocation,
-        subDir: String?,
+        entryFactory: SaveEntryFactory,
         conflictResolution: ConflictResolution,
     ): Flow<SaveProgressEvent> = saveFlow {
         if (fileData.isEmpty()) {
-            sendError(Constants.ERROR_INVALID_FILE, "File data cannot be empty")
+            sendError(Constants.ERROR_INVALID_INPUT, "File data cannot be empty")
             return@saveFlow
         }
 
         sendProgress(0.05)
 
-        val (uri, outputStream) = createStoreEntry(
-            context, fileType, baseFileName, saveLocation, subDir, conflictResolution
-        ) ?: return@saveFlow
+        val (uri, outputStream) = entryFactory.createEntry(this, context, conflictResolution)
+            ?: return@saveFlow
 
         sendProgress(0.1)
 
@@ -46,27 +44,28 @@ abstract class BaseFileSaver(protected val context: Context) {
                 sendProgress(mapProgress(writeProgress, 0.1, 0.9))
             }
         } catch (e: CancellationException) {
-            context.deleteEntry(uri)
+            entryFactory.deleteEntry(context, uri)
             sendCancelled()
             throw e
         } catch (e: IOException) {
-            context.deleteEntry(uri)
+            entryFactory.deleteEntry(context, uri)
             sendError(Constants.ERROR_FILE_IO, "Failed to write file data: ${e.message}")
             return@saveFlow
         }
 
-        finishSave(context, uri)
+        entryFactory.finishSave(this, context, uri)
     }
 
     /**
-     * Saves file from source path to MediaStore with real-time progress streaming
+     * Saves file from source path with real-time progress streaming.
+     *
+     * @param filePath Source file path (file:// or content:// URI)
+     * @param entryFactory Factory for creating save entry (MediaStore or SAF)
+     * @param conflictResolution Strategy for handling existing files
      */
     open fun saveFile(
         filePath: String,
-        fileType: FileType,
-        baseFileName: String,
-        saveLocation: SaveLocation,
-        subDir: String?,
+        entryFactory: SaveEntryFactory,
         conflictResolution: ConflictResolution,
     ): Flow<SaveProgressEvent> = saveFlow {
         sendProgress(0.05)
@@ -80,20 +79,17 @@ abstract class BaseFileSaver(protected val context: Context) {
             sendError(Constants.ERROR_PERMISSION_DENIED, "Permission denied: ${e.message}")
             return@saveFlow
         } catch (e: IllegalArgumentException) {
-            sendError(Constants.ERROR_INVALID_FILE, e.message ?: "Invalid file path")
+            sendError(Constants.ERROR_INVALID_INPUT, e.message ?: "Invalid file path")
             return@saveFlow
         }
 
         sendProgress(0.1)
 
-        val (uri, outputStream) = run {
-            val result = createStoreEntry(context, fileType, baseFileName, saveLocation, subDir, conflictResolution)
-            if (result == null) {
+        val (uri, outputStream) = entryFactory.createEntry(this, context, conflictResolution)
+            ?: run {
                 sourceFile.inputStream.close()
                 return@saveFlow
             }
-            result
-        }
 
         sendProgress(0.15)
 
@@ -102,29 +98,32 @@ abstract class BaseFileSaver(protected val context: Context) {
                 sendProgress(mapProgress(copyProgress, 0.15, 0.9))
             }
         } catch (e: CancellationException) {
-            context.deleteEntry(uri)
+            entryFactory.deleteEntry(context, uri)
             sendCancelled()
             throw e
         } catch (e: IOException) {
-            context.deleteEntry(uri)
+            entryFactory.deleteEntry(context, uri)
             sendError(Constants.ERROR_FILE_IO, "Failed to copy file: ${e.message}")
             return@saveFlow
         }
 
-        finishSave(context, uri)
+        entryFactory.finishSave(this, context, uri)
     }
 
     /**
-     * Downloads file from network URL and saves directly to MediaStore
+     * Downloads file from network URL and saves directly with real-time progress.
+     *
+     * @param url Network URL to download from
+     * @param headersJson Optional JSON string of HTTP headers
+     * @param timeoutMs Connection timeout in milliseconds
+     * @param entryFactory Factory for creating save entry (MediaStore or SAF)
+     * @param conflictResolution Strategy for handling existing files
      */
     open fun saveNetwork(
         url: String,
         headersJson: String?,
         timeoutMs: Int,
-        fileType: FileType,
-        baseFileName: String,
-        saveLocation: SaveLocation,
-        subDir: String?,
+        entryFactory: SaveEntryFactory,
         conflictResolution: ConflictResolution,
     ): Flow<SaveProgressEvent> = saveFlow {
         sendProgress(0.02)
@@ -144,9 +143,8 @@ abstract class BaseFileSaver(protected val context: Context) {
         try {
             sendProgress(0.05)
 
-            val (uri, outputStream) = createStoreEntry(
-                context, fileType, baseFileName, saveLocation, subDir, conflictResolution
-            ) ?: return@saveFlow
+            val (uri, outputStream) = entryFactory.createEntry(this, context, conflictResolution)
+                ?: return@saveFlow
 
             sendProgress(0.1)
 
@@ -157,16 +155,16 @@ abstract class BaseFileSaver(protected val context: Context) {
                     sendProgress(mapProgress(copyProgress, 0.1, 0.9))
                 }
             } catch (e: CancellationException) {
-                context.deleteEntry(uri)
+                entryFactory.deleteEntry(context, uri)
                 sendCancelled()
                 throw e
             } catch (e: IOException) {
-                context.deleteEntry(uri)
+                entryFactory.deleteEntry(context, uri)
                 sendError(Constants.ERROR_FILE_IO, "Failed to stream network data: ${e.message}")
                 return@saveFlow
             }
 
-            finishSave(context, uri)
+            entryFactory.finishSave(this, context, uri)
         } finally {
             try {
                 connectionResult.connection.disconnect()

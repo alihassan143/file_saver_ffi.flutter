@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import DartApiDl
 
 private var instanceCounter: UInt = 0
@@ -112,6 +113,25 @@ public func fileSaverInit() -> UInt {
     instances[id] = FileSaver()
 
     return id
+}
+
+@_cdecl("file_saver_dispose")
+public func fileSaverDispose(_ instanceId: UInt) {
+    instanceLock.lock()
+    defer { instanceLock.unlock() }
+
+    instances.removeValue(forKey: instanceId)
+}
+
+@_cdecl("file_saver_cancel")
+public func fileSaverCancel(_ tokenId: UInt) {
+    // Try to cancel as download first (saveNetwork)
+    if let download = getDownload(tokenId) {
+        download.cancel()
+        return
+    }
+    // Fall back to token cancellation (saveBytes, saveFile)
+    getToken(tokenId)?.cancel()
 }
 
 @_cdecl("file_saver_save_bytes")
@@ -320,21 +340,240 @@ public func fileSaverSaveNetwork(
     return tokenId
 }
 
-@_cdecl("file_saver_cancel")
-public func fileSaverCancel(_ tokenId: UInt) {
-    // Try to cancel as download first (saveNetwork)
-    if let download = getDownload(tokenId) {
-        download.cancel()
-        return
+// MARK: - User-Selected Location (Document Picker)
+
+/// Holds reference to DocumentPickerHelper during picker operation
+private var activePickerHelper: DocumentPickerHelper?
+private let pickerLock = NSLock()
+
+@_cdecl("file_saver_pick_directory")
+public func fileSaverPickDirectory(
+    _ instanceId: UInt,
+    _ nativePort: Int64
+) {
+    let reporter = ProgressReporter(port: nativePort)
+
+    DispatchQueue.main.async {
+        guard let rootVC = getRootViewController() else {
+            reporter.sendError(
+                code: Constants.errorPlatform,
+                message: "No root view controller available"
+            )
+            return
+        }
+
+        let helper = DocumentPickerHelper()
+
+        // Retain helper during picker operation
+        pickerLock.lock()
+        activePickerHelper = helper
+        pickerLock.unlock()
+
+        helper.pickDirectory(from: rootVC) { url in
+            // Release helper
+            pickerLock.lock()
+            activePickerHelper = nil
+            pickerLock.unlock()
+
+            if let url = url {
+                reporter.sendSuccess(uri: url.absoluteString)
+            } else {
+                reporter.sendCancelled()
+            }
+        }
     }
-    // Fall back to token cancellation (saveBytes, saveFile)
-    getToken(tokenId)?.cancel()
 }
 
-@_cdecl("file_saver_dispose")
-public func fileSaverDispose(_ instanceId: UInt) {
-    instanceLock.lock()
-    defer { instanceLock.unlock() }
+@_cdecl("file_saver_save_bytes_as")
+public func fileSaverSaveBytesAs(
+    _ instanceId: UInt,
+    _ fileData: UnsafePointer<UInt8>,
+    _ fileDataLength: Int64,
+    _ directoryUri: UnsafePointer<CChar>,
+    _ baseFileName: UnsafePointer<CChar>,
+    _ ext: UnsafePointer<CChar>,
+    _ conflictMode: Int32,
+    _ nativePort: Int64
+) -> UInt {
+    let reporter = ProgressReporter(port: nativePort)
 
-    instances.removeValue(forKey: instanceId)
+    // Create cancellation token
+    let tokenId = generateTokenId()
+    let token = CancellationToken()
+    registerToken(tokenId, token)
+
+    // Copy data before async operation
+    let data = Data(bytes: fileData, count: Int(fileDataLength))
+    let dirUri = String(cString: directoryUri)
+    let fileName = String(cString: baseFileName)
+    let extStr = String(cString: ext)
+
+    DispatchQueue.global(qos: .userInitiated).async {
+        defer { unregisterToken(tokenId) }
+
+        reporter.sendStarted()
+
+        instanceLock.lock()
+        guard let saver = instances[instanceId] else {
+            instanceLock.unlock()
+            reporter.sendError(
+                code: Constants.errorPlatform,
+                message: "FileSaver instance not found"
+            )
+            return
+        }
+        instanceLock.unlock()
+
+        saver.saveBytesAs(
+            fileData: data,
+            directoryUri: dirUri,
+            baseFileName: fileName,
+            extension: extStr,
+            conflictMode: Int(conflictMode),
+            reporter: reporter,
+            cancellationToken: token
+        )
+    }
+
+    return tokenId
+}
+
+@_cdecl("file_saver_save_file_as")
+public func fileSaverSaveFileAs(
+    _ instanceId: UInt,
+    _ filePath: UnsafePointer<CChar>,
+    _ directoryUri: UnsafePointer<CChar>,
+    _ baseFileName: UnsafePointer<CChar>,
+    _ ext: UnsafePointer<CChar>,
+    _ conflictMode: Int32,
+    _ nativePort: Int64
+) -> UInt {
+    let reporter = ProgressReporter(port: nativePort)
+
+    // Create cancellation token
+    let tokenId = generateTokenId()
+    let token = CancellationToken()
+    registerToken(tokenId, token)
+
+    // Copy strings before async operation
+    let path = String(cString: filePath)
+    let dirUri = String(cString: directoryUri)
+    let fileName = String(cString: baseFileName)
+    let extStr = String(cString: ext)
+
+    DispatchQueue.global(qos: .userInitiated).async {
+        defer { unregisterToken(tokenId) }
+
+        reporter.sendStarted()
+
+        instanceLock.lock()
+        guard let saver = instances[instanceId] else {
+            instanceLock.unlock()
+            reporter.sendError(
+                code: Constants.errorPlatform,
+                message: "FileSaver instance not found"
+            )
+            return
+        }
+        instanceLock.unlock()
+
+        saver.saveFileAs(
+            filePath: path,
+            directoryUri: dirUri,
+            baseFileName: fileName,
+            extension: extStr,
+            conflictMode: Int(conflictMode),
+            reporter: reporter,
+            cancellationToken: token
+        )
+    }
+
+    return tokenId
+}
+
+@_cdecl("file_saver_save_network_as")
+public func fileSaverSaveNetworkAs(
+    _ instanceId: UInt,
+    _ urlString: UnsafePointer<CChar>,
+    _ headersJson: UnsafePointer<CChar>?,
+    _ timeoutSeconds: Int32,
+    _ directoryUri: UnsafePointer<CChar>,
+    _ baseFileName: UnsafePointer<CChar>,
+    _ ext: UnsafePointer<CChar>,
+    _ conflictMode: Int32,
+    _ nativePort: Int64
+) -> UInt {
+    let reporter = ProgressReporter(port: nativePort)
+
+    // Create active download entry
+    let tokenId = generateTokenId()
+    let token = CancellationToken()
+    let activeDownload = ActiveDownload(token: token)
+    registerDownload(tokenId, activeDownload)
+
+    // Copy strings
+    let url = String(cString: urlString)
+    let headers = headersJson.map { String(cString: $0) }
+    let timeout = Int(timeoutSeconds)
+    let dirUri = String(cString: directoryUri)
+    let fileName = String(cString: baseFileName)
+    let extStr = String(cString: ext)
+
+    DispatchQueue.global(qos: .userInitiated).async {
+        instanceLock.lock()
+        guard let saver = instances[instanceId] else {
+            instanceLock.unlock()
+            reporter.sendError(
+                code: Constants.errorPlatform,
+                message: "FileSaver instance not found"
+            )
+            unregisterDownload(tokenId)
+            return
+        }
+        instanceLock.unlock()
+
+        if token.isCancelled {
+            reporter.sendCancelled()
+            unregisterDownload(tokenId)
+            return
+        }
+
+        reporter.sendStarted()
+
+        let parsedHeaders = NetworkHelper.parseHeaders(headers)
+
+        saver.saveNetworkAs(
+            urlString: url,
+            headers: parsedHeaders,
+            timeoutSeconds: timeout,
+            directoryUri: dirUri,
+            baseFileName: fileName,
+            extension: extStr,
+            conflictMode: Int(conflictMode),
+            reporter: reporter,
+            cancellationToken: token,
+            onCancelHandlerReady: { cancelHandler in
+                activeDownload.setCancelHandler(cancelHandler)
+            },
+            onComplete: {
+                unregisterDownload(tokenId)
+            }
+        )
+    }
+
+    return tokenId
+}
+
+// MARK: - Helper to get root view controller
+
+private func getRootViewController() -> UIViewController? {
+    if #available(iOS 15.0, *) {
+        return UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }?
+            .rootViewController
+    } else {
+        return UIApplication.shared.keyWindow?.rootViewController
+    }
 }

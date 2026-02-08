@@ -90,6 +90,38 @@ class FileSaver extends jni$_.JObject {
     );
   }
 
+  static final _id_cancelOperation = _class.instanceMethodId(
+    r'cancelOperation',
+    r'(J)V',
+  );
+
+  static final _cancelOperation =
+      jni$_.ProtectedJniExtensions.lookup<
+            jni$_.NativeFunction<
+              jni$_.JThrowablePtr Function(
+                jni$_.Pointer<jni$_.Void>,
+                jni$_.JMethodIDPtr,
+                jni$_.VarArgs<(jni$_.Int64,)>,
+              )
+            >
+          >('globalEnv_CallVoidMethod')
+          .asFunction<
+            jni$_.JThrowablePtr Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+              int,
+            )
+          >();
+
+  /// from: `public fun cancelOperation(operationId: kotlin.Long): kotlin.Unit`
+  void cancelOperation(int j) {
+    _cancelOperation(
+      reference.pointer,
+      _id_cancelOperation as jni$_.JMethodIDPtr,
+      j,
+    ).check();
+  }
+
   static final _id_saveBytes = _class.instanceMethodId(
     r'saveBytes',
     r'([BLjava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;ILcom/vanvixi/file_saver_ffi/models/ProgressCallback;)J',
@@ -315,36 +347,217 @@ class FileSaver extends jni$_.JObject {
     ).long;
   }
 
-  static final _id_cancelOperation = _class.instanceMethodId(
-    r'cancelOperation',
-    r'(J)V',
+  static final _id_saveBytesAs = _class.instanceMethodId(
+    r'saveBytesAs',
+    r'([BLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILcom/vanvixi/file_saver_ffi/models/ProgressCallback;)J',
   );
 
-  static final _cancelOperation =
+  static final _saveBytesAs =
       jni$_.ProtectedJniExtensions.lookup<
             jni$_.NativeFunction<
-              jni$_.JThrowablePtr Function(
+              jni$_.JniResult Function(
                 jni$_.Pointer<jni$_.Void>,
                 jni$_.JMethodIDPtr,
-                jni$_.VarArgs<(jni$_.Int64,)>,
+                jni$_.VarArgs<
+                  (
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Int32,
+                    jni$_.Pointer<jni$_.Void>,
+                  )
+                >,
               )
             >
-          >('globalEnv_CallVoidMethod')
+          >('globalEnv_CallLongMethod')
           .asFunction<
-            jni$_.JThrowablePtr Function(
+            jni$_.JniResult Function(
               jni$_.Pointer<jni$_.Void>,
               jni$_.JMethodIDPtr,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
               int,
+              jni$_.Pointer<jni$_.Void>,
             )
           >();
 
-  /// from: `public fun cancelOperation(operationId: kotlin.Long): kotlin.Unit`
-  void cancelOperation(int j) {
-    _cancelOperation(
+  /// from: `public fun saveBytesAs(fileData: kotlin.ByteArray, directoryUri: kotlin.String, baseFileName: kotlin.String, extension: kotlin.String, mimeType: kotlin.String, conflictMode: kotlin.Int, callback: com.vanvixi.file_saver_ffi.models.ProgressCallback): kotlin.Long`
+  int saveBytesAs(
+    jni$_.JByteArray bs,
+    jni$_.JString string,
+    jni$_.JString string1,
+    jni$_.JString string2,
+    jni$_.JString string3,
+    int i,
+    ProgressCallback progressCallback,
+  ) {
+    final _$bs = bs.reference;
+    final _$string = string.reference;
+    final _$string1 = string1.reference;
+    final _$string2 = string2.reference;
+    final _$string3 = string3.reference;
+    final _$progressCallback = progressCallback.reference;
+    return _saveBytesAs(
       reference.pointer,
-      _id_cancelOperation as jni$_.JMethodIDPtr,
-      j,
-    ).check();
+      _id_saveBytesAs as jni$_.JMethodIDPtr,
+      _$bs.pointer,
+      _$string.pointer,
+      _$string1.pointer,
+      _$string2.pointer,
+      _$string3.pointer,
+      i,
+      _$progressCallback.pointer,
+    ).long;
+  }
+
+  static final _id_saveFileAs = _class.instanceMethodId(
+    r'saveFileAs',
+    r'(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILcom/vanvixi/file_saver_ffi/models/ProgressCallback;)J',
+  );
+
+  static final _saveFileAs =
+      jni$_.ProtectedJniExtensions.lookup<
+            jni$_.NativeFunction<
+              jni$_.JniResult Function(
+                jni$_.Pointer<jni$_.Void>,
+                jni$_.JMethodIDPtr,
+                jni$_.VarArgs<
+                  (
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Int32,
+                    jni$_.Pointer<jni$_.Void>,
+                  )
+                >,
+              )
+            >
+          >('globalEnv_CallLongMethod')
+          .asFunction<
+            jni$_.JniResult Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              int,
+              jni$_.Pointer<jni$_.Void>,
+            )
+          >();
+
+  /// from: `public fun saveFileAs(filePath: kotlin.String, directoryUri: kotlin.String, baseFileName: kotlin.String, extension: kotlin.String, mimeType: kotlin.String, conflictMode: kotlin.Int, callback: com.vanvixi.file_saver_ffi.models.ProgressCallback): kotlin.Long`
+  int saveFileAs(
+    jni$_.JString string,
+    jni$_.JString string1,
+    jni$_.JString string2,
+    jni$_.JString string3,
+    jni$_.JString string4,
+    int i,
+    ProgressCallback progressCallback,
+  ) {
+    final _$string = string.reference;
+    final _$string1 = string1.reference;
+    final _$string2 = string2.reference;
+    final _$string3 = string3.reference;
+    final _$string4 = string4.reference;
+    final _$progressCallback = progressCallback.reference;
+    return _saveFileAs(
+      reference.pointer,
+      _id_saveFileAs as jni$_.JMethodIDPtr,
+      _$string.pointer,
+      _$string1.pointer,
+      _$string2.pointer,
+      _$string3.pointer,
+      _$string4.pointer,
+      i,
+      _$progressCallback.pointer,
+    ).long;
+  }
+
+  static final _id_saveNetworkAs = _class.instanceMethodId(
+    r'saveNetworkAs',
+    r'(Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILcom/vanvixi/file_saver_ffi/models/ProgressCallback;)J',
+  );
+
+  static final _saveNetworkAs =
+      jni$_.ProtectedJniExtensions.lookup<
+            jni$_.NativeFunction<
+              jni$_.JniResult Function(
+                jni$_.Pointer<jni$_.Void>,
+                jni$_.JMethodIDPtr,
+                jni$_.VarArgs<
+                  (
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Int32,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Int32,
+                    jni$_.Pointer<jni$_.Void>,
+                  )
+                >,
+              )
+            >
+          >('globalEnv_CallLongMethod')
+          .asFunction<
+            jni$_.JniResult Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              int,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              int,
+              jni$_.Pointer<jni$_.Void>,
+            )
+          >();
+
+  /// from: `public fun saveNetworkAs(url: kotlin.String, headersJson: kotlin.String?, timeoutMs: kotlin.Int, directoryUri: kotlin.String, baseFileName: kotlin.String, extension: kotlin.String, mimeType: kotlin.String, conflictMode: kotlin.Int, callback: com.vanvixi.file_saver_ffi.models.ProgressCallback): kotlin.Long`
+  int saveNetworkAs(
+    jni$_.JString string,
+    jni$_.JString? string1,
+    int i,
+    jni$_.JString string2,
+    jni$_.JString string3,
+    jni$_.JString string4,
+    jni$_.JString string5,
+    int i1,
+    ProgressCallback progressCallback,
+  ) {
+    final _$string = string.reference;
+    final _$string1 = string1?.reference ?? jni$_.jNullReference;
+    final _$string2 = string2.reference;
+    final _$string3 = string3.reference;
+    final _$string4 = string4.reference;
+    final _$string5 = string5.reference;
+    final _$progressCallback = progressCallback.reference;
+    return _saveNetworkAs(
+      reference.pointer,
+      _id_saveNetworkAs as jni$_.JMethodIDPtr,
+      _$string.pointer,
+      _$string1.pointer,
+      i,
+      _$string2.pointer,
+      _$string3.pointer,
+      _$string4.pointer,
+      _$string5.pointer,
+      i1,
+      _$progressCallback.pointer,
+    ).long;
   }
 }
 

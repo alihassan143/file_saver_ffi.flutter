@@ -35,34 +35,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const FileSaverDemoPage(),
-    );
-  }
-}
-
-class FileSaverDemoPage extends StatelessWidget {
-  const FileSaverDemoPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('File Saver FFI Demo'),
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          bottom: const TabBar(
-            tabs: [
-              Tab(icon: Icon(Icons.memory), text: 'Save Bytes'),
-              Tab(icon: Icon(Icons.file_open), text: 'Save File'),
-              Tab(icon: Icon(Icons.downloading_rounded), text: 'Save Network'),
-            ],
-          ),
-        ),
-        body: const TabBarView(
-          children: [SaveBytesScreen(), SaveFileScreen(), SaveNetworkScreen()],
-        ),
-      ),
+      home: const HomeScreen(),
     );
   }
 }

@@ -21,7 +21,7 @@ sealed class FileSaverException implements Exception {
       _ when contains('FILE_NOT_FOUND') => SourceFileNotFoundException(msg),
       _ when contains('ICLOUD_DOWNLOAD_FAILED') => ICloudDownloadException(msg),
       _ when contains('NETWORK_ERROR') => NetworkException(msg),
-      _ when contains('INVALID_FILE') => InvalidFileException(msg),
+      _ when contains('INVALID_INPUT') => InvalidInputException(msg),
       _ when contains('UNSUPPORTED_FORMAT') => UnsupportedFormatException(msg),
       _ when contains('STORAGE_FULL') => const StorageFullException(),
       _ when contains('FILE_IO_ERROR') => FileIOException(msg),
@@ -37,7 +37,7 @@ sealed class FileSaverException implements Exception {
       'FILE_NOT_FOUND' => SourceFileNotFoundException(message),
       'ICLOUD_DOWNLOAD_FAILED' => ICloudDownloadException(message),
       'NETWORK_ERROR' => NetworkException(message),
-      'INVALID_FILE' || 'INVALID_ARGUMENT' => InvalidFileException(message),
+      'INVALID_INPUT' || 'INVALID_ARGUMENT' => InvalidInputException(message),
       'UNSUPPORTED_FORMAT' => UnsupportedFormatException(message),
       'STORAGE_FULL' => const StorageFullException(),
       'FILE_IO_ERROR' => FileIOException(message),
@@ -83,9 +83,9 @@ final class FileExistsException extends FileSaverException {
   String toString() => 'FileExistsException: File already exists: $fileName';
 }
 
-final class InvalidFileException extends FileSaverException {
-  const InvalidFileException(String reason)
-    : super('Invalid file: $reason', 'INVALID_FILE');
+final class InvalidInputException extends FileSaverException {
+  const InvalidInputException(String reason)
+    : super('Invalid input: $reason', 'INVALID_INPUT');
 }
 
 /// Insufficient storage space available.

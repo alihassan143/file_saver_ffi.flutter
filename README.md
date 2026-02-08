@@ -134,13 +134,24 @@ Use the appropriate input class for your data source:
 | **`SaveFileInput`**    | `String` (path) | Large files from disk (videos, recordings)     |
 | **`SaveNetworkInput`** | `String` (URL)  | Download and save directly from internet       |
 
-#### API Matrix
+#### Usage Matrix 📊
 
-| Input Source | Stream API               | Async API                     | Interactive 🔮 |
-|--------------|--------------------------|-------------------------------|----------------|
-| **Bytes**    | `save(SaveBytesInput)`   | `saveAsync(SaveBytesInput)`   | `saveAs()`     |
-| **File**     | `save(SaveFileInput)`    | `saveAsync(SaveFileInput)`    | `saveAs()`     |
-| **Network**  | `save(SaveNetworkInput)` | `saveAsync(SaveNetworkInput)` | `saveAs()`     |
+|                                            | **Standard Location**<br>*(Downloads, Photos, etc.)* | **User-Chosen Location**<br>*(System Picker)* |
+|:-------------------------------------------|:-----------------------------------------------------|:----------------------------------------------|
+| **Advanced Control**<br>*(Stream, Cancel)* | **`save()`**                                         | **`saveAs()`**                                |
+| **Simple / Await**<br>*(Future)*           | **`saveAsync()`**                                    | **`saveAsAsync()`**                           |
+
+> *Standard Location*: defined enum (e.g., `Downloads`, `Photos`).
+> *User-Chosen*: via `pickDirectory()` or auto-prompt.
+
+### User-Selected Location (Save As)
+
+Sometimes you want the user to choose where to save the file.
+
+- **`pickDirectory()`**: Opens the system directory picker (Android SAF / iOS Document Picker) and returns a persistent permission URI (Android) or URL (iOS).
+- **`saveAs()` / `saveAsAsync()`**: Saves a file to a user-selected location. If no location is provided, it automatically prompts the user to pick one.
+
+> **Note:** On Android, this uses the Storage Access Framework (SAF), which allows your app to write to arbitrary locations (SD cards, USB drives, etc.) without standard storage permissions.
 
 ### File Types
 
@@ -239,9 +250,38 @@ final subscription = FileSaver.instance.save(
 subscription.cancel();
 ```
 
+### Save to User-Selected Directory
+
+```dart
+// 1. Pick directory (Optional, saveAs handles this automatically if null)
+final location = await FileSaver.instance.pickDirectory();
+
+if (location != null) {
+  // 2. Save file to that directory
+  await FileSaver.instance.saveAsAsync(
+    input: SaveBytesInput(pdfBytes),
+    fileName: 'invoice',
+    fileType: CustomFileType(ext: 'pdf', mimeType: 'application/pdf'),
+    saveLocation: location,
+  );
+}
+```
+
 ## API Reference
 
 ### Unified API (Recommended)
+
+#### `save`
+Stream-based API for advanced control (cancellation, detailed events).
+
+```dart
+Stream<SaveProgress> save({
+  required SaveInput input,
+  required String fileName,
+  required FileType fileType,
+  // ... same optional params
+})
+```
 
 #### `saveAsync`
 Future-based API for simple usage.
@@ -258,16 +298,38 @@ Future<Uri> saveAsync({
 })
 ```
 
-#### `save`
-Stream-based API for advanced control (cancellation, detailed events).
+#### `saveAs`
+Stream-based interactive save.
 
 ```dart
-Stream<SaveProgress> save({
+Stream<SaveProgress> saveAs({
   required SaveInput input,
   required String fileName,
   required FileType fileType,
-  // ... same optional params
+  UserSelectedLocation? saveLocation,
+  ConflictResolution conflictResolution,
 })
+```
+
+#### `saveAsAsync`
+Interactive save (shows picker) or save to specific `UserSelectedLocation`.
+
+```dart
+Future<Uri?> saveAsAsync({
+  required SaveInput input,
+  required String fileName,
+  required FileType fileType,
+  UserSelectedLocation? saveLocation, // Null = Show Picker
+  ConflictResolution conflictResolution,
+  Function(double)? onProgress,
+})
+```
+
+#### `pickDirectory`
+Open system picker to let user choose a folder.
+
+```dart
+Future<UserSelectedLocation?> pickDirectory({bool shouldPersist = true})
 ```
 
 ### Input Models
@@ -310,7 +372,7 @@ Stream API emits these sealed class events:
 | `PermissionDeniedException`   | Storage access denied                   | `PERMISSION_DENIED`      |
 | `FileExistsException`         | File exists with `fail` strategy        | `FILE_EXISTS`            |
 | `StorageFullException`        | Insufficient device storage             | `STORAGE_FULL`           |
-| `InvalidFileException`        | Empty bytes or invalid filename         | `INVALID_FILE`           |
+| `InvalidInputException`       | Empty bytes or invalid input            | `INVALID_INPUT`          |
 | `FileIOException`             | File system error                       | `FILE_IO_ERROR`          |
 | `UnsupportedFormatException`  | Format not supported on platform        | `UNSUPPORTED_FORMAT`     |
 | `SourceFileNotFoundException` | Source file not found (saveFile)        | `FILE_NOT_FOUND`         |
@@ -327,7 +389,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 * ~~File Input Methods~~
 * ~~Save from Network URL~~
-* User-Selected Location Android (SAF), iOS (Document Picker)
+* ~~User-Selected Location Android (SAF), iOS (Document Picker)~~
 * Custom Path Support
 * ~~Progress Tracking~~
 * ~~Cancellation Support~~
