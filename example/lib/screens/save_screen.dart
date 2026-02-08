@@ -152,7 +152,9 @@ class _SaveScreenState extends State<SaveScreen> with DemoSaveScreenMixin {
         );
       }
     } on CancelledException {
-      showAppSnackBar(context, 'Operation cancelled', isSuccess: false);
+      if (mounted) {
+        showAppSnackBar(context, 'Operation cancelled', isSuccess: false);
+      }
     } catch (e) {
       showError(e);
     } finally {
