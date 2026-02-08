@@ -153,10 +153,10 @@ abstract class FileSaverPlatform {
   @protected
   void validateBytesInput(Uint8List bytes, String fileName) {
     if (bytes.isEmpty) {
-      throw const InvalidFileException('File bytes cannot be empty');
+      throw const InvalidInputException('File bytes cannot be empty');
     }
     if (fileName.isEmpty) {
-      throw const InvalidFileException('File name cannot be empty');
+      throw const InvalidInputException('File name cannot be empty');
     }
   }
 
@@ -164,10 +164,10 @@ abstract class FileSaverPlatform {
   @protected
   void validateFilePathInput(String filePath, String fileName) {
     if (filePath.isEmpty) {
-      throw const InvalidFileException('File path cannot be empty');
+      throw const InvalidInputException('File path cannot be empty');
     }
     if (fileName.isEmpty) {
-      throw const InvalidFileException('File name cannot be empty');
+      throw const InvalidInputException('File name cannot be empty');
     }
   }
 
@@ -175,16 +175,16 @@ abstract class FileSaverPlatform {
   @protected
   void validateNetworkInput(String url, String fileName) {
     if (url.isEmpty) {
-      throw const InvalidFileException('URL cannot be empty');
+      throw const InvalidInputException('URL cannot be empty');
     }
     final uri = Uri.tryParse(url);
     if (uri == null ||
         !uri.hasScheme ||
         (!uri.isScheme('http') && !uri.isScheme('https'))) {
-      throw const InvalidFileException('URL must use http or https scheme');
+      throw const InvalidInputException('URL must use http or https scheme');
     }
     if (fileName.isEmpty) {
-      throw const InvalidFileException('File name cannot be empty');
+      throw const InvalidInputException('File name cannot be empty');
     }
   }
 
