@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
-class FileSaver(private val context: Context) {
+class FileSaver(context: Context) {
     private val imageSaver = ImageSaver(context)
     private val videoSaver = VideoSaver(context)
     private val audioSaver = AudioSaver(context)
@@ -106,38 +106,10 @@ class FileSaver(private val context: Context) {
         subDir: String?,
         conflictMode: Int,
         callback: ProgressCallback,
-    ): Long {
-        val operationId = operationIdCounter.incrementAndGet()
-
-        val job = CoroutineScope(Dispatchers.IO).launch {
-            saveBytes(
-                fileData,
-                baseFileName,
-                extension,
-                mimeType,
-                saveLocationIndex,
-                subDir,
-                conflictMode,
-            ).collect { event ->
-                when (event) {
-                    is SaveProgressEvent.Started -> callback.onEvent(0, 0.0, null, null)
-
-                    is SaveProgressEvent.Progress -> callback.onEvent(1, event.value, null, null)
-
-                    is SaveProgressEvent.Error -> callback.onEvent(2, 0.0, event.code, event.message)
-
-                    is SaveProgressEvent.Success -> callback.onEvent(3, 1.0, event.uri, null)
-
-                    is SaveProgressEvent.Cancelled -> callback.onEvent(4, 0.0, null, null)
-                }
-            }
-        }
-
-        activeJobs[operationId] = job
-        job.invokeOnCompletion { activeJobs.remove(operationId) }
-
-        return operationId
-    }
+    ): Long = launchWithCallback(
+        saveBytes(fileData, baseFileName, extension, mimeType, saveLocationIndex, subDir, conflictMode),
+        callback
+    )
 
     /**
      * Saves file from source path with progress streaming (internal)
@@ -207,38 +179,10 @@ class FileSaver(private val context: Context) {
         subDir: String?,
         conflictMode: Int,
         callback: ProgressCallback,
-    ): Long {
-        val operationId = operationIdCounter.incrementAndGet()
-
-        val job = CoroutineScope(Dispatchers.IO).launch {
-            saveFile(
-                filePath,
-                baseFileName,
-                extension,
-                mimeType,
-                saveLocationIndex,
-                subDir,
-                conflictMode
-            ).collect { event ->
-                when (event) {
-                    is SaveProgressEvent.Started -> callback.onEvent(0, 0.0, null, null)
-
-                    is SaveProgressEvent.Progress -> callback.onEvent(1, event.value, null, null)
-
-                    is SaveProgressEvent.Error -> callback.onEvent(2, 0.0, event.code, event.message)
-
-                    is SaveProgressEvent.Success -> callback.onEvent(3, 1.0, event.uri, null)
-
-                    is SaveProgressEvent.Cancelled -> callback.onEvent(4, 0.0, null, null)
-                }
-            }
-        }
-
-        activeJobs[operationId] = job
-        job.invokeOnCompletion { activeJobs.remove(operationId) }
-
-        return operationId
-    }
+    ): Long = launchWithCallback(
+        saveFile(filePath, baseFileName, extension, mimeType, saveLocationIndex, subDir, conflictMode),
+        callback
+    )
 
     /**
      * Downloads file from network URL and saves directly to storage (internal)
@@ -316,40 +260,10 @@ class FileSaver(private val context: Context) {
         subDir: String?,
         conflictMode: Int,
         callback: ProgressCallback,
-    ): Long {
-        val operationId = operationIdCounter.incrementAndGet()
-
-        val job = CoroutineScope(Dispatchers.IO).launch {
-            saveNetwork(
-                url,
-                headersJson,
-                timeoutMs,
-                baseFileName,
-                extension,
-                mimeType,
-                saveLocationIndex,
-                subDir,
-                conflictMode,
-            ).collect { event ->
-                when (event) {
-                    is SaveProgressEvent.Started -> callback.onEvent(0, 0.0, null, null)
-
-                    is SaveProgressEvent.Progress -> callback.onEvent(1, event.value, null, null)
-
-                    is SaveProgressEvent.Error -> callback.onEvent(2, 0.0, event.code, event.message)
-
-                    is SaveProgressEvent.Success -> callback.onEvent(3, 1.0, event.uri, null)
-
-                    is SaveProgressEvent.Cancelled -> callback.onEvent(4, 0.0, null, null)
-                }
-            }
-        }
-
-        activeJobs[operationId] = job
-        job.invokeOnCompletion { activeJobs.remove(operationId) }
-
-        return operationId
-    }
+    ): Long = launchWithCallback(
+        saveNetwork(url, headersJson, timeoutMs, baseFileName, extension, mimeType, saveLocationIndex, subDir, conflictMode),
+        callback
+    )
 
     /**
      * Saves file data to user-selected directory (internal)
@@ -390,27 +304,10 @@ class FileSaver(private val context: Context) {
         mimeType: String,
         conflictMode: Int,
         callback: ProgressCallback,
-    ): Long {
-        val operationId = operationIdCounter.incrementAndGet()
-
-        val job = CoroutineScope(Dispatchers.IO).launch {
-            saveBytesAs(fileData, directoryUri, baseFileName, extension, mimeType, conflictMode)
-                .collect { event ->
-                    when (event) {
-                        is SaveProgressEvent.Started -> callback.onEvent(0, 0.0, null, null)
-                        is SaveProgressEvent.Progress -> callback.onEvent(1, event.value, null, null)
-                        is SaveProgressEvent.Error -> callback.onEvent(2, 0.0, event.code, event.message)
-                        is SaveProgressEvent.Success -> callback.onEvent(3, 1.0, event.uri, null)
-                        is SaveProgressEvent.Cancelled -> callback.onEvent(4, 0.0, null, null)
-                    }
-                }
-        }
-
-        activeJobs[operationId] = job
-        job.invokeOnCompletion { activeJobs.remove(operationId) }
-
-        return operationId
-    }
+    ): Long = launchWithCallback(
+        saveBytesAs(fileData, directoryUri, baseFileName, extension, mimeType, conflictMode),
+        callback
+    )
 
     /**
      * Saves file from source path to user-selected directory (internal)
@@ -451,27 +348,10 @@ class FileSaver(private val context: Context) {
         mimeType: String,
         conflictMode: Int,
         callback: ProgressCallback,
-    ): Long {
-        val operationId = operationIdCounter.incrementAndGet()
-
-        val job = CoroutineScope(Dispatchers.IO).launch {
-            saveFileAs(filePath, directoryUri, baseFileName, extension, mimeType, conflictMode)
-                .collect { event ->
-                    when (event) {
-                        is SaveProgressEvent.Started -> callback.onEvent(0, 0.0, null, null)
-                        is SaveProgressEvent.Progress -> callback.onEvent(1, event.value, null, null)
-                        is SaveProgressEvent.Error -> callback.onEvent(2, 0.0, event.code, event.message)
-                        is SaveProgressEvent.Success -> callback.onEvent(3, 1.0, event.uri, null)
-                        is SaveProgressEvent.Cancelled -> callback.onEvent(4, 0.0, null, null)
-                    }
-                }
-        }
-
-        activeJobs[operationId] = job
-        job.invokeOnCompletion { activeJobs.remove(operationId) }
-
-        return operationId
-    }
+    ): Long = launchWithCallback(
+        saveFileAs(filePath, directoryUri, baseFileName, extension, mimeType, conflictMode),
+        callback
+    )
 
     /**
      * Downloads file from network and saves to user-selected directory (internal)
@@ -518,27 +398,10 @@ class FileSaver(private val context: Context) {
         mimeType: String,
         conflictMode: Int,
         callback: ProgressCallback,
-    ): Long {
-        val operationId = operationIdCounter.incrementAndGet()
-
-        val job = CoroutineScope(Dispatchers.IO).launch {
-            saveNetworkAs(url, headersJson, timeoutMs, directoryUri, baseFileName, extension, mimeType, conflictMode)
-                .collect { event ->
-                    when (event) {
-                        is SaveProgressEvent.Started -> callback.onEvent(0, 0.0, null, null)
-                        is SaveProgressEvent.Progress -> callback.onEvent(1, event.value, null, null)
-                        is SaveProgressEvent.Error -> callback.onEvent(2, 0.0, event.code, event.message)
-                        is SaveProgressEvent.Success -> callback.onEvent(3, 1.0, event.uri, null)
-                        is SaveProgressEvent.Cancelled -> callback.onEvent(4, 0.0, null, null)
-                    }
-                }
-        }
-
-        activeJobs[operationId] = job
-        job.invokeOnCompletion { activeJobs.remove(operationId) }
-
-        return operationId
-    }
+    ): Long = launchWithCallback(
+        saveNetworkAs(url, headersJson, timeoutMs, directoryUri, baseFileName, extension, mimeType, conflictMode),
+        callback
+    )
 
     // ─────────────────────────────────────────────────────────────────────────
     // Private Helpers
@@ -554,4 +417,31 @@ class FileSaver(private val context: Context) {
         else -> customFileSaver
     }
 
+    /**
+     * Launches a coroutine to collect events from a Flow and forward them to a callback.
+     * Handles job tracking for cancellation support.
+     */
+    private fun launchWithCallback(
+        flow: Flow<SaveProgressEvent>,
+        callback: ProgressCallback
+    ): Long {
+        val operationId = operationIdCounter.incrementAndGet()
+
+        val job = CoroutineScope(Dispatchers.IO).launch {
+            flow.collect { event ->
+                when (event) {
+                    is SaveProgressEvent.Started -> callback.onEvent(0, 0.0, null, null)
+                    is SaveProgressEvent.Progress -> callback.onEvent(1, event.value, null, null)
+                    is SaveProgressEvent.Error -> callback.onEvent(2, 0.0, event.code, event.message)
+                    is SaveProgressEvent.Success -> callback.onEvent(3, 1.0, event.uri, null)
+                    is SaveProgressEvent.Cancelled -> callback.onEvent(4, 0.0, null, null)
+                }
+            }
+        }
+
+        activeJobs[operationId] = job
+        job.invokeOnCompletion { activeJobs.remove(operationId) }
+
+        return operationId
+    }
 }
