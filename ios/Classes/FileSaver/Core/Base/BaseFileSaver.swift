@@ -106,7 +106,7 @@ extension BaseFileSaver {
 extension BaseFileSaver {
     func validateFileData(_ fileData: Data) throws {
         guard !fileData.isEmpty else {
-            throw FileSaverError.invalidFile("File data is empty")
+            throw FileSaverError.invalidInput("File data is empty")
         }
     }
 
