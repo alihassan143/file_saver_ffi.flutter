@@ -59,3 +59,36 @@ enum IosSaveLocation implements SaveLocation {
 
   const IosSaveLocation();
 }
+
+/// User-selected directory location.
+///
+/// This represents a directory chosen by the user through the system picker:
+/// - **Android**: Storage Access Framework (ACTION_OPEN_DOCUMENT_TREE)
+/// - **iOS**: UIDocumentPickerViewController
+///
+/// Use [FileSaver.pickDirectory] to obtain a [UserSelectedLocation], then
+/// pass it to [FileSaver.saveAs] or [FileSaver.saveAsAsync].
+///
+/// Example:
+/// ```dart
+/// // Pick once, save multiple files
+/// final location = await FileSaver.instance.pickDirectory();
+/// if (location == null) return; // User cancelled
+///
+/// // Save files to the selected location
+/// await FileSaver.instance.saveAsAsync(
+///   input: SaveInput.bytes(imageBytes),
+///   fileType: ImageType.png,
+///   fileName: 'screenshot',
+///   saveLocation: location,
+/// );
+/// ```
+final class UserSelectedLocation implements SaveLocation {
+  const UserSelectedLocation({required this.uri});
+
+  /// Directory URI from the system picker.
+  ///
+  /// - **Android**: Content URI from SAF (e.g., `content://...`)
+  /// - **iOS**: File URL from Document Picker (e.g., `file://...`)
+  final Uri uri;
+}
