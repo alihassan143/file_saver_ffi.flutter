@@ -13,6 +13,14 @@ intptr_t file_saver_init_dart_api_dl(void* data);
 
 void* file_saver_init(void);
 
+
+void file_saver_dispose(void* instance);
+
+/// Cancel an ongoing save operation.
+///
+/// @param tokenId Token ID returned from file_saver_save_bytes or file_saver_save_file
+void file_saver_cancel(uint64_t tokenId);
+
 /// Save file bytes asynchronously with progress reporting via NativePort.
 ///
 /// Progress messages sent to native_port:
@@ -121,11 +129,6 @@ uint64_t file_saver_save_network(
     int32_t conflictMode,
     int64_t native_port
 );
-
-/// Cancel an ongoing save operation.
-///
-/// @param tokenId Token ID returned from file_saver_save_bytes or file_saver_save_file
-void file_saver_cancel(uint64_t tokenId);
 
 // MARK: - User-Selected Location (Document Picker)
 
@@ -240,7 +243,5 @@ uint64_t file_saver_save_network_as(
     int32_t conflictMode,
     int64_t native_port
 );
-
-void file_saver_dispose(void* instance);
 
 #endif
