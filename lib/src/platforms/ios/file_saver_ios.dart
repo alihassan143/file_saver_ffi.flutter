@@ -322,7 +322,9 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
   // ─────────────────────────────────────────────────────────────────────────
 
   @override
-  Future<UserSelectedLocation?> pickDirectory({bool shouldPersist = true}) async {
+  Future<UserSelectedLocation?> pickDirectory({
+    bool shouldPersist = true,
+  }) async {
     // Note: shouldPersist is ignored on iOS - no persistent URI permissions support
     final completer = Completer<UserSelectedLocation?>();
     final receivePort = ReceivePort();
@@ -373,19 +375,19 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
   }) {
     return switch (input) {
       SaveBytesInput(:final fileBytes) => _saveBytesAs(
-          fileBytes: fileBytes,
-          directoryUri: saveLocation.uri.toString(),
-          baseFileName: fileName,
-          extension: fileType.ext,
-          conflictResolution: conflictResolution,
-        ),
+        fileBytes: fileBytes,
+        directoryUri: saveLocation.uri.toString(),
+        baseFileName: fileName,
+        extension: fileType.ext,
+        conflictResolution: conflictResolution,
+      ),
       SaveFileInput(:final filePath) => _saveFileAs(
-          filePath: filePath,
-          directoryUri: saveLocation.uri.toString(),
-          baseFileName: fileName,
-          extension: fileType.ext,
-          conflictResolution: conflictResolution,
-        ),
+        filePath: filePath,
+        directoryUri: saveLocation.uri.toString(),
+        baseFileName: fileName,
+        extension: fileType.ext,
+        conflictResolution: conflictResolution,
+      ),
       SaveNetworkInput(:final url, :final headers, :final timeout) =>
         _saveNetworkAs(
           url: url,
