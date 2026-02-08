@@ -115,6 +115,25 @@ public func fileSaverInit() -> UInt {
     return id
 }
 
+@_cdecl("file_saver_dispose")
+public func fileSaverDispose(_ instanceId: UInt) {
+    instanceLock.lock()
+    defer { instanceLock.unlock() }
+
+    instances.removeValue(forKey: instanceId)
+}
+
+@_cdecl("file_saver_cancel")
+public func fileSaverCancel(_ tokenId: UInt) {
+    // Try to cancel as download first (saveNetwork)
+    if let download = getDownload(tokenId) {
+        download.cancel()
+        return
+    }
+    // Fall back to token cancellation (saveBytes, saveFile)
+    getToken(tokenId)?.cancel()
+}
+
 @_cdecl("file_saver_save_bytes")
 public func fileSaverSaveBytes(
     _ instanceId: UInt,
@@ -319,25 +338,6 @@ public func fileSaverSaveNetwork(
     }
 
     return tokenId
-}
-
-@_cdecl("file_saver_cancel")
-public func fileSaverCancel(_ tokenId: UInt) {
-    // Try to cancel as download first (saveNetwork)
-    if let download = getDownload(tokenId) {
-        download.cancel()
-        return
-    }
-    // Fall back to token cancellation (saveBytes, saveFile)
-    getToken(tokenId)?.cancel()
-}
-
-@_cdecl("file_saver_dispose")
-public func fileSaverDispose(_ instanceId: UInt) {
-    instanceLock.lock()
-    defer { instanceLock.unlock() }
-
-    instances.removeValue(forKey: instanceId)
 }
 
 // MARK: - User-Selected Location (Document Picker)
