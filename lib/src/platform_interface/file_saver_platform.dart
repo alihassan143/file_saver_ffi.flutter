@@ -109,6 +109,43 @@ abstract class FileSaverPlatform {
   });
 
   // ─────────────────────────────────────────────────────────────────────────
+  // User-Selected Location (SAF / Document Picker)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Pick a directory for saving files.
+  ///
+  /// Shows the system directory picker:
+  /// - **Android**: Storage Access Framework (ACTION_OPEN_DOCUMENT_TREE)
+  /// - **iOS**: UIDocumentPickerViewController
+  ///
+  /// Returns [UserSelectedLocation] with the selected directory URI,
+  /// or `null` if the user cancelled.
+  ///
+  /// Parameters:
+  /// - [shouldPersist]: (Android only) If `true`, automatically requests
+  ///   persistent permission for the selected directory. Default is `true`.
+  ///   On iOS, this parameter is ignored.
+  Future<UserSelectedLocation?> pickDirectory({bool shouldPersist = true});
+
+  /// Save to user-selected directory with progress streaming.
+  ///
+  /// Parameters:
+  /// - [input]: The save input (bytes, file path, or network URL)
+  /// - [fileType]: The type of file being saved
+  /// - [fileName]: The file name without extension
+  /// - [saveLocation]: User-selected directory from [pickDirectory]
+  /// - [conflictResolution]: How to handle filename conflicts
+  ///
+  /// Yields [SaveProgress] events during save operation.
+  Stream<SaveProgress> saveAs({
+    required SaveInput input,
+    required FileType fileType,
+    required String fileName,
+    required UserSelectedLocation saveLocation,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Protected helpers for subclasses
   // ─────────────────────────────────────────────────────────────────────────
 
