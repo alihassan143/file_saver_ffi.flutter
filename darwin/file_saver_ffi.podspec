@@ -5,9 +5,9 @@
 Pod::Spec.new do |s|
   s.name             = 'file_saver_ffi'
   s.version          = '0.0.1'
-  s.summary          = 'A Flutter plugin for saving files to device storage using FFI and JNI'
+  s.summary          = 'FFI-based file saver for iOS and macOS'
   s.description      = <<-DESC
-A Flutter plugin for saving files to device storage using FFI and JNI
+A Flutter plugin for saving files to device storage using FFI. Supports iOS and macOS.
                        DESC
   s.homepage         = 'https://github.com/vanvixi/file_saver_ffi.flutter'
   s.license          = { :file => '../LICENSE' }
@@ -18,9 +18,14 @@ A Flutter plugin for saving files to device storage using FFI and JNI
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*.{h,c,swift}'
   s.public_header_files = 'Classes/**/include/*.h', 'Classes/**/file_saver_ffi.h'
-  s.dependency 'Flutter'
-  s.platform = :ios, '13.0'
+
+  # Platform-specific dependencies
+  s.ios.dependency 'Flutter'
+  s.osx.dependency 'FlutterMacOS'
+
+  # Platform-specific deployment targets
   s.ios.deployment_target = '13.0'
+  s.osx.deployment_target = '10.15.4'
 
   # Preserve the module map for DartApiDl module
   s.preserve_paths = 'Classes/FileSaver/FFI/include/module.modulemap'
