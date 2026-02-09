@@ -8,7 +8,7 @@
 // ignore_for_file: type=lint, unused_import
 import 'dart:ffi' as ffi;
 
-/// Bindings for iOS `file_saver_ffi.h`.
+/// Bindings for Darwin (iOS/macOS) `file_saver_ffi.h`.
 ///
 /// Regenerate bindings with `fvm dart run ffigen --config ffigen.yaml`.
 ///
@@ -53,6 +53,31 @@ class FileSaverFfiBindings {
       );
   late final _file_saver_init =
       _file_saver_initPtr.asFunction<ffi.Pointer<ffi.Void> Function()>();
+
+  void file_saver_dispose(ffi.Pointer<ffi.Void> instance) {
+    return _file_saver_dispose(instance);
+  }
+
+  late final _file_saver_disposePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'file_saver_dispose',
+      );
+  late final _file_saver_dispose =
+      _file_saver_disposePtr.asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  /// Cancel an ongoing save operation.
+  ///
+  /// @param tokenId Token ID returned from file_saver_save_bytes or file_saver_save_file
+  void file_saver_cancel(int tokenId) {
+    return _file_saver_cancel(tokenId);
+  }
+
+  late final _file_saver_cancelPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Uint64)>>(
+        'file_saver_cancel',
+      );
+  late final _file_saver_cancel =
+      _file_saver_cancelPtr.asFunction<void Function(int)>();
 
   /// Save file bytes asynchronously with progress reporting via NativePort.
   ///
@@ -301,20 +326,6 @@ class FileSaverFfiBindings {
             )
           >();
 
-  /// Cancel an ongoing save operation.
-  ///
-  /// @param tokenId Token ID returned from file_saver_save_bytes or file_saver_save_file
-  void file_saver_cancel(int tokenId) {
-    return _file_saver_cancel(tokenId);
-  }
-
-  late final _file_saver_cancelPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Uint64)>>(
-        'file_saver_cancel',
-      );
-  late final _file_saver_cancel =
-      _file_saver_cancelPtr.asFunction<void Function(int)>();
-
   /// Pick a directory via system Document Picker.
   ///
   /// Shows the system directory picker and returns the selected directory URI.
@@ -555,15 +566,4 @@ class FileSaverFfiBindings {
               int,
             )
           >();
-
-  void file_saver_dispose(ffi.Pointer<ffi.Void> instance) {
-    return _file_saver_dispose(instance);
-  }
-
-  late final _file_saver_disposePtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
-        'file_saver_dispose',
-      );
-  late final _file_saver_dispose =
-      _file_saver_disposePtr.asFunction<void Function(ffi.Pointer<ffi.Void>)>();
 }
