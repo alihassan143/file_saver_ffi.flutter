@@ -60,6 +60,33 @@ enum IosSaveLocation implements SaveLocation {
   const IosSaveLocation();
 }
 
+/// macOS-specific save locations.
+///
+/// These locations map to macOS's standard user directories.
+///
+/// Platform mappings:
+/// - [documents]: ~/Documents directory (default)
+/// - [downloads]: ~/Downloads directory
+/// - [desktop]: ~/Desktop directory
+enum MacosSaveLocation implements SaveLocation {
+  /// Save to ~/Documents directory (default)
+  ///
+  /// Files are saved to the user's Documents folder.
+  documents,
+
+  /// Save to ~/Downloads directory
+  ///
+  /// Files are saved to the user's Downloads folder.
+  downloads,
+
+  /// Save to ~/Desktop directory
+  ///
+  /// Files are saved to the user's Desktop.
+  desktop;
+
+  const MacosSaveLocation();
+}
+
 /// User-selected directory location.
 ///
 /// This represents a directory chosen by the user through the system picker:
