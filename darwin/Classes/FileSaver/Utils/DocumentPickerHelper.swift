@@ -1,3 +1,4 @@
+#if os(iOS)
 import UIKit
 import UniformTypeIdentifiers
 
@@ -58,3 +59,4 @@ extension DocumentPickerHelper: UIDocumentPickerDelegate {
         finish(with: nil)
     }
 }
+#endif
