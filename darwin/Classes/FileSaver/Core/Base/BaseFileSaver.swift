@@ -1,5 +1,8 @@
 import Foundation
+
+#if os(iOS)
 import Photos
+#endif
 
 protocol BaseFileSaver: AnyObject {
     // MARK: - Hooks for Subclasses
@@ -8,6 +11,7 @@ protocol BaseFileSaver: AnyObject {
     /// Default implementation does nothing (no validation)
     func validateFormat(_ fileType: FileType) throws
 
+    #if os(iOS)
     /// Whether this saver supports Photos Library saves
     /// Default is false (Documents only)
     var supportsPhotosLibrary: Bool { get }
@@ -29,6 +33,7 @@ protocol BaseFileSaver: AnyObject {
         albumName: String?,
         onProgress: ((Double) -> Void)?
     ) throws -> String
+    #endif
 
     // MARK: - Core Methods (Required)
 
@@ -80,6 +85,7 @@ protocol BaseFileSaver: AnyObject {
 extension BaseFileSaver {
     func validateFormat(_ fileType: FileType) throws {}
 
+    #if os(iOS)
     var supportsPhotosLibrary: Bool { false }
 
     func saveBytesToPhotos(
@@ -99,6 +105,7 @@ extension BaseFileSaver {
     ) throws -> String {
         throw FileSaverError.unsupportedFormat("This file type cannot be saved to Photos Library")
     }
+    #endif
 }
 
 // MARK: - Helper Methods
@@ -114,13 +121,20 @@ extension BaseFileSaver {
         return FileHelper.buildFileName(fileName: base, extension: ext)
     }
 
+    #if os(iOS)
     func findOrCreateAlbum(name: String) throws -> PHAssetCollection {
         return try PhotosHelper.findOrCreateAlbum(name: name)
     }
+    #endif
 
-    /// Resolves Documents directory with optional subdirectory
-    func resolveDocumentsDirectory(subDir: String?) throws -> URL {
+    /// Resolves target directory based on save location and optional subdirectory
+    func resolveTargetDirectory(saveLocation: SaveLocation, subDir: String?) throws -> URL {
+        #if os(iOS)
         var targetDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        #elseif os(macOS)
+        var targetDir = saveLocation.directoryURL
+        #endif
+
         if let subDir = subDir {
             targetDir = targetDir.appendingPathComponent(subDir)
         }
@@ -141,6 +155,7 @@ extension BaseFileSaver {
         }
     }
 
+    #if os(iOS)
     /// Handles Photos permission and conflict resolution
     /// Returns (hasReadAccess, existingUri) where existingUri is non-nil if file should be skipped
     func handlePhotosSetup(
@@ -157,6 +172,7 @@ extension BaseFileSaver {
         )
         return (hasReadAccess, existingUri)
     }
+    #endif
 }
 
 // MARK: - Shared saveBytes Implementation
@@ -177,30 +193,22 @@ extension BaseFileSaver {
         try validateFileData(fileData)
 
         let fileName = buildFileName(base: baseFileName, extension: fileType.ext)
+
+        #if os(iOS)
         let effectiveLocation = supportsPhotosLibrary ? saveLocation : .documents
 
         switch effectiveLocation {
         case .documents:
-            let targetDir = try resolveDocumentsDirectory(subDir: subDir)
-            let finalURL = try FileManagerConflictResolver.resolveConflict(
-                directory: targetDir,
+            try saveBytesToDocuments(
+                fileData: fileData,
                 fileName: fileName,
-                conflictResolution: conflictResolution
+                saveLocation: saveLocation,
+                subDir: subDir,
+                conflictResolution: conflictResolution,
+                onProgress: onProgress,
+                onSuccess: onSuccess,
+                cancellationToken: cancellationToken
             )
-
-            do {
-                try FileHelper.writeFileWithProgress(
-                    data: fileData,
-                    to: finalURL,
-                    onProgress: onProgress,
-                    cancellationToken: cancellationToken
-                )
-            } catch FileSaverError.cancelled {
-                try? FileManager.default.removeItem(at: finalURL)
-                throw FileSaverError.cancelled
-            }
-
-            onSuccess(finalURL.absoluteString)
 
         case .photos:
             onProgress?(0.0)
@@ -226,6 +234,50 @@ extension BaseFileSaver {
             onProgress?(1.0)
             onSuccess(uri)
         }
+        #elseif os(macOS)
+        try saveBytesToDocuments(
+            fileData: fileData,
+            fileName: fileName,
+            saveLocation: saveLocation,
+            subDir: subDir,
+            conflictResolution: conflictResolution,
+            onProgress: onProgress,
+            onSuccess: onSuccess,
+            cancellationToken: cancellationToken
+        )
+        #endif
+    }
+
+    private func saveBytesToDocuments(
+        fileData: Data,
+        fileName: String,
+        saveLocation: SaveLocation,
+        subDir: String?,
+        conflictResolution: ConflictResolution,
+        onProgress: ((Double) -> Void)?,
+        onSuccess: (String) -> Void,
+        cancellationToken: CancellationToken?
+    ) throws {
+        let targetDir = try resolveTargetDirectory(saveLocation: saveLocation, subDir: subDir)
+        let finalURL = try FileManagerConflictResolver.resolveConflict(
+            directory: targetDir,
+            fileName: fileName,
+            conflictResolution: conflictResolution
+        )
+
+        do {
+            try FileHelper.writeFileWithProgress(
+                data: fileData,
+                to: finalURL,
+                onProgress: onProgress,
+                cancellationToken: cancellationToken
+            )
+        } catch FileSaverError.cancelled {
+            try? FileManager.default.removeItem(at: finalURL)
+            throw FileSaverError.cancelled
+        }
+
+        onSuccess(finalURL.absoluteString)
     }
 }
 
@@ -246,41 +298,22 @@ extension BaseFileSaver {
         try validateFormat(fileType)
 
         let fileName = buildFileName(base: baseFileName, extension: fileType.ext)
+
+        #if os(iOS)
         let effectiveLocation = supportsPhotosLibrary ? saveLocation : .documents
 
         switch effectiveLocation {
         case .documents:
-            let downloadProgressHandler = progressMapper(from: onProgress, startProgress: 0.0, endProgress: 0.8)
-
-            let sourceFile = try FileHelper.openSourceFile(
-                at: filePath,
-                onDownloadProgress: downloadProgressHandler
-            )
-            defer { sourceFile.close() }
-
-            let targetDir = try resolveDocumentsDirectory(subDir: subDir)
-            let finalURL = try FileManagerConflictResolver.resolveConflict(
-                directory: targetDir,
+            try saveFileToDocuments(
+                filePath: filePath,
                 fileName: fileName,
-                conflictResolution: conflictResolution
+                saveLocation: saveLocation,
+                subDir: subDir,
+                conflictResolution: conflictResolution,
+                onProgress: onProgress,
+                onSuccess: onSuccess,
+                cancellationToken: cancellationToken
             )
-
-            let copyProgressHandler = progressMapper(from: onProgress, startProgress: 0.8, endProgress: 1.0)
-
-            do {
-                try FileHelper.copyFileWithProgress(
-                    from: sourceFile.handle,
-                    to: finalURL,
-                    totalSize: sourceFile.totalSize,
-                    onProgress: copyProgressHandler,
-                    cancellationToken: cancellationToken
-                )
-            } catch FileSaverError.cancelled {
-                try? FileManager.default.removeItem(at: finalURL)
-                throw FileSaverError.cancelled
-            }
-
-            onSuccess(finalURL.absoluteString)
 
         case .photos:
             let downloadProgressHandler = progressMapper(from: onProgress, startProgress: 0.0, endProgress: 0.8)
@@ -314,5 +347,60 @@ extension BaseFileSaver {
             onProgress?(1.0)
             onSuccess(uri)
         }
+        #elseif os(macOS)
+        try saveFileToDocuments(
+            filePath: filePath,
+            fileName: fileName,
+            saveLocation: saveLocation,
+            subDir: subDir,
+            conflictResolution: conflictResolution,
+            onProgress: onProgress,
+            onSuccess: onSuccess,
+            cancellationToken: cancellationToken
+        )
+        #endif
+    }
+
+    private func saveFileToDocuments(
+        filePath: String,
+        fileName: String,
+        saveLocation: SaveLocation,
+        subDir: String?,
+        conflictResolution: ConflictResolution,
+        onProgress: ((Double) -> Void)?,
+        onSuccess: (String) -> Void,
+        cancellationToken: CancellationToken?
+    ) throws {
+        let downloadProgressHandler = progressMapper(from: onProgress, startProgress: 0.0, endProgress: 0.8)
+
+        let sourceFile = try FileHelper.openSourceFile(
+            at: filePath,
+            onDownloadProgress: downloadProgressHandler
+        )
+        defer { sourceFile.close() }
+
+        let targetDir = try resolveTargetDirectory(saveLocation: saveLocation, subDir: subDir)
+        let finalURL = try FileManagerConflictResolver.resolveConflict(
+            directory: targetDir,
+            fileName: fileName,
+            conflictResolution: conflictResolution
+        )
+
+        let copyProgressHandler = progressMapper(from: onProgress, startProgress: 0.8, endProgress: 1.0)
+
+        do {
+            try FileHelper.copyFileWithProgress(
+                from: sourceFile.handle,
+                to: finalURL,
+                totalSize: sourceFile.totalSize,
+                onProgress: copyProgressHandler,
+                cancellationToken: cancellationToken
+            )
+        } catch FileSaverError.cancelled {
+            try? FileManager.default.removeItem(at: finalURL)
+            throw FileSaverError.cancelled
+        }
+
+        onSuccess(finalURL.absoluteString)
     }
 }
