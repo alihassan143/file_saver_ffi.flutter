@@ -163,7 +163,7 @@ extension BaseFileSaver {
         subDir: String?,
         conflictResolution: ConflictResolution
     ) throws -> (hasReadAccess: Bool, existingUri: String?) {
-        let hasReadAccess = try PhotosHelper.requestPermission()
+        let hasReadAccess = try PhotosHelper.requestPermission(needAlbum: subDir != nil)
         let existingUri = try PhotosHelper.handleConflictResolution(
             fileName: fileName,
             subDir: subDir,

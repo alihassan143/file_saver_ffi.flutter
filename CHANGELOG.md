@@ -1,3 +1,14 @@
+## 0.3.1
+
+### Fixed
+
+- **iOS: Photos Library crash on iOS 14+ with add-only permission** (`PHPhotosErrorDomain error 3311`)
+    - Previously requested `.addOnly` permission but incorrectly treated it as having read access
+    - This caused crashes when attempting album creation or conflict resolution without read permission
+    - Now requests the appropriate permission level based on usage:
+        - With `subDir` (album name): requests `.readWrite` for album & conflict resolution support
+        - Without `subDir`: requests `.addOnly` for basic save
+
 ## 0.3.0
 
 ### Breaking Changes
