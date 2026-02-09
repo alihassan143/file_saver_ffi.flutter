@@ -2,15 +2,15 @@ import 'package:flutter/foundation.dart';
 
 import '../../file_saver_ffi.dart';
 import '../platforms/android/file_saver_android.dart';
-import '../platforms/ios/file_saver_ios.dart';
+import '../platforms/darwin/file_saver_darwin.dart';
 
 /// Platform interface for file saver implementations.
 ///
 /// This abstract class defines the contract that platform-specific
-/// implementations (iOS and Android) must implement.
+/// implementations must implement.
 ///
 /// Platform implementations:
-/// - iOS: Uses FFI to call Objective-C code
+/// - iOS/macOS: Uses FFI to call Swift code (shared darwin source)
 /// - Android: Uses JNI to call Kotlin code
 abstract class FileSaverPlatform {
   static FileSaverPlatform? _instance;
@@ -19,7 +19,7 @@ abstract class FileSaverPlatform {
   static FileSaverPlatform get instance {
     _instance ??= switch (defaultTargetPlatform) {
       TargetPlatform.android => FileSaverAndroid(),
-      TargetPlatform.iOS => FileSaverIos(),
+      TargetPlatform.iOS || TargetPlatform.macOS => FileSaverDarwin(),
       _ =>
         throw UnsupportedError(
           'FileSaver is not supported on ${defaultTargetPlatform.toString()}',
