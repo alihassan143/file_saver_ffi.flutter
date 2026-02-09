@@ -1,3 +1,4 @@
+#if os(iOS)
 import Foundation
 import Photos
 
@@ -106,3 +107,4 @@ class PhotosHelper {
         return nil
     }
 }
+#endif
