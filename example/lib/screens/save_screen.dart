@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:file_saver_ffi/file_saver_ffi.dart';
 import 'package:flutter/material.dart';
@@ -98,24 +97,7 @@ class _SaveScreenState extends State<SaveScreen> with DemoSaveScreenMixin {
   }
 
   SaveLocation? _resolveSaveLocation() {
-    if (Platform.isAndroid) {
-      return switch (demoSelectedCategory) {
-        MediaCategory.image => AndroidSaveLocation.pictures,
-        MediaCategory.video => AndroidSaveLocation.movies,
-        MediaCategory.audio => AndroidSaveLocation.music,
-        MediaCategory.document => AndroidSaveLocation.downloads,
-      };
-    }
-
-    if (Platform.isIOS) {
-      return switch (demoSelectedCategory) {
-        MediaCategory.image || MediaCategory.video => IosSaveLocation.photos,
-        MediaCategory.audio ||
-        MediaCategory.document => IosSaveLocation.documents,
-      };
-    }
-
-    return null;
+    return demoConfig.saveLocation;
   }
 
   Future<void> _runSave() async {

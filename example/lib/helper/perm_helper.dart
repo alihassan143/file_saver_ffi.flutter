@@ -20,6 +20,10 @@ class PermHelper {
       return isGrantedPermAndroidWriteExternalStorage();
     }
 
+    if (Platform.isMacOS) {
+      return true;
+    }
+
     return false;
   }
 
@@ -30,6 +34,10 @@ class PermHelper {
 
     if (Platform.isAndroid) {
       return isGrantedPermAndroidWriteExternalStorage();
+    }
+
+    if (Platform.isMacOS) {
+      return true;
     }
 
     return false;

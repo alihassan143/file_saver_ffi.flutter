@@ -52,6 +52,7 @@ class SaveDemoConfig extends MediaConfig {
     saveLocation: switch (defaultTargetPlatform) {
       TargetPlatform.android => AndroidSaveLocation.pictures,
       TargetPlatform.iOS => IosSaveLocation.photos,
+      TargetPlatform.macOS => MacosSaveLocation.downloads,
       _ => null,
     },
   );
@@ -64,6 +65,7 @@ class SaveDemoConfig extends MediaConfig {
     saveLocation: switch (defaultTargetPlatform) {
       TargetPlatform.android => AndroidSaveLocation.movies,
       TargetPlatform.iOS => IosSaveLocation.photos,
+      TargetPlatform.macOS => MacosSaveLocation.downloads,
       _ => null,
     },
     defaultUseStreamApi: true,
@@ -78,6 +80,7 @@ class SaveDemoConfig extends MediaConfig {
     saveLocation: switch (defaultTargetPlatform) {
       TargetPlatform.android => AndroidSaveLocation.music,
       TargetPlatform.iOS => IosSaveLocation.documents,
+      TargetPlatform.macOS => MacosSaveLocation.downloads,
       _ => null,
     },
     subDir: switch (defaultTargetPlatform) {
@@ -96,6 +99,7 @@ class SaveDemoConfig extends MediaConfig {
     saveLocation: switch (defaultTargetPlatform) {
       TargetPlatform.android => AndroidSaveLocation.downloads,
       TargetPlatform.iOS => IosSaveLocation.documents,
+      TargetPlatform.macOS => MacosSaveLocation.documents,
       _ => null,
     },
     subDir: switch (defaultTargetPlatform) {
@@ -138,6 +142,7 @@ class NetworkDemoConfig extends MediaConfig {
     saveLocation: switch (defaultTargetPlatform) {
       TargetPlatform.android => AndroidSaveLocation.pictures,
       TargetPlatform.iOS => IosSaveLocation.photos,
+      TargetPlatform.macOS => MacosSaveLocation.downloads,
       _ => null,
     },
   );
@@ -150,6 +155,7 @@ class NetworkDemoConfig extends MediaConfig {
     saveLocation: switch (defaultTargetPlatform) {
       TargetPlatform.android => AndroidSaveLocation.movies,
       TargetPlatform.iOS => IosSaveLocation.photos,
+      TargetPlatform.macOS => MacosSaveLocation.downloads,
       _ => null,
     },
     defaultUseStreamApi: true,
@@ -163,6 +169,7 @@ class NetworkDemoConfig extends MediaConfig {
     saveLocation: switch (defaultTargetPlatform) {
       TargetPlatform.android => AndroidSaveLocation.music,
       TargetPlatform.iOS => IosSaveLocation.documents,
+      TargetPlatform.macOS => MacosSaveLocation.downloads,
       _ => null,
     },
     subDir: switch (defaultTargetPlatform) {
@@ -181,6 +188,7 @@ class NetworkDemoConfig extends MediaConfig {
     saveLocation: switch (defaultTargetPlatform) {
       TargetPlatform.android => AndroidSaveLocation.downloads,
       TargetPlatform.iOS => IosSaveLocation.documents,
+      TargetPlatform.macOS => MacosSaveLocation.documents,
       _ => null,
     },
     subDir: switch (defaultTargetPlatform) {
