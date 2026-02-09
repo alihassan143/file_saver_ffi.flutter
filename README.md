@@ -121,8 +121,10 @@ try {
 
 The library provides a single, consistent API for all save operations using `SaveInput` polymorphism:
 
-- **`save(input: ...)`**: Stream-based API with full control (progress, cancellation).
-- **`saveAsync(input: ...)`**: Future-based API for simple usage.
+- **`save`**: Stream-based save to standard location (Downloads, Photos, etc.).
+- **`saveAsync`**: Future-based save to standard location.
+- **`saveAs`**: Stream-based save to a user-selected location (System Picker).
+- **`saveAsAsync`**: Future-based save to a user-selected location.
 
 #### Input Sources (`SaveInput`)
 
