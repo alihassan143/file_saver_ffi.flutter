@@ -21,6 +21,8 @@ extension BaseFileSaver {
         cancellationToken: CancellationToken?
     ) {
         let fileName = buildFileName(base: baseFileName, extension: fileType.ext)
+
+        #if os(iOS)
         let effectiveLocation = supportsPhotosLibrary ? saveLocation : .documents
 
         switch effectiveLocation {
@@ -30,6 +32,7 @@ extension BaseFileSaver {
                 headers: headers,
                 timeoutSeconds: timeoutSeconds,
                 fileName: fileName,
+                saveLocation: saveLocation,
                 subDir: subDir,
                 conflictResolution: conflictResolution,
                 onProgress: onProgress,
@@ -60,6 +63,24 @@ extension BaseFileSaver {
                 cancellationToken: cancellationToken
             )
         }
+        #elseif os(macOS)
+        saveNetworkToDocumentsImpl(
+            urlString: urlString,
+            headers: headers,
+            timeoutSeconds: timeoutSeconds,
+            fileName: fileName,
+            saveLocation: saveLocation,
+            subDir: subDir,
+            conflictResolution: conflictResolution,
+            onProgress: onProgress,
+            onSuccess: onSuccess,
+            onError: onError,
+            onCancelled: onCancelled,
+            onCancelHandlerReady: onCancelHandlerReady,
+            onComplete: onComplete,
+            cancellationToken: cancellationToken
+        )
+        #endif
     }
 
     private func saveNetworkToDocumentsImpl(
@@ -67,6 +88,7 @@ extension BaseFileSaver {
         headers: [String: String]?,
         timeoutSeconds: Int,
         fileName: String,
+        saveLocation: SaveLocation,
         subDir: String?,
         conflictResolution: ConflictResolution,
         onProgress: ((Double) -> Void)?,
@@ -79,7 +101,7 @@ extension BaseFileSaver {
     ) {
         let finalURL: URL
         do {
-            let targetDir = try resolveDocumentsDirectory(subDir: subDir)
+            let targetDir = try resolveTargetDirectory(saveLocation: saveLocation, subDir: subDir)
             finalURL = try FileManagerConflictResolver.resolveConflict(
                 directory: targetDir,
                 fileName: fileName,
@@ -134,6 +156,7 @@ extension BaseFileSaver {
         )
     }
 
+    #if os(iOS)
     private func saveNetworkToPhotosImpl(
         urlString: String,
         headers: [String: String]?,
@@ -286,4 +309,5 @@ extension BaseFileSaver {
             onComplete()
         }
     }
+    #endif
 }
