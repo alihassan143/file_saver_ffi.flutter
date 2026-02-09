@@ -15,8 +15,13 @@ import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
 import 'bindings.g.dart';
 
-class FileSaverIos extends FileSaverPlatform implements Finalizable {
-  FileSaverIos() {
+/// FileSaver implementation for Apple platforms (iOS and macOS).
+///
+/// Uses shared darwin code with platform-specific behaviors:
+/// - iOS: Supports Photos Library and Documents
+/// - macOS: Supports Documents, Downloads, and Desktop
+class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
+  FileSaverDarwin() {
     final dylib = DynamicLibrary.process();
     _bindings = FileSaverFfiBindings(dylib);
 
@@ -95,7 +100,8 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
       final mimeCStr = fileType.mimeType.toNativeUtf8(allocator: arena);
       final saveLocationIndex = switch (saveLocation) {
         IosSaveLocation location => location.index,
-        _ => IosSaveLocation.documents.index,
+        MacosSaveLocation location => location.index,
+        _ => 0, // Default to documents
       };
       final subDirCStr = subDir?.toNativeUtf8(allocator: arena);
 
@@ -163,7 +169,8 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
       final mimeCStr = fileType.mimeType.toNativeUtf8(allocator: arena);
       final saveLocationIndex = switch (saveLocation) {
         IosSaveLocation location => location.index,
-        _ => IosSaveLocation.documents.index,
+        MacosSaveLocation location => location.index,
+        _ => 0, // Default to documents
       };
       final subDirCStr = subDir?.toNativeUtf8(allocator: arena);
 
@@ -236,7 +243,8 @@ class FileSaverIos extends FileSaverPlatform implements Finalizable {
       final mimeCStr = fileType.mimeType.toNativeUtf8(allocator: arena);
       final saveLocationIndex = switch (saveLocation) {
         IosSaveLocation location => location.index,
-        _ => IosSaveLocation.documents.index,
+        MacosSaveLocation location => location.index,
+        _ => 0, // Default to documents
       };
       final subDirCStr = subDir?.toNativeUtf8(allocator: arena);
 
