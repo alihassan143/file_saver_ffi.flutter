@@ -1,17 +1,23 @@
 import Foundation
+
+#if os(iOS)
 import Photos
+#endif
 
 class VideoSaver: BaseFileSaver {
     // MARK: - Hooks
-    
+
+    #if os(iOS)
     var supportsPhotosLibrary: Bool { true }
-    
+    #endif
+
     func validateFormat(_ fileType: FileType) throws {
         try FormatValidator.validateVideoFormat(fileType)
     }
-    
+
+    #if os(iOS)
     // MARK: - Photos Library Implementation
-    
+
     func saveBytesToPhotos(
         fileData: Data,
         fileName: String,
@@ -22,14 +28,14 @@ class VideoSaver: BaseFileSaver {
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
         try fileData.write(to: tempURL)
         defer { try? FileManager.default.removeItem(at: tempURL) }
-        
+
         return try saveVideoToPhotosLibrary(
             sourceURL: tempURL,
             fileName: fileName,
             albumName: albumName
         )
     }
-    
+
     func saveFileToPhotos(
         sourceURL: URL,
         fileName: String,
@@ -42,45 +48,46 @@ class VideoSaver: BaseFileSaver {
             albumName: albumName
         )
     }
-    
+
     private func saveVideoToPhotosLibrary(
         sourceURL: URL,
         fileName: String,
         albumName: String?
     ) throws -> String {
         let album = try albumName.map { try findOrCreateAlbum(name: $0) }
-        
+
         var assetId: String?
-        
+
         do {
             try PHPhotoLibrary.shared().performChangesAndWait {
                 let request = PHAssetCreationRequest.forAsset()
                 let options = PHAssetResourceCreationOptions()
                 options.originalFilename = fileName
                 request.addResource(with: .video, fileURL: sourceURL, options: options)
-                
+
                 if let album = album {
                     if let placeholder = request.placeholderForCreatedAsset {
                         let albumChangeRequest = PHAssetCollectionChangeRequest(for: album)
                         albumChangeRequest?.addAssets([placeholder] as NSArray)
                     }
                 }
-                
+
                 assetId = request.placeholderForCreatedAsset?.localIdentifier
             }
         } catch {
             throw FileSaverError.fileIO("Failed to save video: \(error.localizedDescription)")
         }
-        
+
         guard let assetId = assetId else {
             throw FileSaverError.fileIO("Failed to save video to Photos library")
         }
-        
+
         return "ph://\(assetId)"
     }
-    
+    #endif
+
     // MARK: - Core Methods (Delegate to Impl)
-    
+
     func saveBytes(
         fileData: Data,
         fileType: FileType,
@@ -104,7 +111,7 @@ class VideoSaver: BaseFileSaver {
             cancellationToken: cancellationToken
         )
     }
-    
+
     func saveFile(
         filePath: String,
         fileType: FileType,
@@ -128,7 +135,7 @@ class VideoSaver: BaseFileSaver {
             cancellationToken: cancellationToken
         )
     }
-    
+
     func saveNetwork(
         urlString: String,
         headers: [String: String]?,
@@ -158,7 +165,7 @@ class VideoSaver: BaseFileSaver {
             onComplete()
             return
         }
-        
+
         saveNetworkImpl(
             urlString: urlString,
             headers: headers,
