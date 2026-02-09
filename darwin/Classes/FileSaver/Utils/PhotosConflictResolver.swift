@@ -1,3 +1,4 @@
+#if os(iOS)
 import Foundation
 import Photos
 
@@ -37,3 +38,4 @@ enum PhotosConflictResolver {
         }
     }
 }
+#endif
