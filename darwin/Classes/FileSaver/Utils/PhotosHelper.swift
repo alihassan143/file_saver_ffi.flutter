@@ -4,44 +4,51 @@ import Photos
 
 class PhotosHelper {
     /// Requests photo library permission from the user.
-    /// Returns true if full access granted, false if limited access.
-    static func requestPermission() throws -> Bool {
+    ///
+    /// - Parameter needAlbum: If `true`, requests `.readWrite` for album & conflict resolution support.
+    ///   If `false`, requests `.addOnly` for basic save without albums.
+    /// - Returns: `true` if read/write access granted (full or limited), `false` if add-only.
+    /// - Throws: `FileSaverError.permissionDenied` if the user denies access.
+    static func requestPermission(needAlbum: Bool) throws -> Bool {
         if #available(iOS 14, *) {
-            var status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
+            let accessLevel: PHAccessLevel = needAlbum ? .readWrite : .addOnly
+            var status = PHPhotoLibrary.authorizationStatus(for: accessLevel)
 
             if status == .notDetermined {
-                var result: PHAuthorizationStatus = .notDetermined
                 let semaphore = DispatchSemaphore(value: 0)
 
-                PHPhotoLibrary.requestAuthorization(for: .addOnly) { authStatus in
-                    result = authStatus
+                PHPhotoLibrary.requestAuthorization(for: accessLevel) { authStatus in
+                    status = authStatus
                     semaphore.signal()
                 }
 
                 semaphore.wait()
-                status = result
                 Thread.sleep(forTimeInterval: 0.5)
             }
 
-            guard status == .authorized || status == .limited else {
-                throw FileSaverError.permissionDenied("Photo library access denied")
+            if accessLevel == .readWrite {
+                guard status == .authorized || status == .limited else {
+                    throw FileSaverError.permissionDenied("Photo library access denied")
+                }
+                return true
+            } else {
+                guard status == .authorized else {
+                    throw FileSaverError.permissionDenied("Photo library access denied")
+                }
+                return false
             }
-
-            return status == .authorized
         } else {
             var status = PHPhotoLibrary.authorizationStatus()
 
             if status == .notDetermined {
-                var result: PHAuthorizationStatus = .notDetermined
                 let semaphore = DispatchSemaphore(value: 0)
 
                 PHPhotoLibrary.requestAuthorization { authStatus in
-                    result = authStatus
+                    status = authStatus
                     semaphore.signal()
                 }
 
                 semaphore.wait()
-                status = result
                 Thread.sleep(forTimeInterval: 0.5)
             }
 
