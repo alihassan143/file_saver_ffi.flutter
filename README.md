@@ -121,8 +121,10 @@ try {
 
 The library provides a single, consistent API for all save operations using `SaveInput` polymorphism:
 
-- **`save(input: ...)`**: Stream-based API with full control (progress, cancellation).
-- **`saveAsync(input: ...)`**: Future-based API for simple usage.
+- **`save`**: Stream-based save to standard location (Downloads, Photos, etc.).
+- **`saveAsync`**: Future-based save to standard location.
+- **`saveAs`**: Stream-based save to a user-selected location (System Picker).
+- **`saveAsAsync`**: Future-based save to a user-selected location.
 
 #### Input Sources (`SaveInput`)
 
@@ -182,6 +184,17 @@ Control where files are saved using platform-specific enum values:
 |--------------|----------------|-------------------------|
 | `.documents` | Documents Dir  | General files (default) |
 | `.photos`    | Photos Library | Images/Videos only      |
+
+> **iOS Photos Permission Behavior:**
+>
+> When saving to Photos Library, the permission level requested depends on the `subDir` parameter:
+>
+> | `subDir`    | Permission Requested | Dialog Options (iOS 14+)                   | Capabilities                        |
+> |-------------|----------------------|--------------------------------------------|-------------------------------------|
+> | `"MyAlbum"` | `.readWrite`         | Full Access / Limited Access / Don't Allow | Album creation, conflict resolution |
+> | `null`      | `.addOnly`           | Allow / Don't Allow                        | Basic save only (no album)          |
+>
+> If the user denies `.readWrite`, the save will fail — there is no automatic fallback to `.addOnly`, as iOS treats a `.readWrite` denial as a full denial of Photos access.
 
 ### Conflict Resolution
 
