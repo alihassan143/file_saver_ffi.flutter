@@ -251,7 +251,7 @@ enum NetworkHelper {
             onProgress: onProgress,
             cancellationToken: cancellationToken,
             completion: { result in
-                session?.invalidateAndCancel()
+                session?.finishTasksAndInvalidate()
 
                 if let token = cancellationToken, token.isCancelled {
                     try? FileManager.default.removeItem(at: destinationURL)
