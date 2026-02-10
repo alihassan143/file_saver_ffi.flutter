@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:file_saver_ffi/file_saver_ffi.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../core/core.dart';
-import '../helper/perm_helper.dart';
 
 class SaveScreen extends StatefulWidget {
   const SaveScreen({super.key});
@@ -89,15 +89,33 @@ class _SaveScreenState extends State<SaveScreen> with DemoSaveScreenMixin {
     cancelDemoSave(message: 'Operation cancelled', isSuccess: false);
   }
 
-  Future<bool> _ensurePermissionForCategory() async {
-    return demoSelectedCategory == MediaCategory.document ||
-            demoSelectedCategory == MediaCategory.audio
-        ? PermHelper.isGrantedPermWriteExternalStorage()
-        : PermHelper.isGrantedPermWritePhotos();
-  }
+  String _describeDestination() {
+    final SaveDemoConfig(:saveLocation, :subDir) = demoConfig;
 
-  SaveLocation? _resolveSaveLocation() {
-    return demoConfig.saveLocation;
+    final base = switch (saveLocation) {
+      AndroidSaveLocation.pictures => 'Pictures',
+      AndroidSaveLocation.movies => 'Movies',
+      AndroidSaveLocation.music => 'Music',
+      AndroidSaveLocation.downloads => 'Downloads',
+      AndroidSaveLocation.dcim => 'DCIM',
+      IosSaveLocation.photos => 'Photos Library',
+      IosSaveLocation.documents => 'Files (Documents)',
+      MacosSaveLocation.documents => '~/Documents',
+      MacosSaveLocation.downloads => '~/Downloads',
+      null => switch (defaultTargetPlatform) {
+        TargetPlatform.android => 'Downloads',
+        TargetPlatform.iOS => 'Files (Documents)',
+        TargetPlatform.macOS => '~/Downloads',
+        TargetPlatform.linux => '~/Downloads',
+        TargetPlatform.windows => 'Downloads',
+        _ => 'Default location',
+      },
+      _ => 'Custom location',
+    };
+
+    if (subDir == null || subDir.trim().isEmpty) return base;
+
+    return '$base/$subDir';
   }
 
   Future<void> _runSave() async {
@@ -105,18 +123,11 @@ class _SaveScreenState extends State<SaveScreen> with DemoSaveScreenMixin {
     savedFilePath = null;
 
     try {
-      final hasPermission = await _ensurePermissionForCategory();
-      if (!hasPermission) {
-        showError('Permission denied');
-        finishLoading();
-        return;
-      }
-
       final resolved = await resolveDemoSaveParams();
 
       setState(() => _isSaving = true);
 
-      final saveLocation = _resolveSaveLocation();
+      final saveLocation = demoConfig.saveLocation;
 
       if (_useStreamApi) {
         await _saveWithStreamApi(
@@ -217,7 +228,7 @@ class _SaveScreenState extends State<SaveScreen> with DemoSaveScreenMixin {
             ),
             InfoCard(
               description:
-                  'Save to standard locations (Photos/Downloads/etc.) \n'
+                  '${_describeDestination()}\n'
                   'Uses: ${_useStreamApi ? "save (Stream)" : "saveAsync (Async)"}\n'
                   'Input: ${_inputSource.name}',
               url: infoValue,
