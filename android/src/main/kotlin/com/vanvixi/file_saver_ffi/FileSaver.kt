@@ -1,7 +1,12 @@
 package com.vanvixi.file_saver_ffi
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import com.vanvixi.file_saver_ffi.FileSaver.Companion.storagePermissionHandler
 import com.vanvixi.file_saver_ffi.core.AudioSaver
 import com.vanvixi.file_saver_ffi.core.CustomFileSaver
 import com.vanvixi.file_saver_ffi.core.ImageSaver
@@ -9,6 +14,7 @@ import com.vanvixi.file_saver_ffi.core.VideoSaver
 import com.vanvixi.file_saver_ffi.core.base.SaveEntryFactory
 import com.vanvixi.file_saver_ffi.models.*
 import com.vanvixi.file_saver_ffi.utils.Constants
+import com.vanvixi.file_saver_ffi.utils.StoragePermissionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -20,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 class FileSaver(context: Context) {
+    private val context = context.applicationContext
     private val imageSaver = ImageSaver(context)
     private val videoSaver = VideoSaver(context)
     private val audioSaver = AudioSaver(context)
@@ -28,6 +35,17 @@ class FileSaver(context: Context) {
     // Job tracking for cancellation support
     private val activeJobs = ConcurrentHashMap<Long, Job>()
     private val operationIdCounter = AtomicLong(0)
+
+    companion object {
+        /**
+         * Static permission handler set by [FileSaverFfiPlugin] when Activity is available.
+         *
+         * Bridges [FileSaver] (created via JNI with only Context) to the plugin layer
+         * (which has Activity access for showing permission dialogs).
+         */
+        @Volatile
+        var storagePermissionHandler: StoragePermissionHandler? = null
+    }
 
     /**
      * Cancels an ongoing save operation.
@@ -60,6 +78,8 @@ class FileSaver(context: Context) {
         conflictMode: Int,
     ): Flow<SaveProgressEvent> = flow {
         try {
+            ensureStoragePermission()
+
             val fileType = FileType(extension, mimeType)
             val conflictResolution = ConflictResolution.fromInt(conflictMode)
             val saveLocation = SaveLocation.fromInt(saveLocationIndex)
@@ -74,6 +94,13 @@ class FileSaver(context: Context) {
 
             saver.saveBytes(fileData, entryFactory, conflictResolution)
                 .collect { event -> emit(event) }
+        } catch (e: SecurityException) {
+            emit(
+                SaveProgressEvent.Error(
+                    Constants.ERROR_PERMISSION_DENIED,
+                    "Permission denied: ${e.message}",
+                )
+            )
         } catch (e: Exception) {
             emit(
                 SaveProgressEvent.Error(
@@ -133,6 +160,8 @@ class FileSaver(context: Context) {
         conflictMode: Int,
     ): Flow<SaveProgressEvent> = flow {
         try {
+            ensureStoragePermission()
+
             val fileType = FileType(extension, mimeType)
             val conflictResolution = ConflictResolution.fromInt(conflictMode)
             val saveLocation = SaveLocation.fromInt(saveLocationIndex)
@@ -147,6 +176,13 @@ class FileSaver(context: Context) {
 
             saver.saveFile(filePath, entryFactory, conflictResolution)
                 .collect { event -> emit(event) }
+        } catch (e: SecurityException) {
+            emit(
+                SaveProgressEvent.Error(
+                    Constants.ERROR_PERMISSION_DENIED,
+                    "Permission denied: ${e.message}",
+                )
+            )
         } catch (e: Exception) {
             emit(
                 SaveProgressEvent.Error(
@@ -210,6 +246,8 @@ class FileSaver(context: Context) {
         conflictMode: Int,
     ): Flow<SaveProgressEvent> = flow {
         try {
+            ensureStoragePermission()
+
             val fileType = FileType(extension, mimeType)
             val conflictResolution = ConflictResolution.fromInt(conflictMode)
             val saveLocation = SaveLocation.fromInt(saveLocationIndex)
@@ -224,6 +262,13 @@ class FileSaver(context: Context) {
 
             saver.saveNetwork(url, headersJson, timeoutMs, entryFactory, conflictResolution)
                 .collect { event -> emit(event) }
+        } catch (e: SecurityException) {
+            emit(
+                SaveProgressEvent.Error(
+                    Constants.ERROR_PERMISSION_DENIED,
+                    "Permission denied: ${e.message}",
+                )
+            )
         } catch (e: Exception) {
             emit(
                 SaveProgressEvent.Error(
@@ -261,7 +306,17 @@ class FileSaver(context: Context) {
         conflictMode: Int,
         callback: ProgressCallback,
     ): Long = launchWithCallback(
-        saveNetwork(url, headersJson, timeoutMs, baseFileName, extension, mimeType, saveLocationIndex, subDir, conflictMode),
+        saveNetwork(
+            url,
+            headersJson,
+            timeoutMs,
+            baseFileName,
+            extension,
+            mimeType,
+            saveLocationIndex,
+            subDir,
+            conflictMode
+        ),
         callback
     )
 
@@ -406,6 +461,29 @@ class FileSaver(context: Context) {
     // ─────────────────────────────────────────────────────────────────────────
     // Private Helpers
     // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Ensures WRITE_EXTERNAL_STORAGE permission is granted on API < 29.
+     *
+     * - API 29+: Returns immediately (scoped storage, no permission needed)
+     * - API < 29 with permission granted: Returns immediately
+     * - API < 29 without permission: Requests via [storagePermissionHandler]
+     *
+     * @throws SecurityException if permission is denied or handler is unavailable
+     */
+    private suspend fun ensureStoragePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) return
+
+        val status = ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        if (status == PackageManager.PERMISSION_GRANTED) return
+
+        val handler = storagePermissionHandler
+            ?: throw SecurityException("Storage permission required but no Activity available to request it")
+
+        if (!handler.requestStoragePermission()) {
+            throw SecurityException("Storage permission denied by user")
+        }
+    }
 
     /**
      * Returns appropriate saver based on file type.
