@@ -1,14 +1,14 @@
 name: FileSaverFfiBindings
 description: |
-  Bindings for iOS `file_saver_ffi.h`.
+  Bindings for Darwin (iOS/macOS) `file_saver_ffi.h`.
 
   Regenerate bindings with `fvm dart run ffigen --config ffigen.yaml`.
-output: 'lib/src/platforms/ios/bindings.g.dart'
+output: 'lib/src/platforms/darwin/bindings.g.dart'
 headers:
   entry-points:
-    - 'ios/Classes/FileSaver/FFI/file_saver_ffi.h'
+    - 'darwin/Classes/FileSaver/FFI/file_saver_ffi.h'
   include-directives:
-    - 'ios/Classes/FileSaver/FFI/file_saver_ffi.h'
+    - 'darwin/Classes/FileSaver/FFI/file_saver_ffi.h'
 functions:
   include:
     - file_saver_init

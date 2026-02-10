@@ -5,7 +5,7 @@
 ## File Saver FFI
 
 <p align="left">
-  <a href="https://github.com/vanvixi/file_saver_ffi"><img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS-blue.svg" alt="Platform"></a>
+  <a href="https://github.com/vanvixi/file_saver_ffi"><img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS-blue.svg" alt="Platform"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-purple.svg" alt="License: MIT"></a>
   <a href="https://deepwiki.com/vanvixi/file_saver_ffi.flutter"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
@@ -16,7 +16,7 @@ storage with original quality and custom album support.
 ## Features
 
 - 🖼️ **Gallery Saving** – Save images and videos to iOS Photos or Android Gallery with custom albums
-- ⚡ **Native Performance** – Powered by FFI (iOS) and JNI (Android) for near-zero latency
+- ⚡ **Native Performance** – Powered by FFI (iOS/macOS) and JNI (Android) for near-zero latency
 - 📁 **Universal Storage** – Save any file type (PDF, ZIP, DOCX, etc.) to device storage
 - 💾 **Original Quality** – Files saved bit-for-bit without compression or metadata loss
 - 📊 **Progress & Cancellation** – Real-time progress tracking with cancellable operations
@@ -50,23 +50,19 @@ First, follow the [package installation instructions](https://pub.dev/packages/f
 <details>
 <summary><b>Android Configuration</b></summary>
 
-Add to `android/app/src/main/AndroidManifest.xml`:
-
-```xml
-<!-- Only required for Android 9 (API 28) and below -->
-<uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28"/>
-```
-
-> **Note:** Android 10+ uses scoped storage automatically and does not require this permission.
-
 **Supported:** API 21+ (Android 5.0+)
+
+No configuration needed. The plugin automatically:
+- Declares `WRITE_EXTERNAL_STORAGE` permission (merged via manifest merger, only applies to API ≤ 28)
+- Requests runtime permission when needed (Android 9 and below)
+- Uses scoped storage on Android 10+ (no permission required)
 
 </details>
 
 <details>
-<summary><b>iOS Configuration</b></summary>
+<summary><b>IOS Configuration</b></summary>
+
+**Supported:** IOS 13.0+
 
 Add to `ios/Runner/Info.plist`:
 
@@ -90,7 +86,37 @@ Add to `ios/Runner/Info.plist`:
 <true/>
 ```
 
-**Supported:** iOS 13.0+
+</details>
+
+<details>
+<summary><b>MacOS Configuration</b></summary>
+
+**Supported:** macOS 10.15.4+
+
+Add to `macos/Runner/DebugProfile.entitlements` and `macos/Runner/Release.entitlements`:
+
+```xml
+<!-- Required for network downloads -->
+<key>com.apple.security.network.client</key>
+<true/>
+
+<!-- Required for directory picker (NSOpenPanel) -->
+<key>com.apple.security.files.user-selected.read-write</key>
+<true/>
+
+<!-- Add entitlements for each MacosSaveLocation you use -->
+<key>com.apple.security.files.downloads.read-write</key>
+<true/>
+<key>com.apple.security.assets.pictures.read-write</key>
+<true/>
+<key>com.apple.security.assets.movies.read-write</key>
+<true/>
+<key>com.apple.security.assets.music.read-write</key>
+<true/>
+```
+
+> **Note:** Each `MacosSaveLocation` requires its corresponding entitlement in sandboxed apps. Only `MacosSaveLocation.documents` (App Container) works without any entitlement. Use `pickDirectory()` to let users choose directories outside the sandbox.
+
 
 </details>
 
@@ -146,14 +172,6 @@ Use the appropriate input class for your data source:
 > *Standard Location*: defined enum (e.g., `Downloads`, `Photos`).
 > *User-Chosen*: via `pickDirectory()` or auto-prompt.
 
-### User-Selected Location (Save As)
-
-Sometimes you want the user to choose where to save the file.
-
-- **`pickDirectory()`**: Opens the system directory picker (Android SAF / iOS Document Picker) and returns a persistent permission URI (Android) or URL (iOS).
-- **`saveAs()` / `saveAsAsync()`**: Saves a file to a user-selected location. If no location is provided, it automatically prompts the user to pick one.
-
-> **Note:** On Android, this uses the Storage Access Framework (SAF), which allows your app to write to arbitrary locations (SD cards, USB drives, etc.) without standard storage permissions.
 
 ### File Types
 
@@ -170,31 +188,18 @@ The library supports 35+ file formats across 4 categories:
 
 Control where files are saved using platform-specific enum values:
 
-#### Android (`AndroidSaveLocation`)
-| Value        | Directory    | Use Case                |
-|--------------|--------------|-------------------------|
-| `.downloads` | `Downloads/` | General files (default) |
-| `.pictures`  | `Pictures/`  | Images                  |
-| `.movies`    | `Movies/`    | Videos                  |
-| `.music`     | `Music/`     | Audio                   |
-| `.dcim`      | `DCIM/`      | Camera media            |
+#### Platform Comparison
 
-#### iOS (`IosSaveLocation`)
-| Value        | Destination    | Use Case                |
-|--------------|----------------|-------------------------|
-| `.documents` | Documents Dir  | General files (default) |
-| `.photos`    | Photos Library | Images/Videos only      |
+| Value        | Android (`AndroidSaveLocation`) | iOS (`IosSaveLocation`) | macOS (`MacosSaveLocation`) |
+|--------------|---------------------------------|-------------------------|-----------------------------|
+| `.downloads` | **Downloads/** (default)        | -                       | **Downloads/** (default)    |
+| `.pictures`  | **Pictures/**                   | -                       | **Pictures/**               |
+| `.movies`    | **Movies/**                     | -                       | **Movies/**                 |
+| `.music`     | **Music/**                      | -                       | **Music/**                  |
+| `.dcim`      | **DCIM/**                       | -                       | -                           |
+| `.documents` | -                               | **Documents/** (default)  | **Documents/**              |
+| `.photos`    | -                               | **Photos Library**      | -                           |
 
-> **iOS Photos Permission Behavior:**
->
-> When saving to Photos Library, the permission level requested depends on the `subDir` parameter:
->
-> | `subDir`    | Permission Requested | Dialog Options (iOS 14+)                   | Capabilities                        |
-> |-------------|----------------------|--------------------------------------------|-------------------------------------|
-> | `"MyAlbum"` | `.readWrite`         | Full Access / Limited Access / Don't Allow | Album creation, conflict resolution |
-> | `null`      | `.addOnly`           | Allow / Don't Allow                        | Basic save only (no album)          |
->
-> If the user denies `.readWrite`, the save will fail — there is no automatic fallback to `.addOnly`, as iOS treats a `.readWrite` denial as a full denial of Photos access.
 
 ### Conflict Resolution
 
@@ -225,9 +230,12 @@ final uri = await FileSaver.instance.saveAsync(
   ),
   fileName: 'downloaded_video',
   fileType: VideoType.mp4,
-  saveLocation: Platform.isAndroid
-    ? AndroidSaveLocation.movies
-    : IosSaveLocation.photos,
+  saveLocation: switch (defaultTargetPlatform) {
+    TargetPlatform.android => AndroidSaveLocation.movies,
+    TargetPlatform.iOS => IosSaveLocation.photos,
+    TargetPlatform.macOS => MacosSaveLocation.downloads,
+    _ => null,
+  },
 );
 ```
 
@@ -407,9 +415,43 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 * ~~Progress Tracking~~
 * ~~Cancellation Support~~
 * ~~Save from File Path~~
-* MacOS Support
+* ~~MacOS Support~~
 * Windows Support
 * Web Support
+
+
+## FAQ
+
+<details>
+<summary><b>ℹ️ iOS Photos Permissions & Albums</b></summary>
+
+<br>
+
+When saving to `IosSaveLocation.photos`, the permission requested depends on the `subDir`:
+
+| `subDir`    | Permission | Dialog (iOS 14+)      | Capabilities                        |
+| :---        | :---       | :---                  | :---                                |
+| `"MyAlbum"` | `.readWrite` | Full / Limited / Deny | Album creation, conflict resolution |
+| `null`      | `.addOnly`   | Allow / Deny          | Basic save only (no album)          |
+
+> **Important:** If `.readWrite` is denied, the save fails. There is no automatic fallback to `.addOnly`.
+
+</details>
+
+
+<details>
+<summary><b>❓ Why are files not saving to Downloads, Pictures, Music (macOS)?</b></summary>
+
+<br>
+
+**App Sandbox** restricts access to user folders by default. If your app is sandboxed (which is typical for macOS Store apps), you must add specific entitlements to your `.entitlements` files.
+
+**Solution:**
+Add the required keys (e.g., `com.apple.security.files.downloads.read-write`) to your `macos/Runner/*.entitlements` files.
+
+Check the **MacOS Configuration** section above for the full list of required keys.
+
+</details>
 
 ## License
 

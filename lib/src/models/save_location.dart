@@ -44,20 +44,57 @@ enum AndroidSaveLocation implements SaveLocation {
 /// - [photos]: Photos Library (requires Photos permission)
 /// - [documents]: Documents/ directory in app's container (default, no permission required)
 enum IosSaveLocation implements SaveLocation {
-  /// Save to Photos Library
-  ///
-  /// Requires Photos permission. Files are saved to the user's Photos app
-  /// and can optionally be organized into albums using the subDir parameter.
-  photos,
-
   /// Save to app's Documents/ directory (default)
   ///
   /// Files are saved to the app's Documents directory and are visible in
   /// the Files app under "On My iPhone/iPad" → [App Name].
   /// No special permissions required.
-  documents;
+  documents,
+
+  /// Save to Photos Library
+  ///
+  /// Requires Photos permission. Files are saved to the user's Photos app
+  /// and can optionally be organized into albums using the subDir parameter.
+  photos;
 
   const IosSaveLocation();
+}
+
+/// macOS-specific save locations.
+///
+/// Behavior depends on whether the app has `com.apple.security.app-sandbox` enabled:
+///
+/// - **With Sandbox**: Can only save to [documents] (App Container) and other locations
+///   if the corresponding entitlement is set.
+/// - **Without Sandbox**: Can save to any user-accessible directory.
+enum MacosSaveLocation implements SaveLocation {
+  /// Save to the standard ~/Downloads directory.
+  ///
+  /// In Sandbox: Requires `com.apple.security.files.downloads.read-write` entitlement.
+  downloads,
+
+  /// Save to the standard ~/Pictures directory.
+  ///
+  /// In Sandbox: Requires `com.apple.security.assets.pictures.read-write` entitlement.
+  pictures,
+
+  /// Save to the standard ~/Movies directory.
+  ///
+  /// In Sandbox: Requires `com.apple.security.assets.movies.read-write` entitlement.
+  movies,
+
+  /// Save to the standard ~/Music directory.
+  ///
+  /// In Sandbox: Requires `com.apple.security.assets.music.read-write` entitlement.
+  music,
+
+  /// Save to the app's specific Documents directory.
+  ///
+  /// In Sandbox: This is inside the App Container (`~/Library/Containers/<bundle-id>/Data/Documents/`).
+  /// Without Sandbox: This is the global `~/Documents` directory.
+  documents;
+
+  const MacosSaveLocation();
 }
 
 /// User-selected directory location.
