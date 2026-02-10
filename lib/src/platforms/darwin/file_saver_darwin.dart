@@ -98,11 +98,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
       final fileNameCStr = fileName.toNativeUtf8(allocator: arena);
       final extCStr = fileType.ext.toNativeUtf8(allocator: arena);
       final mimeCStr = fileType.mimeType.toNativeUtf8(allocator: arena);
-      final saveLocationIndex = switch (saveLocation) {
-        IosSaveLocation location => location.index,
-        MacosSaveLocation location => location.index,
-        _ => 0, // Default to documents
-      };
+      final saveLocationIndex = _saveLocationToIndex(saveLocation);
       final subDirCStr = subDir?.toNativeUtf8(allocator: arena);
 
       // Listen to native port - cleanup happens here on terminal events
@@ -167,11 +163,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
       final fileNameCStr = fileName.toNativeUtf8(allocator: arena);
       final extCStr = fileType.ext.toNativeUtf8(allocator: arena);
       final mimeCStr = fileType.mimeType.toNativeUtf8(allocator: arena);
-      final saveLocationIndex = switch (saveLocation) {
-        IosSaveLocation location => location.index,
-        MacosSaveLocation location => location.index,
-        _ => 0, // Default to documents
-      };
+      final saveLocationIndex = _saveLocationToIndex(saveLocation);
       final subDirCStr = subDir?.toNativeUtf8(allocator: arena);
 
       // Listen to native port - cleanup happens here on terminal events
@@ -241,11 +233,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
       final fileNameCStr = fileName.toNativeUtf8(allocator: arena);
       final extCStr = fileType.ext.toNativeUtf8(allocator: arena);
       final mimeCStr = fileType.mimeType.toNativeUtf8(allocator: arena);
-      final saveLocationIndex = switch (saveLocation) {
-        IosSaveLocation location => location.index,
-        MacosSaveLocation location => location.index,
-        _ => 0, // Default to documents
-      };
+      final saveLocationIndex = _saveLocationToIndex(saveLocation);
       final subDirCStr = subDir?.toNativeUtf8(allocator: arena);
 
       // Listen to native port - cleanup happens here on terminal events
@@ -279,50 +267,6 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
         Future.delayed(const Duration(milliseconds: 500), cleanup);
       };
     });
-  }
-
-  /// Parses message from native code according to protocol:
-  /// - Started:    [0]
-  /// - Progress:   [1, progress]    (progress is 0.0 to 1.0)
-  /// - Error:      [2, errorCode, errorMessage]
-  /// - Success:    [3, fileUri]
-  /// - Cancelled:  [4]
-  SaveProgress _parseMessage(dynamic message) {
-    if (message is! List || message.isEmpty) {
-      return SaveProgressError(
-        const PlatformException('Invalid message format', 'INVALID_MESSAGE'),
-      );
-    }
-
-    final type = message[0] as int;
-
-    switch (type) {
-      case 0: // Started
-        return const SaveProgressStarted();
-
-      case 1: // Progress
-        final progress = (message[1] as num).toDouble();
-        return SaveProgressUpdate(progress);
-
-      case 2: // Error
-        final errorCode = message[1] as String;
-        final errorMessage = message[2] as String;
-        return SaveProgressError(
-          FileSaverException.fromErrorResult(errorCode, errorMessage),
-        );
-
-      case 3: // Success
-        final fileUri = message[1] as String;
-        return SaveProgressComplete(Uri.parse(fileUri));
-
-      case 4: // Cancelled
-        return const SaveProgressCancelled();
-
-      default:
-        return SaveProgressError(
-          PlatformException('Unknown message type: $type', 'UNKNOWN_TYPE'),
-        );
-    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -567,5 +511,66 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
         Future.delayed(const Duration(milliseconds: 500), cleanup);
       };
     });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Private Methods
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Returns the native index for a [SaveLocation].
+  ///
+  /// Maps platform-specific save locations to their FFI integer values:
+  /// - iOS: [IosSaveLocation.documents] = 0 (default), etc.
+  /// - macOS: [MacosSaveLocation.downloads] = 0 (default), etc.
+  int _saveLocationToIndex(SaveLocation? saveLocation) {
+    return switch (saveLocation) {
+      IosSaveLocation location => location.index,
+      MacosSaveLocation location => location.index,
+      _ => 0,
+    };
+  }
+
+  /// Parses message from native code according to protocol:
+  /// - Started:    [0]
+  /// - Progress:   [1, progress]    (progress is 0.0 to 1.0)
+  /// - Error:      [2, errorCode, errorMessage]
+  /// - Success:    [3, fileUri]
+  /// - Cancelled:  [4]
+  SaveProgress _parseMessage(dynamic message) {
+    if (message is! List || message.isEmpty) {
+      return SaveProgressError(
+        const PlatformException('Invalid message format', 'INVALID_MESSAGE'),
+      );
+    }
+
+    final type = message[0] as int;
+
+    switch (type) {
+      case 0: // Started
+        return const SaveProgressStarted();
+
+      case 1: // Progress
+        final progress = (message[1] as num).toDouble();
+        return SaveProgressUpdate(progress);
+
+      case 2: // Error
+        final errorCode = message[1] as String;
+        final errorMessage = message[2] as String;
+        return SaveProgressError(
+          FileSaverException.fromErrorResult(errorCode, errorMessage),
+        );
+
+      case 3: // Success
+        final fileUri = message[1] as String;
+        return SaveProgressComplete(Uri.parse(fileUri));
+
+      case 4: // Cancelled
+        return const SaveProgressCancelled();
+
+      default:
+        return SaveProgressError(
+          PlatformException('Unknown message type: $type', 'UNKNOWN_TYPE'),
+        );
+    }
   }
 }
