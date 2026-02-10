@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Platform-specific:
 /// - iOS: Photos Library and Documents directory
-/// - macOS: Documents, Downloads, and Desktop directories
+/// - macOS: Downloads, Pictures, Movies, Music, and Documents directories
 enum SaveLocation: Int {
     #if os(iOS)
     /// Photos Library (requires Photos permission)
@@ -18,29 +18,43 @@ enum SaveLocation: Int {
         return SaveLocation(rawValue: value) ?? .documents
     }
     #elseif os(macOS)
-    /// Documents directory (~/Documents)
-    case documents = 0
+    /// ~/Downloads directory
+    /// Sandbox: requires com.apple.security.files.downloads.read-write
+    case downloads = 0
 
-    /// Downloads directory (~/Downloads)
-    case downloads = 1
+    /// ~/Pictures directory
+    /// Sandbox: requires com.apple.security.assets.pictures.read-write
+    case pictures = 1
 
-    /// Desktop directory (~/Desktop)
-    case desktop = 2
+    /// ~/Movies directory
+    /// Sandbox: requires com.apple.security.assets.movies.read-write
+    case movies = 2
+
+    /// ~/Music directory
+    /// Sandbox: requires com.apple.security.assets.music.read-write
+    case music = 3
+
+    /// App Container Documents directory (no entitlement needed)
+    case documents = 4
 
     /// Converts an integer index to SaveLocation enum.
     static func fromInt(_ value: Int) -> SaveLocation {
-        return SaveLocation(rawValue: value) ?? .documents
+        return SaveLocation(rawValue: value) ?? .downloads
     }
 
     /// Returns the URL for this save location.
     var directoryURL: URL {
         switch self {
-        case .documents:
-            return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         case .downloads:
             return FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
-        case .desktop:
-            return FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask)[0]
+        case .pictures:
+            return FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask)[0]
+        case .movies:
+            return FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0]
+        case .music:
+            return FileManager.default.urls(for: .musicDirectory, in: .userDomainMask)[0]
+        case .documents:
+            return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         }
     }
     #endif

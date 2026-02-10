@@ -62,27 +62,37 @@ enum IosSaveLocation implements SaveLocation {
 
 /// macOS-specific save locations.
 ///
-/// These locations map to macOS's standard user directories.
+/// Behavior depends on whether the app has `com.apple.security.app-sandbox` enabled:
 ///
-/// Platform mappings:
-/// - [documents]: ~/Documents directory (default)
-/// - [downloads]: ~/Downloads directory
-/// - [desktop]: ~/Desktop directory
+/// - **With Sandbox**: Can only save to [documents] (App Container) and other locations
+///   if the corresponding entitlement is set.
+/// - **Without Sandbox**: Can save to any user-accessible directory.
 enum MacosSaveLocation implements SaveLocation {
-  /// Save to ~/Documents directory (default)
+  /// Save to the standard ~/Downloads directory.
   ///
-  /// Files are saved to the user's Documents folder.
-  documents,
-
-  /// Save to ~/Downloads directory
-  ///
-  /// Files are saved to the user's Downloads folder.
+  /// In Sandbox: Requires `com.apple.security.files.downloads.read-write` entitlement.
   downloads,
 
-  /// Save to ~/Desktop directory
+  /// Save to the standard ~/Pictures directory.
   ///
-  /// Files are saved to the user's Desktop.
-  desktop;
+  /// In Sandbox: Requires `com.apple.security.assets.pictures.read-write` entitlement.
+  pictures,
+
+  /// Save to the standard ~/Movies directory.
+  ///
+  /// In Sandbox: Requires `com.apple.security.assets.movies.read-write` entitlement.
+  movies,
+
+  /// Save to the standard ~/Music directory.
+  ///
+  /// In Sandbox: Requires `com.apple.security.assets.music.read-write` entitlement.
+  music,
+
+  /// Save to the app's specific Documents directory.
+  ///
+  /// In Sandbox: This is inside the App Container (`~/Library/Containers/<bundle-id>/Data/Documents/`).
+  /// Without Sandbox: This is the global `~/Documents` directory.
+  documents;
 
   const MacosSaveLocation();
 }
