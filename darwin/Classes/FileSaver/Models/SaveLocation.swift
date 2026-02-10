@@ -43,19 +43,27 @@ enum SaveLocation: Int {
     }
 
     /// Returns the URL for this save location.
+    ///
+    /// Uses FileManager to get the standard directory path. In sandbox mode with proper entitlements,
+    /// macOS creates symlinks from container paths to real user directories.
+    /// The returned URL resolves symlinks to provide the real path.
     var directoryURL: URL {
+        let url: URL
         switch self {
         case .downloads:
-            return FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
+            url = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
         case .pictures:
-            return FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask)[0]
+            url = FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask)[0]
         case .movies:
-            return FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0]
+            url = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0]
         case .music:
-            return FileManager.default.urls(for: .musicDirectory, in: .userDomainMask)[0]
+            url = FileManager.default.urls(for: .musicDirectory, in: .userDomainMask)[0]
         case .documents:
-            return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         }
+        // Resolve symlinks so the returned path is the real directory
+        // (e.g., ~/Pictures instead of ~/Library/Containers/<id>/Data/Pictures)
+        return url.resolvingSymlinksInPath()
     }
     #endif
 }
