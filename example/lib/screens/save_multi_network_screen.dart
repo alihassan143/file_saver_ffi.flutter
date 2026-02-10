@@ -4,7 +4,6 @@ import 'package:file_saver_ffi/file_saver_ffi.dart';
 import 'package:flutter/material.dart';
 
 import '../core/core.dart';
-import '../helper/perm_helper.dart';
 
 class SaveMultiNetworkScreen extends StatefulWidget {
   const SaveMultiNetworkScreen({super.key});
@@ -32,30 +31,12 @@ class _SaveMultiNetworkScreenState extends State<SaveMultiNetworkScreen> {
     super.dispose();
   }
 
-  Future<bool> _ensurePermission(NetworkDemoConfig config) async {
-    if (config.category == MediaCategory.document ||
-        config.category == MediaCategory.audio) {
-      return PermHelper.isGrantedPermWriteExternalStorage();
-    }
-    return PermHelper.isGrantedPermWritePhotos();
-  }
-
   String _buildFileName(NetworkDemoConfig config) {
     return '${config.fileNamePrefix}_${DateTime.now().millisecondsSinceEpoch}';
   }
 
   Future<void> _startItem(_DownloadItem item) async {
     if (item.status == _DownloadStatus.downloading) return;
-
-    final hasPermission = await _ensurePermission(item.config);
-    if (!hasPermission) {
-      if (mounted) {
-        showAppSnackBar(context, 'Permission denied', isSuccess: false);
-      }
-
-      setState(() => item.status = _DownloadStatus.failed);
-      return;
-    }
 
     if (mounted &&
         (item.config.category == MediaCategory.video ||

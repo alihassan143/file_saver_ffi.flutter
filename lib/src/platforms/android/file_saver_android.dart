@@ -49,10 +49,7 @@ class FileSaverAndroid extends FileSaverPlatform {
       final jExtension = fileType.ext.toJString();
       final jMimeType = fileType.mimeType.toJString();
       final jConflictMode = conflictResolution.index;
-      final jSaveLocationIndex = switch (saveLocation) {
-        AndroidSaveLocation location => location.index,
-        _ => AndroidSaveLocation.downloads.index,
-      };
+      final jSaveLocationIndex = _saveLocationToIndex(saveLocation);
       final jSubDir = subDir?.toJString();
 
       void cleanup() {
@@ -121,10 +118,7 @@ class FileSaverAndroid extends FileSaverPlatform {
       final jExtension = fileType.ext.toJString();
       final jMimeType = fileType.mimeType.toJString();
       final jConflictMode = conflictResolution.index;
-      final jSaveLocationIndex = switch (saveLocation) {
-        AndroidSaveLocation location => location.index,
-        _ => AndroidSaveLocation.downloads.index,
-      };
+      final jSaveLocationIndex = _saveLocationToIndex(saveLocation);
       final jSubDir = subDir?.toJString();
 
       void cleanup() {
@@ -198,10 +192,7 @@ class FileSaverAndroid extends FileSaverPlatform {
       final jExtension = fileType.ext.toJString();
       final jMimeType = fileType.mimeType.toJString();
       final jConflictMode = conflictResolution.index;
-      final jSaveLocationIndex = switch (saveLocation) {
-        AndroidSaveLocation location => location.index,
-        _ => AndroidSaveLocation.downloads.index,
-      };
+      final jSaveLocationIndex = _saveLocationToIndex(saveLocation);
       final jSubDir = subDir?.toJString();
 
       void cleanup() {
@@ -483,6 +474,21 @@ class FileSaverAndroid extends FileSaverPlatform {
         Future.delayed(const Duration(milliseconds: 500), cleanup);
       };
     });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Private Methods
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Returns the native index for a [SaveLocation].
+  ///
+  /// Maps [AndroidSaveLocation] to its index value.
+  /// Defaults to [AndroidSaveLocation.downloads] index.
+  int _saveLocationToIndex(SaveLocation? saveLocation) {
+    return switch (saveLocation) {
+      AndroidSaveLocation location => location.index,
+      _ => AndroidSaveLocation.downloads.index,
+    };
   }
 
   /// Parses event from native callback
