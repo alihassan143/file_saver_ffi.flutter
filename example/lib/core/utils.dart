@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+String fileNameWithoutExt(String name) {
+  final idx = name.lastIndexOf('.');
+  if (idx <= 0) return name;
+  return name.substring(0, idx);
+}
+
 /// Formats bytes to human readable string
 String formatBytes(int bytes) {
   if (bytes < 1024) return '$bytes B';

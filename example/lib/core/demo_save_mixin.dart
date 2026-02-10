@@ -10,7 +10,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'file_type_config.dart';
 import 'file_utils.dart';
-import 'save_demo_common.dart';
+import 'types.dart';
 import 'utils.dart';
 
 typedef DemoResolvedSaveParams = ({
