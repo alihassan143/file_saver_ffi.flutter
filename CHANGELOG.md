@@ -1,3 +1,20 @@
+## 0.4.0
+
+### Added
+
+- **macOS Support**: Save files to macOS directories using FFI with shared Darwin source code
+- **Android: Automatic storage permission handling** for Android 9 and below
+
+### Fixed
+
+- **Network save: file deleted immediately after successful download**
+  - `invalidateAndCancel()` triggered `didCompleteWithError` with cancellation error, which deleted the saved file
+  - Replaced with `finishTasksAndInvalidate()` to allow the task to complete normally
+  - Affected all platforms using native network save (`saveNetwork` / `saveNetworkAs`)
+- **iOS: Network save to Photos requested permission after download**
+  - Permission and conflict resolution are now checked before starting the download
+  - Avoids wasting bandwidth if permission is denied or file already exists (skip/fail)
+
 ## 0.3.1
 
 ### Fixed
