@@ -52,16 +52,10 @@ First, follow the [package installation instructions](https://pub.dev/packages/f
 
 **Supported:** API 21+ (Android 5.0+)
 
-Add to `android/app/src/main/AndroidManifest.xml`:
-
-```xml
-<!-- Only required for Android 9 (API 28) and below -->
-<uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28"/>
-```
-
-> **Note:** Android 10+ uses scoped storage automatically and does not require this permission.
+No configuration needed. The plugin automatically:
+- Declares `WRITE_EXTERNAL_STORAGE` permission (merged via manifest merger, only applies to API ≤ 28)
+- Requests runtime permission when needed (Android 9 and below)
+- Uses scoped storage on Android 10+ (no permission required)
 
 </details>
 
