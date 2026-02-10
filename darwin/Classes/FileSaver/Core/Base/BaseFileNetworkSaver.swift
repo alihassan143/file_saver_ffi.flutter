@@ -180,6 +180,39 @@ extension BaseFileSaver {
             return
         }
 
+        // Check permission + conflict BEFORE downloading
+        let hasReadAccess: Bool
+        do {
+            let result = try handlePhotosSetup(
+                fileName: fileName,
+                subDir: subDir,
+                conflictResolution: conflictResolution
+            )
+            hasReadAccess = result.hasReadAccess
+
+            if let existingUri = result.existingUri {
+                onProgress?(1.0)
+                onSuccess(existingUri)
+                onComplete()
+                return
+            }
+        } catch let error as FileSaverError {
+            onError(error.code, error.message)
+            onComplete()
+            return
+        } catch {
+            onError(Constants.errorPlatform, error.localizedDescription)
+            onComplete()
+            return
+        }
+
+        if let token = cancellationToken, token.isCancelled {
+            onCancelled()
+            onComplete()
+            return
+        }
+
+        // Download after permission granted
         let downloadProgressHandler = progressMapper(from: onProgress, startProgress: 0.0, endProgress: 0.8)
 
         NetworkHelper.downloadToTempFile(
@@ -210,10 +243,10 @@ extension BaseFileSaver {
 
                     self.saveDownloadedFileToPhotosImpl(
                         tmpURL: tmpURL,
+                        hasReadAccess: hasReadAccess,
                         fileType: fileType,
                         baseFileName: baseFileName,
                         subDir: subDir,
-                        conflictResolution: conflictResolution,
                         onProgress: onProgress,
                         onSuccess: onSuccess,
                         onError: onError,
@@ -236,10 +269,10 @@ extension BaseFileSaver {
 
     private func saveDownloadedFileToPhotosImpl(
         tmpURL: URL,
+        hasReadAccess: Bool,
         fileType: FileType,
         baseFileName: String,
         subDir: String?,
-        conflictResolution: ConflictResolution,
         onProgress: ((Double) -> Void)?,
         onSuccess: @escaping (String) -> Void,
         onError: @escaping (String, String) -> Void,
@@ -263,27 +296,6 @@ extension BaseFileSaver {
         let fileName = buildFileName(base: baseFileName, extension: fileType.ext)
 
         do {
-            let (hasReadAccess, existingUri) = try handlePhotosSetup(
-                fileName: fileName,
-                subDir: subDir,
-                conflictResolution: conflictResolution
-            )
-
-            if let existingUri = existingUri {
-                cleanup()
-                onProgress?(1.0)
-                onSuccess(existingUri)
-                onComplete()
-                return
-            }
-
-            if let token = cancellationToken, token.isCancelled {
-                cleanup()
-                onCancelled()
-                onComplete()
-                return
-            }
-
             let uri = try saveFileToPhotos(
                 sourceURL: tmpURL,
                 fileName: fileName,
