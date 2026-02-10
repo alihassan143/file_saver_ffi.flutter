@@ -44,18 +44,18 @@ enum AndroidSaveLocation implements SaveLocation {
 /// - [photos]: Photos Library (requires Photos permission)
 /// - [documents]: Documents/ directory in app's container (default, no permission required)
 enum IosSaveLocation implements SaveLocation {
-  /// Save to Photos Library
-  ///
-  /// Requires Photos permission. Files are saved to the user's Photos app
-  /// and can optionally be organized into albums using the subDir parameter.
-  photos,
-
   /// Save to app's Documents/ directory (default)
   ///
   /// Files are saved to the app's Documents directory and are visible in
   /// the Files app under "On My iPhone/iPad" → [App Name].
   /// No special permissions required.
-  documents;
+  documents,
+
+  /// Save to Photos Library
+  ///
+  /// Requires Photos permission. Files are saved to the user's Photos app
+  /// and can optionally be organized into albums using the subDir parameter.
+  photos;
 
   const IosSaveLocation();
 }
