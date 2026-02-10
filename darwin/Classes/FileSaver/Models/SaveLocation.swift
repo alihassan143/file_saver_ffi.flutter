@@ -7,11 +7,11 @@ import Foundation
 /// - macOS: Downloads, Pictures, Movies, Music, and Documents directories
 enum SaveLocation: Int {
     #if os(iOS)
-    /// Photos Library (requires Photos permission)
-    case photos = 0
+    /// Documents/ directory in app container (default)
+    case documents = 0
 
-    /// Documents/ directory in app container
-    case documents = 1
+    /// Photos Library (requires Photos permission)
+    case photos = 1
 
     /// Converts an integer index to SaveLocation enum.
     static func fromInt(_ value: Int) -> SaveLocation {
