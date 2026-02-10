@@ -1,6 +1,46 @@
 import 'package:flutter/material.dart';
 
+import 'types.dart';
 import 'utils.dart';
+
+class InputSourceSelector extends StatelessWidget {
+  const InputSourceSelector({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    required this.enabled,
+  });
+
+  final DemoInputSource value;
+  final ValueChanged<DemoInputSource> onChanged;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<DemoInputSource>(
+      segments: const [
+        ButtonSegment<DemoInputSource>(
+          value: DemoInputSource.network,
+          icon: Icon(Icons.link),
+          label: Text('Network'),
+        ),
+        ButtonSegment<DemoInputSource>(
+          value: DemoInputSource.bytes,
+          icon: Icon(Icons.memory),
+          label: Text('Bytes'),
+        ),
+        ButtonSegment<DemoInputSource>(
+          value: DemoInputSource.file,
+          icon: Icon(Icons.insert_drive_file),
+          label: Text('File'),
+        ),
+      ],
+      selected: {value},
+      onSelectionChanged: enabled ? (s) => onChanged(s.first) : null,
+      showSelectedIcon: false,
+    );
+  }
+}
 
 /// Info card displaying title, description and URL
 class InfoCard extends StatelessWidget {
@@ -146,7 +186,7 @@ class SuccessCard extends StatelessWidget {
             Icon(Icons.check_circle, color: Colors.green.shade700),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(
+              child: SelectableText(
                 'Saved: $savedPath',
                 style: TextStyle(color: Colors.green.shade700),
               ),
@@ -175,8 +215,8 @@ class MediaCategorySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const .symmetric(horizontal: 16),
+    return FractionallySizedBox(
+      widthFactor: 0.9,
       child: SegmentedButton<dynamic>(
         segments: categories
             .map(
@@ -190,11 +230,6 @@ class MediaCategorySelector extends StatelessWidget {
         selected: {selected},
         onSelectionChanged: enabled ? (s) => onChanged(s.first) : null,
         showSelectedIcon: false,
-        style: SegmentedButton.styleFrom(
-          selectedBackgroundColor: Theme.of(
-            context,
-          ).colorScheme.primaryContainer,
-        ),
       ),
     );
   }
@@ -215,22 +250,17 @@ class ApiModeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text('API Mode:', style: Theme.of(context).textTheme.labelLarge),
-        const SizedBox(width: 12),
-        ChoiceChip(
-          label: const Text('Async'),
-          selected: !useStreamApi,
-          onSelected: enabled ? (_) => onChanged(false) : null,
-        ),
-        const SizedBox(width: 8),
-        ChoiceChip(
-          label: const Text('Stream'),
-          selected: useStreamApi,
-          onSelected: enabled ? (_) => onChanged(true) : null,
-        ),
-      ],
+    return FractionallySizedBox(
+      widthFactor: 0.5,
+      child: SegmentedButton<bool>(
+        segments: const [
+          ButtonSegment<bool>(value: false, label: Text('Async')),
+          ButtonSegment<bool>(value: true, label: Text('Stream')),
+        ],
+        selected: {useStreamApi},
+        onSelectionChanged: enabled ? (s) => onChanged(s.first) : null,
+        showSelectedIcon: false,
+      ),
     );
   }
 }
