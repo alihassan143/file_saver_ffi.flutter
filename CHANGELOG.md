@@ -8,12 +8,12 @@
 ### Fixed
 
 - **Network save: file deleted immediately after successful download**
-  - `invalidateAndCancel()` triggered `didCompleteWithError` with cancellation error, which deleted the saved file
-  - Replaced with `finishTasksAndInvalidate()` to allow the task to complete normally
-  - Affected all platforms using native network save (`saveNetwork` / `saveNetworkAs`)
+    - `invalidateAndCancel()` triggered `didCompleteWithError` with cancellation error, which deleted the saved file
+    - Replaced with `finishTasksAndInvalidate()` to allow the task to complete normally
+    - Affected all platforms using native network save (`saveNetwork` / `saveNetworkAs`)
 - **iOS: Network save to Photos requested permission after download**
-  - Permission and conflict resolution are now checked before starting the download
-  - Avoids wasting bandwidth if permission is denied or file already exists (skip/fail)
+    - Permission and conflict resolution are now checked before starting the download
+    - Avoids wasting bandwidth if permission is denied or file already exists (skip/fail)
 
 ## 0.3.1
 
@@ -163,32 +163,31 @@
 
 ### Migration Guide
 
-```dart
-// Before (0.0.4)
-final uri = await
-FileSaver.instance.saveBytes
-(...);
-
-// After (0.0.5) - Option 1: Use saveBytesAsync (minimal change)
-final uri = await FileSaver.instance.saveBytesAsync(...);
-
-// After (0.0.5) - Option 2: Use saveBytesAsync with progress
-final uri = await FileSaver.instance.saveBytesAsync(
-...,
-onProgress: (progress) => print('${(progress * 100).toInt()}%'),
-);
-
-// After (0.0.5) - Option 3: Use saveBytes stream for full control
-await for (final event in FileSaver.instance.saveBytes(...)) {
-switch (event) {
-case SaveProgressStarted(): showLoading();
-case SaveProgressUpdate(:final progress): updateUI(progress);
-case SaveProgressComplete(:final uri): handleSuccess(uri);
-case SaveProgressError(:final exception): handleError(exception);
-case SaveProgressCancelled(): handleCancel();
-}
-}
-```
+- To migrate from version 0.0.4 to 0.0.5, update your code as follows:
+  ```dart
+  // Before (0.0.4)
+  final uri = await FileSaver.instance.saveBytes(...);
+  
+  // After (0.0.5) - Option 1: Use saveBytesAsync (minimal change)
+  final uri = await FileSaver.instance.saveBytesAsync(...);
+  
+  // After (0.0.5) - Option 2: Use saveBytesAsync with progress
+  final uri = await FileSaver.instance.saveBytesAsync(
+    ...,
+    onProgress: (progress) => print('${(progress * 100).toInt()}%'),
+  );
+  
+  // After (0.0.5) - Option 3: Use saveBytes stream for full control
+  await for (final event in FileSaver.instance.saveBytes(...)) {
+    switch (event) {
+      case SaveProgressStarted(): showLoading();
+      case SaveProgressUpdate(:final progress): updateUI(progress);
+      case SaveProgressComplete(:final uri): handleSuccess(uri);
+      case SaveProgressError(:final exception): handleError(exception);
+      case SaveProgressCancelled(): handleCancel();
+    }
+  }
+  ```
 
 ## 0.0.4
 
