@@ -13,7 +13,7 @@ import '../../models/save_input.dart';
 import '../../models/save_location.dart';
 import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
-import 'bindings.g.dart';
+import '../shared/ffi/bindings.g.dart';
 
 /// FileSaver implementation for Apple platforms (iOS and macOS).
 ///
