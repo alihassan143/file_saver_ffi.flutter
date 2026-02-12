@@ -45,3 +45,5 @@ flutter:
       macos:
         ffiPlugin: true
         sharedDarwinSource: true
+      windows:
+        ffiPlugin: true

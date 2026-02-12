@@ -1,3 +1,8 @@
+## 0.5.0
+### Added
+- **Windows Support**: Save files to Windows Known Folders (Downloads, Pictures, Videos, Music, Documents) using FFI
+  with WinHTTP network downloads, COM folder picker, and full conflict resolution
+
 ## 0.4.0
 
 ### Added
