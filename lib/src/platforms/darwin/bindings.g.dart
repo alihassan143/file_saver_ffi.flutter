@@ -10,7 +10,7 @@ import 'dart:ffi' as ffi;
 
 /// Shared FFI bindings for `file_saver_ffi.h`.
 ///
-/// Used by all FFI platforms (Darwin, Windows).
+/// Used by Darwin (iOS/macOS) platforms.
 /// Regenerate bindings with `fvm dart run ffigen --config ffigen.yaml`.
 ///
 class FileSaverFfiBindings {
@@ -178,7 +178,7 @@ class FileSaverFfiBindings {
   /// @param baseFileName Target file name without extension
   /// @param extension File extension without dot
   /// @param mimeType MIME type string
-  /// @param saveLocation Save location index
+  /// @param saveLocation Save location index (0-1 for iOS)
   /// @param subDir Optional subdirectory (can be NULL)
   /// @param conflictMode Conflict resolution mode (0-3)
   /// @param native_port Dart NativePort for progress reporting
@@ -241,7 +241,9 @@ class FileSaverFfiBindings {
   /// Save file from network URL asynchronously with progress reporting via
   /// NativePort.
   ///
-  /// Downloads file at native level to avoid double storage.
+  /// Downloads file at native level to avoid double storage:
+  /// - Documents: Downloads directly to target path
+  /// - Photos: Downloads to tmp, saves to Photos Library, deletes tmp
   ///
   /// Progress messages sent to native_port:
   /// - Started:    [0]
@@ -257,7 +259,7 @@ class FileSaverFfiBindings {
   /// @param baseFileName File name without extension
   /// @param extension File extension without dot
   /// @param mimeType MIME type string
-  /// @param saveLocation Save location index
+  /// @param saveLocation Save location index (0-1 for iOS)
   /// @param subDir Optional subdirectory (can be NULL)
   /// @param conflictMode Conflict resolution mode (0-3)
   /// @param native_port Dart NativePort for progress reporting
@@ -353,6 +355,7 @@ class FileSaverFfiBindings {
   /// Save bytes to user-selected directory (saveAs).
   ///
   /// Saves file bytes to a directory previously selected via file_saver_pick_directory.
+  /// Uses security-scoped resource access for the selected directory.
   ///
   /// Progress messages sent to native_port:
   /// - Started:    [0]
@@ -424,6 +427,7 @@ class FileSaverFfiBindings {
   /// Save file to user-selected directory (saveAs).
   ///
   /// Copies a file to a directory previously selected via file_saver_pick_directory.
+  /// Uses security-scoped resource access for the selected directory.
   ///
   /// Progress messages sent to native_port:
   /// - Started:    [0]
@@ -490,7 +494,7 @@ class FileSaverFfiBindings {
   /// Save network file to user-selected directory (saveAs).
   ///
   /// Downloads and saves a file to a directory previously selected via
-  /// file_saver_pick_directory.
+  /// file_saver_pick_directory. Uses security-scoped resource access.
   ///
   /// Progress messages sent to native_port:
   /// - Started:    [0]
