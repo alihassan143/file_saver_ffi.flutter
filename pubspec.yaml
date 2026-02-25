@@ -22,8 +22,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  ffi: ^2.1.5
+  ffi: ^2.2.0
   jni: ^0.15.2
+  path: ^1.9.1
+  path_provider_windows: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -46,4 +48,4 @@ flutter:
         ffiPlugin: true
         sharedDarwinSource: true
       windows:
-        ffiPlugin: true
+        pluginClass: none
