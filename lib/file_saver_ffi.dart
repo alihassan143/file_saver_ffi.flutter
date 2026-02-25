@@ -2,7 +2,7 @@ library;
 
 import 'dart:typed_data';
 
-import '/src/exceptions/file_saver_exceptions.dart';
+import 'src/exceptions/file_saver_exceptions.dart';
 import 'src/models/conflict_resolution.dart';
 import 'src/models/file_type.dart';
 import 'src/models/save_input.dart';

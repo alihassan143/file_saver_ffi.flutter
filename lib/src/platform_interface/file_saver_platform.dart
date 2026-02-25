@@ -13,7 +13,7 @@ import '../platforms/windows/file_saver_windows.dart';
 /// Platform implementations:
 /// - iOS/macOS: Uses FFI to call Swift code (shared darwin source)
 /// - Android: Uses JNI to call Kotlin code
-/// - Windows: Uses FFI to call C++ code
+/// - Windows: Dart FFI via path_provider_windows (SHGetKnownFolderPath) + dart:io
 abstract class FileSaverPlatform {
   static FileSaverPlatform? _instance;
 
