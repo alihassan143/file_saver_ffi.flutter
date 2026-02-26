@@ -49,3 +49,4 @@ flutter:
         sharedDarwinSource: true
       windows:
         dartPluginClass: FileSaverWindows
+        fileName: src/platforms/windows/file_saver_windows.dart
