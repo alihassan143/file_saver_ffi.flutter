@@ -5,7 +5,7 @@
 ## File Saver FFI
 
 <p align="left">
-  <a href="https://github.com/vanvixi/file_saver_ffi"><img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS-blue.svg" alt="Platform"></a>
+  <a href="https://github.com/vanvixi/file_saver_ffi"><img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows-blue.svg" alt="Platform"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-purple.svg" alt="License: MIT"></a>
   <a href="https://deepwiki.com/vanvixi/file_saver_ffi.flutter"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
@@ -16,7 +16,7 @@ storage with original quality and custom album support.
 ## Features
 
 - 🖼️ **Gallery Saving** – Save images and videos to iOS Photos or Android Gallery with custom albums
-- ⚡ **Native Performance** – Powered by FFI (iOS/macOS) and JNI (Android) for near-zero latency
+- ⚡ **Native Performance** – Powered by FFI (iOS/macOS/Windows) and JNI (Android) for near-zero latency
 - 📁 **Universal Storage** – Save any file type (PDF, ZIP, DOCX, etc.) to device storage
 - 💾 **Original Quality** – Files saved bit-for-bit without compression or metadata loss
 - 📊 **Progress & Cancellation** – Real-time progress tracking with cancellable operations
@@ -120,6 +120,15 @@ Add to `macos/Runner/DebugProfile.entitlements` and `macos/Runner/Release.entitl
 
 </details>
 
+<details>
+<summary><b>Windows Configuration</b></summary>
+
+**Supported:** Windows 10+
+
+No configuration needed. Files are saved directly to Windows Known Folders (Downloads, Pictures, Videos, Music, Documents).
+
+</details>
+
 ### Basic Usage
 
 ```dart
@@ -190,15 +199,16 @@ Control where files are saved using platform-specific enum values:
 
 #### Platform Comparison
 
-| Value        | Android (`AndroidSaveLocation`) | iOS (`IosSaveLocation`) | macOS (`MacosSaveLocation`) |
-|--------------|---------------------------------|-------------------------|-----------------------------|
-| `.downloads` | **Downloads/** (default)        | -                       | **Downloads/** (default)    |
-| `.pictures`  | **Pictures/**                   | -                       | **Pictures/**               |
-| `.movies`    | **Movies/**                     | -                       | **Movies/**                 |
-| `.music`     | **Music/**                      | -                       | **Music/**                  |
-| `.dcim`      | **DCIM/**                       | -                       | -                           |
-| `.documents` | -                               | **Documents/** (default)  | **Documents/**              |
-| `.photos`    | -                               | **Photos Library**      | -                           |
+| Value        | Android (`AndroidSaveLocation`) | iOS (`IosSaveLocation`)  | macOS (`MacosSaveLocation`) | Windows (`WindowsSaveLocation`) |
+|--------------|---------------------------------|--------------------------|-----------------------------|---------------------------------|
+| `.downloads` | **Downloads/** (default)        | -                        | **Downloads/** (default)    | **Downloads/** (default)        |
+| `.pictures`  | **Pictures/**                   | -                        | **Pictures/**               | **Pictures/**                   |
+| `.movies`    | **Movies/**                     | -                        | **Movies/**                 | -                               |
+| `.videos`    | -                               | -                        | -                           | **Videos/**                     |
+| `.music`     | **Music/**                      | -                        | **Music/**                  | **Music/**                      |
+| `.dcim`      | **DCIM/**                       | -                        | -                           | -                               |
+| `.documents` | -                               | **Documents/** (default) | **Documents/**              | **Documents/**                  |
+| `.photos`    | -                               | **Photos Library**       | -                           | -                               |
 
 
 ### Conflict Resolution
@@ -234,6 +244,7 @@ final uri = await FileSaver.instance.saveAsync(
     TargetPlatform.android => AndroidSaveLocation.movies,
     TargetPlatform.iOS => IosSaveLocation.photos,
     TargetPlatform.macOS => MacosSaveLocation.downloads,
+    TargetPlatform.windows => WindowsSaveLocation.downloads,
     _ => null,
   },
 );
@@ -416,7 +427,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 * ~~Cancellation Support~~
 * ~~Save from File Path~~
 * ~~MacOS Support~~
-* Windows Support
+* ~~Windows Support~~
 * Web Support
 
 
@@ -429,8 +440,8 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 When saving to `IosSaveLocation.photos`, the permission requested depends on the `subDir`:
 
-| `subDir`    | Permission | Dialog (iOS 14+)      | Capabilities                        |
-| :---        | :---       | :---                  | :---                                |
+| `subDir`    | Permission   | Dialog (iOS 14+)      | Capabilities                        |
+|:------------|:-------------|:----------------------|:------------------------------------|
 | `"MyAlbum"` | `.readWrite` | Full / Limited / Deny | Album creation, conflict resolution |
 | `null`      | `.addOnly`   | Allow / Deny          | Basic save only (no album)          |
 

@@ -97,11 +97,41 @@ enum MacosSaveLocation implements SaveLocation {
   const MacosSaveLocation();
 }
 
+/// Windows-specific save locations.
+///
+/// These locations map to Windows Known Folders via `SHGetKnownFolderPath`.
+///
+/// Platform mappings:
+/// - [downloads]: FOLDERID_Downloads (%USERPROFILE%\Downloads)
+/// - [pictures]: FOLDERID_Pictures (%USERPROFILE%\Pictures)
+/// - [videos]: FOLDERID_Videos (%USERPROFILE%\Videos)
+/// - [music]: FOLDERID_Music (%USERPROFILE%\Music)
+/// - [documents]: FOLDERID_Documents (%USERPROFILE%\Documents)
+enum WindowsSaveLocation implements SaveLocation {
+  /// Save to Downloads directory (default)
+  downloads,
+
+  /// Save to Pictures directory
+  pictures,
+
+  /// Save to Videos directory
+  videos,
+
+  /// Save to Music directory
+  music,
+
+  /// Save to Documents directory
+  documents;
+
+  const WindowsSaveLocation();
+}
+
 /// User-selected directory location.
 ///
 /// This represents a directory chosen by the user through the system picker:
 /// - **Android**: Storage Access Framework (ACTION_OPEN_DOCUMENT_TREE)
 /// - **iOS**: UIDocumentPickerViewController
+/// - **Windows**: IFileOpenDialog with FOS_PICKFOLDERS
 ///
 /// Use [FileSaver.pickDirectory] to obtain a [UserSelectedLocation], then
 /// pass it to [FileSaver.saveAs] or [FileSaver.saveAsAsync].
@@ -127,5 +157,6 @@ final class UserSelectedLocation implements SaveLocation {
   ///
   /// - **Android**: Content URI from SAF (e.g., `content://...`)
   /// - **iOS**: File URL from Document Picker (e.g., `file://...`)
+  /// - **Windows**: File system path (e.g., `C:\Users\...`)
   final Uri uri;
 }
