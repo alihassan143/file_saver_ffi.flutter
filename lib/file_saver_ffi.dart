@@ -13,13 +13,16 @@ import 'src/platforms/android/file_saver_android.dart';
 import 'src/platforms/darwin/file_saver_darwin.dart';
 import 'src/platforms/windows/file_saver_windows.dart';
 
-// Public API - FileSaver class
+// Public API
 export 'src/exceptions/file_saver_exceptions.dart';
 export 'src/models/conflict_resolution.dart';
 export 'src/models/file_type.dart';
 export 'src/models/save_input.dart';
 export 'src/models/save_location.dart';
 export 'src/models/save_progress.dart';
+// Required for dartPluginClass: Flutter's dart_plugin_registrant.dart imports
+// this library and calls FileSaverWindows.registerWith() on Windows.
+export 'src/platforms/windows/file_saver_windows.dart' show FileSaverWindows;
 
 class FileSaver {
   FileSaver._() {
