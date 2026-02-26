@@ -31,9 +31,10 @@ class FileSaver {
       TargetPlatform.android => FileSaverAndroid(),
       TargetPlatform.iOS || TargetPlatform.macOS => FileSaverDarwin(),
       TargetPlatform.windows => FileSaverWindows(),
-      _ => throw UnsupportedError(
-        'FileSaver is not supported on $defaultTargetPlatform',
-      ),
+      _ =>
+        throw UnsupportedError(
+          'FileSaver is not supported on $defaultTargetPlatform',
+        ),
     };
   }
 

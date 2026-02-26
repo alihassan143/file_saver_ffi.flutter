@@ -162,12 +162,12 @@ class FolderPicker {
 
   static String? _showDialog() {
     // CLSID_FileOpenDialog: {DC1C5A9C-E88A-4DDE-A5A1-60F82A20AEF7}
-    final clsid = calloc<_GUID>()
-      ..ref.parse('{DC1C5A9C-E88A-4DDE-A5A1-60F82A20AEF7}');
+    final clsid =
+        calloc<_GUID>()..ref.parse('{DC1C5A9C-E88A-4DDE-A5A1-60F82A20AEF7}');
 
     // IID_IFileOpenDialog: {D57C7288-D4AD-4768-BE02-9D969532D960}
-    final iid = calloc<_GUID>()
-      ..ref.parse('{D57C7288-D4AD-4768-BE02-9D969532D960}');
+    final iid =
+        calloc<_GUID>()..ref.parse('{D57C7288-D4AD-4768-BE02-9D969532D960}');
 
     final ppDialog = calloc<Pointer<Void>>();
 
