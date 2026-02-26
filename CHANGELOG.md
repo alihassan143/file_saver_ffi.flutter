@@ -1,7 +1,13 @@
 ## 0.5.0
+
 ### Added
-- **Windows Support**: Save files to Windows Known Folders (Downloads, Pictures, Videos, Music, Documents) using FFI
-  with WinHTTP network downloads, COM folder picker, and full conflict resolution
+
+- **Windows Support**: Full file saving support on Windows — no native C++ plugin code required
+
+### Refactored
+
+- **`FileSaverPlatform` is now a pure interface** — removed circular imports between the platform interface and
+  platform implementations. Platform initialization is handled uniformly in `FileSaver._()` for all platforms.
 
 ## 0.4.0
 
@@ -253,3 +259,4 @@
 * Update document and README.md
 
 ## 0.0.1
+* Initial version
