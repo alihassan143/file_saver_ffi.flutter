@@ -8,9 +8,8 @@
 // ignore_for_file: type=lint, unused_import
 import 'dart:ffi' as ffi;
 
-/// Shared FFI bindings for `file_saver_ffi.h`.
+/// Bindings for Darwin (iOS/macOS) `file_saver_ffi.h`.
 ///
-/// Used by Darwin (iOS/macOS) platforms.
 /// Regenerate bindings with `fvm dart run ffigen --config ffigen.yaml`.
 ///
 class FileSaverFfiBindings {
