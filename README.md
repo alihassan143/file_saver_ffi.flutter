@@ -440,8 +440,8 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 When saving to `IosSaveLocation.photos`, the permission requested depends on the `subDir`:
 
-| `subDir`    | Permission | Dialog (iOS 14+)      | Capabilities                        |
-| :---        | :---       | :---                  | :---                                |
+| `subDir`    | Permission   | Dialog (iOS 14+)      | Capabilities                        |
+|:------------|:-------------|:----------------------|:------------------------------------|
 | `"MyAlbum"` | `.readWrite` | Full / Limited / Deny | Album creation, conflict resolution |
 | `null`      | `.addOnly`   | Allow / Deny          | Basic save only (no album)          |
 
