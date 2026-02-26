@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 
-import '../../file_saver_ffi.dart';
-import '../platforms/android/file_saver_android.dart';
-import '../platforms/darwin/file_saver_darwin.dart';
-import '../platforms/windows/file_saver_windows.dart';
+import '../exceptions/file_saver_exceptions.dart';
+import '../models/conflict_resolution.dart';
+import '../models/file_type.dart';
+import '../models/save_input.dart';
+import '../models/save_location.dart';
+import '../models/save_progress.dart';
 
 /// Platform interface for file saver implementations.
 ///
@@ -17,18 +19,28 @@ import '../platforms/windows/file_saver_windows.dart';
 abstract class FileSaverPlatform {
   static FileSaverPlatform? _instance;
 
-  /// Get the appropriate platform instance based on the current platform.
+  /// The current platform implementation.
+  ///
+  /// Set automatically during app startup:
+  /// - **Windows**: via `dartPluginClass` → [FileSaverWindows.registerWith]
+  ///   (called by Flutter's generated plugin registrant before [runApp]).
+  /// - **Android / iOS / macOS**: via [FileSaver] initialization on first
+  ///   access to [FileSaver.instance].
   static FileSaverPlatform get instance {
-    _instance ??= switch (defaultTargetPlatform) {
-      TargetPlatform.android => FileSaverAndroid(),
-      TargetPlatform.iOS || TargetPlatform.macOS => FileSaverDarwin(),
-      TargetPlatform.windows => FileSaverWindows(),
-      _ =>
-        throw UnsupportedError(
-          'FileSaver is not supported on ${defaultTargetPlatform.toString()}',
-        ),
-    };
+    assert(
+      _instance != null,
+      'FileSaverPlatform.instance is not set. '
+      'Access FileSaver.instance first to trigger initialization.',
+    );
     return _instance!;
+  }
+
+  /// Override the platform instance.
+  ///
+  /// Used by platform implementations (e.g. Windows via [dartPluginClass]) to
+  /// register themselves before [instance] is first accessed.
+  static set instance(FileSaverPlatform value) {
+    _instance = value;
   }
 
   /// Disposes resources

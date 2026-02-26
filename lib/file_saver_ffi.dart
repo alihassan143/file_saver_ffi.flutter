@@ -1,6 +1,6 @@
 library;
 
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 
 import 'src/exceptions/file_saver_exceptions.dart';
 import 'src/models/conflict_resolution.dart';
@@ -9,6 +9,9 @@ import 'src/models/save_input.dart';
 import 'src/models/save_location.dart';
 import 'src/models/save_progress.dart';
 import 'src/platform_interface/file_saver_platform.dart';
+import 'src/platforms/android/file_saver_android.dart';
+import 'src/platforms/darwin/file_saver_darwin.dart';
+import 'src/platforms/windows/file_saver_windows.dart';
 
 // Public API - FileSaver class
 export 'src/exceptions/file_saver_exceptions.dart';
@@ -19,7 +22,17 @@ export 'src/models/save_location.dart';
 export 'src/models/save_progress.dart';
 
 class FileSaver {
-  FileSaver._();
+  FileSaver._() {
+    // All platforms are initialized here on first access to FileSaver.instance.
+    FileSaverPlatform.instance = switch (defaultTargetPlatform) {
+      TargetPlatform.android => FileSaverAndroid(),
+      TargetPlatform.iOS || TargetPlatform.macOS => FileSaverDarwin(),
+      TargetPlatform.windows => FileSaverWindows(),
+      _ => throw UnsupportedError(
+        'FileSaver is not supported on $defaultTargetPlatform',
+      ),
+    };
+  }
 
   static final FileSaver instance = FileSaver._();
 
