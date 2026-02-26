@@ -48,4 +48,4 @@ flutter:
         ffiPlugin: true
         sharedDarwinSource: true
       windows:
-        pluginClass: none
+        dartPluginClass: FileSaverWindows

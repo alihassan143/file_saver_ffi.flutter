@@ -34,6 +34,12 @@ const int _chunkSize = 1048576;
 /// - [dart:io] handles all file read/write operations
 /// - [FolderPicker] calls COM [IFileOpenDialog] directly via dart:ffi
 class FileSaverWindows extends FileSaverPlatform {
+  /// Placeholder required by Flutter's `dartPluginClass` mechanism.
+  ///
+  /// Called by the generated plugin registrant, but initialization is handled
+  /// uniformly via [FileSaver.instance] like all other platforms.
+  static void registerWith() {}
+
   final _pathProvider = PathProviderWindows();
   final _httpClient = HttpClient();
   int _nextTokenId = 1;
