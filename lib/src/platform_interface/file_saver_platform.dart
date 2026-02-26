@@ -1,5 +1,4 @@
-import 'dart:io';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 
 import '../exceptions/file_saver_exceptions.dart';
 import '../models/conflict_resolution.dart';
