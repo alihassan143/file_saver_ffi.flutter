@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import '../../../exceptions/file_saver_exceptions.dart';
-import '../../../models/conflict_resolution.dart';
+import '../../exceptions/file_saver_exceptions.dart';
+import '../../models/conflict_resolution.dart';
 
 class ConflictResolver {
   /// Resolves file path based on conflict mode.
