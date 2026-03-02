@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
-import 'package:flutter/services.dart' hide PlatformException;
 import 'package:jni/jni.dart';
 
 import '../../exceptions/file_saver_exceptions.dart';
@@ -20,9 +20,6 @@ class FileSaverAndroid extends FileSaverPlatform {
 
   /// Native FileSaver instance
   late final bindings.FileSaver _fileSaver;
-
-  /// Method channel for directory picker (requires Activity)
-  static const _pickerChannel = MethodChannel('com.vanvixi/file_saver_ffi');
 
   @override
   void dispose() {
@@ -241,22 +238,6 @@ class FileSaverAndroid extends FileSaverPlatform {
         Future.delayed(const Duration(milliseconds: 500), cleanup);
       };
     });
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // User-Selected Location (SAF)
-  // ─────────────────────────────────────────────────────────────────────────
-
-  @override
-  Future<UserSelectedLocation?> pickDirectory({
-    bool shouldPersist = true,
-  }) async {
-    final result = await _pickerChannel.invokeMethod<String?>('pickDirectory', {
-      'shouldPersist': shouldPersist,
-    });
-
-    if (result == null) return null;
-    return UserSelectedLocation(uri: Uri.parse(result));
   }
 
   @override

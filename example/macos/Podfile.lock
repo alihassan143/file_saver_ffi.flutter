@@ -1,6 +1,4 @@
 PODS:
-  - device_info_plus (0.0.1):
-    - FlutterMacOS
   - file_picker (0.0.1):
     - FlutterMacOS
   - file_saver_ffi (0.0.1):
@@ -14,7 +12,6 @@ PODS:
     - FlutterMacOS
 
 DEPENDENCIES:
-  - device_info_plus (from `Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos`)
   - file_picker (from `Flutter/ephemeral/.symlinks/plugins/file_picker/macos`)
   - file_saver_ffi (from `Flutter/ephemeral/.symlinks/plugins/file_saver_ffi/darwin`)
   - file_selector_macos (from `Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos`)
@@ -22,8 +19,6 @@ DEPENDENCIES:
   - path_provider_foundation (from `Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin`)
 
 EXTERNAL SOURCES:
-  device_info_plus:
-    :path: Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos
   file_picker:
     :path: Flutter/ephemeral/.symlinks/plugins/file_picker/macos
   file_saver_ffi:
@@ -36,7 +31,6 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin
 
 SPEC CHECKSUMS:
-  device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
   file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
   file_saver_ffi: 75d0b891038d1d7e75e107057e5b7d1db615a1c5
   file_selector_macos: 9e9e068e90ebee155097d00e89ae91edb2374db7

@@ -1,3 +1,4 @@
+import 'package:dir_picker/dir_picker.dart';
 import 'package:flutter/foundation.dart';
 
 import '../exceptions/file_saver_exceptions.dart';
@@ -140,7 +141,15 @@ abstract class FileSaverPlatform {
   /// - [shouldPersist]: (Android only) If `true`, automatically requests
   ///   persistent permission for the selected directory. Default is `true`.
   ///   On iOS, this parameter is ignored.
-  Future<UserSelectedLocation?> pickDirectory({bool shouldPersist = true});
+  Future<UserSelectedLocation?> pickDirectory({
+    bool shouldPersist = true,
+  }) async {
+    final uri = await DirPicker.pick(
+      androidOptions: AndroidOptions(shouldPersist: shouldPersist),
+    );
+    if (uri == null) return null;
+    return UserSelectedLocation(uri: uri);
+  }
 
   /// Save to user-selected directory with progress streaming.
   ///

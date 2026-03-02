@@ -1,10 +1,11 @@
+import DartApiDl
 import Foundation
+
 #if os(iOS)
 import UIKit
 #elseif os(macOS)
 import AppKit
 #endif
-import DartApiDl
 
 private var instanceCounter: UInt = 0
 private var instances: [UInt: FileSaver] = [:]
@@ -343,82 +344,6 @@ public func fileSaverSaveNetwork(
 
     return tokenId
 }
-
-// MARK: - User-Selected Location (Directory Picker)
-
-#if os(iOS)
-/// Holds reference to DocumentPickerHelper during picker operation
-private var activePickerHelper: DocumentPickerHelper?
-private let pickerLock = NSLock()
-
-@_cdecl("file_saver_pick_directory")
-public func fileSaverPickDirectory(
-    _ instanceId: UInt,
-    _ nativePort: Int64
-) {
-    let reporter = ProgressReporter(port: nativePort)
-
-    DispatchQueue.main.async {
-        guard let rootVC = getRootViewController() else {
-            reporter.sendError(
-                code: Constants.errorPlatform,
-                message: "No root view controller available"
-            )
-            return
-        }
-
-        let helper = DocumentPickerHelper()
-
-        // Retain helper during picker operation
-        pickerLock.lock()
-        activePickerHelper = helper
-        pickerLock.unlock()
-
-        helper.pickDirectory(from: rootVC) { url in
-            // Release helper
-            pickerLock.lock()
-            activePickerHelper = nil
-            pickerLock.unlock()
-
-            if let url = url {
-                reporter.sendSuccess(uri: url.absoluteString)
-            } else {
-                reporter.sendCancelled()
-            }
-        }
-    }
-}
-
-// MARK: - Helper to get root view controller (iOS only)
-
-private func getRootViewController() -> UIViewController? {
-    if #available(iOS 15.0, *) {
-        return UIApplication.shared.connectedScenes
-        .compactMap { $0 as? UIWindowScene }
-        .flatMap { $0.windows }
-        .first { $0.isKeyWindow }?
-        .rootViewController
-    } else {
-        return UIApplication.shared.keyWindow?.rootViewController
-    }
-}
-#elseif os(macOS)
-@_cdecl("file_saver_pick_directory")
-public func fileSaverPickDirectory(
-    _ instanceId: UInt,
-    _ nativePort: Int64
-) {
-    let reporter = ProgressReporter(port: nativePort)
-
-    PanelPickerHelper.pickDirectory { url in
-        if let url = url {
-            reporter.sendSuccess(uri: url.absoluteString)
-        } else {
-            reporter.sendCancelled()
-        }
-    }
-}
-#endif
 
 @_cdecl("file_saver_save_bytes_as")
 public func fileSaverSaveBytesAs(

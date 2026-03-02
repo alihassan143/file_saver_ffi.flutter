@@ -13,7 +13,6 @@ import '../../models/save_location.dart';
 import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
 import 'utils/conflict_resolver.dart';
-import 'utils/folder_picker.dart';
 
 // Windows Known Folder GUIDs — mirrors WindowsKnownFolder from path_provider_windows.
 // Defined locally because the analyzer on non-Windows resolves the stub class
@@ -32,7 +31,7 @@ const int _chunkSize = 1048576;
 /// Uses Dart FFI throughout — no native C++ plugin code:
 /// - [PathProviderWindows] resolves Known Folder paths via [SHGetKnownFolderPath] (dart:ffi)
 /// - [dart:io] handles all file read/write operations
-/// - [FolderPicker] calls COM [IFileOpenDialog] directly via dart:ffi
+/// - [DirPicker] from package:dir_picker handles directory selection across all platforms
 class FileSaverWindows extends FileSaverPlatform {
   /// Placeholder required by Flutter's `dartPluginClass` mechanism.
   ///
@@ -148,19 +147,6 @@ class FileSaverWindows extends FileSaverPlatform {
       await _downloadToFile(url, headers, timeout, resolved, token, controller);
       controller.add(SaveProgressComplete(Uri.file(resolved)));
     });
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // User-Selected Location (Folder Picker)
-  // ─────────────────────────────────────────────────────────────────────────
-
-  @override
-  Future<UserSelectedLocation?> pickDirectory({
-    bool shouldPersist = true,
-  }) async {
-    final path = await FolderPicker.pick();
-    if (path == null) return null;
-    return UserSelectedLocation(uri: Uri.directory(path));
   }
 
   @override
