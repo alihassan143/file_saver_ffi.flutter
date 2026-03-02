@@ -26,7 +26,7 @@ dependencies:
   jni: ^0.15.2
   path: ^1.9.1
   path_provider_windows: ^2.3.0
-  dir_picker: ^0.1.0
+  dir_picker: ^0.2.1
 
 dev_dependencies:
   flutter_test:
