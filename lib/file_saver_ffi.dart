@@ -11,6 +11,7 @@ import 'src/models/save_progress.dart';
 import 'src/platform_interface/file_saver_platform.dart';
 import 'src/platforms/android/file_saver_android.dart';
 import 'src/platforms/darwin/file_saver_darwin.dart';
+import 'src/platforms/linux/file_saver_linux.dart';
 import 'src/platforms/windows/file_saver_windows.dart';
 
 // Public API
@@ -21,7 +22,8 @@ export 'src/models/save_input.dart';
 export 'src/models/save_location.dart';
 export 'src/models/save_progress.dart';
 // Required for dartPluginClass: Flutter's dart_plugin_registrant.dart imports
-// this library and calls FileSaverWindows.registerWith() on Windows.
+// this library and calls the platform's registerWith() method.
+export 'src/platforms/linux/file_saver_linux.dart' show FileSaverLinux;
 export 'src/platforms/windows/file_saver_windows.dart' show FileSaverWindows;
 
 class FileSaver {
@@ -30,6 +32,7 @@ class FileSaver {
     FileSaverPlatform.instance = switch (defaultTargetPlatform) {
       TargetPlatform.android => FileSaverAndroid(),
       TargetPlatform.iOS || TargetPlatform.macOS => FileSaverDarwin(),
+      TargetPlatform.linux => FileSaverLinux(),
       TargetPlatform.windows => FileSaverWindows(),
       _ =>
         throw UnsupportedError(

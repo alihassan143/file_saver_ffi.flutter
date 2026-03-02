@@ -5,7 +5,7 @@
 ## File Saver FFI
 
 <p align="left">
-  <a href="https://github.com/vanvixi/file_saver_ffi"><img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows-blue.svg" alt="Platform"></a>
+  <a href="https://github.com/vanvixi/file_saver_ffi"><img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows%20%7C%20Linux-blue.svg" alt="Platform"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-purple.svg" alt="License: MIT"></a>
   <a href="https://deepwiki.com/vanvixi/file_saver_ffi.flutter"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
@@ -129,6 +129,30 @@ No configuration needed. Files are saved directly to Windows Known Folders (Down
 
 </details>
 
+<details>
+<summary><b>Linux Configuration</b></summary>
+
+**Supported:** Ubuntu 20.04+ and other modern Linux distributions
+
+Enable Linux desktop support on your development machine:
+
+```bash
+flutter config --enable-linux-desktop
+```
+
+Install required system packages (if not already present):
+
+```bash
+sudo apt-get install -y \
+  clang cmake ninja-build \
+  libgtk-3-dev pkg-config \
+  libblkid-dev liblzma-dev
+```
+
+No additional app configuration needed. Directories are resolved via the XDG Base Directory Specification (`xdg-user-dirs`).
+
+</details>
+
 ### Basic Usage
 
 ```dart
@@ -199,16 +223,16 @@ Control where files are saved using platform-specific enum values:
 
 #### Platform Comparison
 
-| Value        | Android (`AndroidSaveLocation`) | iOS (`IosSaveLocation`)  | macOS (`MacosSaveLocation`) | Windows (`WindowsSaveLocation`) |
-|--------------|---------------------------------|--------------------------|-----------------------------|---------------------------------|
-| `.downloads` | **Downloads/** (default)        | -                        | **Downloads/** (default)    | **Downloads/** (default)        |
-| `.pictures`  | **Pictures/**                   | -                        | **Pictures/**               | **Pictures/**                   |
-| `.movies`    | **Movies/**                     | -                        | **Movies/**                 | -                               |
-| `.videos`    | -                               | -                        | -                           | **Videos/**                     |
-| `.music`     | **Music/**                      | -                        | **Music/**                  | **Music/**                      |
-| `.dcim`      | **DCIM/**                       | -                        | -                           | -                               |
-| `.documents` | -                               | **Documents/** (default) | **Documents/**              | **Documents/**                  |
-| `.photos`    | -                               | **Photos Library**       | -                           | -                               |
+| Value        | Android (`AndroidSaveLocation`) | iOS (`IosSaveLocation`)  | macOS (`MacosSaveLocation`) | Windows (`WindowsSaveLocation`) | Linux (`LinuxSaveLocation`) |
+|--------------|---------------------------------|--------------------------|-----------------------------|---------------------------------|-----------------------------|
+| `.downloads` | **Downloads/** (default)        | -                        | **Downloads/** (default)    | **Downloads/** (default)        | **~/Downloads/** (default)  |
+| `.pictures`  | **Pictures/**                   | -                        | **Pictures/**               | **Pictures/**                   | **~/Pictures/**             |
+| `.movies`    | **Movies/**                     | -                        | **Movies/**                 | -                               | -                           |
+| `.videos`    | -                               | -                        | -                           | **Videos/**                     | **~/Videos/**               |
+| `.music`     | **Music/**                      | -                        | **Music/**                  | **Music/**                      | **~/Music/**                |
+| `.dcim`      | **DCIM/**                       | -                        | -                           | -                               | -                           |
+| `.documents` | -                               | **Documents/** (default) | **Documents/**              | **Documents/**                  | **~/Documents/**            |
+| `.photos`    | -                               | **Photos Library**       | -                           | -                               | -                           |
 
 
 ### Conflict Resolution
@@ -245,6 +269,7 @@ final uri = await FileSaver.instance.saveAsync(
     TargetPlatform.iOS => IosSaveLocation.photos,
     TargetPlatform.macOS => MacosSaveLocation.downloads,
     TargetPlatform.windows => WindowsSaveLocation.downloads,
+    TargetPlatform.linux => LinuxSaveLocation.downloads,
     _ => null,
   },
 );
@@ -428,6 +453,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 * ~~Save from File Path~~
 * ~~MacOS Support~~
 * ~~Windows Support~~
+* ~~Linux Support~~
 * Web Support
 
 

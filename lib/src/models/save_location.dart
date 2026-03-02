@@ -126,6 +126,29 @@ enum WindowsSaveLocation implements SaveLocation {
   const WindowsSaveLocation();
 }
 
+/// Linux-specific save locations.
+///
+/// Resolved via XDG Base Directory Specification (`xdg-user-dirs`).
+/// Falls back to `~/Downloads` if the XDG variable is not configured.
+enum LinuxSaveLocation implements SaveLocation {
+  /// XDG_DOWNLOAD_DIR — typically `~/Downloads` (default)
+  downloads,
+
+  /// XDG_PICTURES_DIR — typically `~/Pictures`
+  pictures,
+
+  /// XDG_VIDEOS_DIR — typically `~/Videos`
+  videos,
+
+  /// XDG_MUSIC_DIR — typically `~/Music`
+  music,
+
+  /// XDG_DOCUMENTS_DIR — typically `~/Documents`
+  documents;
+
+  const LinuxSaveLocation();
+}
+
 /// User-selected directory location.
 ///
 /// This represents a directory chosen by the user through the system picker:

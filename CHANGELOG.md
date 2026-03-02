@@ -1,3 +1,17 @@
+## 0.6.0
+
+### Added
+
+- **Linux Support**: Full file saving support on Linux — no native plugin code required
+    - Directory resolution via XDG Base Directory Specification (`xdg-user-dirs`)
+    - Supports all standard locations: `downloads`, `pictures`, `videos`, `music`, `documents`
+    - Falls back to `~/Downloads` if XDG variable is not configured
+
+### Refactored
+
+- **`DesktopFileSaver` shared base class**: Extracted all common I/O logic (Windows + Linux)
+    into an abstract `DesktopFileSaver` class. Each platform only implements `resolveDirectory()`.
+
 ## 0.5.0
 
 ### Added
