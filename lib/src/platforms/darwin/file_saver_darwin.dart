@@ -269,54 +269,6 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
     });
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // User-Selected Location (Document Picker)
-  // ─────────────────────────────────────────────────────────────────────────
-
-  @override
-  Future<UserSelectedLocation?> pickDirectory({
-    bool shouldPersist = true,
-  }) async {
-    // Note: shouldPersist is ignored on iOS - no persistent URI permissions support
-    final completer = Completer<UserSelectedLocation?>();
-    final receivePort = ReceivePort();
-    final nativePort = receivePort.sendPort.nativePort;
-
-    receivePort.listen((message) {
-      receivePort.close();
-
-      if (message is! List || message.isEmpty) {
-        completer.completeError(
-          const PlatformException('Invalid message format', 'INVALID_MESSAGE'),
-        );
-        return;
-      }
-
-      final type = message[0] as int;
-      switch (type) {
-        case 3: // Success
-          final dirUri = message[1] as String;
-          completer.complete(UserSelectedLocation(uri: Uri.parse(dirUri)));
-        case 4: // Cancelled
-          completer.complete(null);
-        case 2: // Error
-          final errorCode = message[1] as String;
-          final errorMessage = message[2] as String;
-          completer.completeError(
-            FileSaverException.fromErrorResult(errorCode, errorMessage),
-          );
-        default:
-          completer.completeError(
-            PlatformException('Unknown message type: $type', 'UNKNOWN_TYPE'),
-          );
-      }
-    });
-
-    _bindings.file_saver_pick_directory(_saverInstance, nativePort);
-
-    return completer.future;
-  }
-
   @override
   Stream<SaveProgress> saveAs({
     required SaveInput input,

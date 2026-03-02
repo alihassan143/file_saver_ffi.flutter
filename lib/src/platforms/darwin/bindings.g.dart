@@ -326,34 +326,9 @@ class FileSaverFfiBindings {
             )
           >();
 
-  /// Pick a directory via system Document Picker.
-  ///
-  /// Shows the system directory picker and returns the selected directory URI.
-  ///
-  /// Messages sent to native_port:
-  /// - Success:    [3, directoryUri]
-  /// - Cancelled:  [4]
-  /// - Error:      [2, errorCode, errorMessage]
-  ///
-  /// @param instance FileSaver instance from file_saver_init
-  /// @param native_port Dart NativePort for result reporting
-  void file_saver_pick_directory(
-    ffi.Pointer<ffi.Void> instance,
-    int native_port,
-  ) {
-    return _file_saver_pick_directory(instance, native_port);
-  }
-
-  late final _file_saver_pick_directoryPtr = _lookup<
-    ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>, ffi.Int64)>
-  >('file_saver_pick_directory');
-  late final _file_saver_pick_directory =
-      _file_saver_pick_directoryPtr
-          .asFunction<void Function(ffi.Pointer<ffi.Void>, int)>();
-
   /// Save bytes to user-selected directory (saveAs).
   ///
-  /// Saves file bytes to a directory previously selected via file_saver_pick_directory.
+  /// Saves file bytes to a directory previously selected via DirPicker.pick() (package:dir_picker).
   /// Uses security-scoped resource access for the selected directory.
   ///
   /// Progress messages sent to native_port:
@@ -366,7 +341,7 @@ class FileSaverFfiBindings {
   /// @param instance FileSaver instance from file_saver_init
   /// @param fileData Byte array of file content
   /// @param fileDataLength Length of fileData
-  /// @param directoryUri Directory URI from file_saver_pick_directory
+  /// @param directoryUri Directory URI from DirPicker.pick() (package:dir_picker)
   /// @param baseFileName File name without extension
   /// @param extension File extension without dot
   /// @param conflictMode Conflict resolution mode (0-3)
@@ -425,7 +400,7 @@ class FileSaverFfiBindings {
 
   /// Save file to user-selected directory (saveAs).
   ///
-  /// Copies a file to a directory previously selected via file_saver_pick_directory.
+  /// Copies a file to a directory previously selected via DirPicker.pick() (package:dir_picker).
   /// Uses security-scoped resource access for the selected directory.
   ///
   /// Progress messages sent to native_port:
@@ -437,7 +412,7 @@ class FileSaverFfiBindings {
   ///
   /// @param instance FileSaver instance from file_saver_init
   /// @param filePath Source file path (file:// URI)
-  /// @param directoryUri Directory URI from file_saver_pick_directory
+  /// @param directoryUri Directory URI from DirPicker.pick() (package:dir_picker)
   /// @param baseFileName File name without extension
   /// @param extension File extension without dot
   /// @param conflictMode Conflict resolution mode (0-3)
@@ -493,7 +468,7 @@ class FileSaverFfiBindings {
   /// Save network file to user-selected directory (saveAs).
   ///
   /// Downloads and saves a file to a directory previously selected via
-  /// file_saver_pick_directory. Uses security-scoped resource access.
+  /// DirPicker.pick() (package:dir_picker). Uses security-scoped resource access.
   ///
   /// Progress messages sent to native_port:
   /// - Started:    [0]
@@ -506,7 +481,7 @@ class FileSaverFfiBindings {
   /// @param urlString URL to download from
   /// @param headersJson Optional JSON string of HTTP headers (can be NULL)
   /// @param timeoutSeconds Timeout in seconds for network request
-  /// @param directoryUri Directory URI from file_saver_pick_directory
+  /// @param directoryUri Directory URI from DirPicker.pick() (package:dir_picker)
   /// @param baseFileName File name without extension
   /// @param extension File extension without dot
   /// @param conflictMode Conflict resolution mode (0-3)
