@@ -118,7 +118,7 @@ class FileSaverWeb extends FileSaverPlatform {
         // No custom headers: browser streams natively.
         _triggerUrlDownload(url, fullName);
       } else {
-        // Custom headers require a manual fetch; buffer the response into RAM.
+        // Custom headers: fetch and stream chunks into RAM, then trigger download.
         final response =
             await window
                 .fetch(url.toJS, RequestInit(headers: _headersToJs(headers)))
@@ -129,12 +129,30 @@ class FileSaverWeb extends FileSaverPlatform {
           );
           return;
         }
-        final buffer = await response.arrayBuffer().toDart;
-        _triggerDownload(
-          Uint8List.view(buffer.toDart),
-          fullName,
-          fileType.mimeType,
+        final totalBytes = int.tryParse(
+          response.headers.get('content-length') ?? '',
         );
+        final reader =
+            response.body!.getReader() as ReadableStreamDefaultReader;
+        final chunks = <Uint8List>[];
+        var received = 0;
+        while (true) {
+          final result = await reader.read().toDart;
+          if (result.done) break;
+          final chunk = (result.value! as JSUint8Array).toDart;
+          chunks.add(chunk);
+          received += chunk.lengthInBytes;
+          if (totalBytes != null && totalBytes > 0) {
+            yield SaveProgressUpdate(received / totalBytes);
+          }
+        }
+        final allBytes = Uint8List(received);
+        var offset = 0;
+        for (final chunk in chunks) {
+          allBytes.setRange(offset, offset + chunk.length, chunk);
+          offset += chunk.length;
+        }
+        _triggerDownload(allBytes, fullName, fileType.mimeType);
       }
       yield SaveProgressComplete(Uri.parse(url));
     } catch (e) {
@@ -269,14 +287,29 @@ class FileSaverWeb extends FileSaverPlatform {
       return;
     }
 
-    // Response is ready — stream it directly into the chosen directory.
+    // Response is ready — stream chunks into the chosen directory.
     try {
       final fileHandle =
           await handle
               .getFileHandle(fullName, FileSystemGetFileOptions(create: true))
               .toDart;
       final writable = await fileHandle.createWritable().toDart;
-      await response.body!.pipeTo(writable).toDart;
+      final totalBytes = int.tryParse(
+        response.headers.get('content-length') ?? '',
+      );
+      final reader = response.body!.getReader() as ReadableStreamDefaultReader;
+      var bytesWritten = 0;
+      while (true) {
+        final result = await reader.read().toDart;
+        if (result.done) break;
+        final chunk = (result.value! as JSUint8Array).toDart;
+        await writable.write(chunk.toJS as FileSystemWriteChunkType).toDart;
+        bytesWritten += chunk.lengthInBytes;
+        if (totalBytes != null && totalBytes > 0) {
+          yield SaveProgressUpdate(bytesWritten / totalBytes);
+        }
+      }
+      await writable.close().toDart;
       yield SaveProgressComplete(Uri.parse(url));
     } catch (e) {
       yield SaveProgressError(FileIOException(e.toString()));
