@@ -119,16 +119,22 @@ class FileSaverWeb extends FileSaverPlatform {
         _triggerUrlDownload(url, fullName);
       } else {
         // Custom headers: fetch and stream chunks into RAM, then trigger download.
-        final response =
-            await window
-                .fetch(url.toJS, RequestInit(headers: _headersToJs(headers)))
-                .toDart;
+        Response response;
+        try {
+          final reqInit = RequestInit(headers: _headersToJs(headers));
+          response = await window.fetch(url.toJS, reqInit).toDart;
+        } catch (e) {
+          yield SaveProgressError(NetworkException(e.toString()));
+          return;
+        }
+
         if (!response.ok) {
           yield SaveProgressError(
             NetworkException('HTTP ${response.status}: ${response.statusText}'),
           );
           return;
         }
+
         final totalBytes = int.tryParse(
           response.headers.get('content-length') ?? '',
         );
@@ -260,23 +266,16 @@ class FileSaverWeb extends FileSaverPlatform {
     validateNetworkInput(url, fileName);
 
     final fullName = '$fileName.${fileType.ext}';
-    final init =
+    final reqInit =
         headers != null
             ? RequestInit(headers: _headersToJs(headers))
             : RequestInit();
 
     Response response;
     try {
-      response = await window.fetch(url.toJS, init).toDart;
+      response = await window.fetch(url.toJS, reqInit).toDart;
     } catch (e) {
-      // Most likely a CORS restriction. If no custom headers are needed the
-      // browser can still download via anchor element (no CORS check).
-      if (headers == null) {
-        _triggerUrlDownload(url, fullName);
-        yield SaveProgressComplete(Uri.parse(url));
-      } else {
-        yield SaveProgressError(NetworkException(e.toString()));
-      }
+      yield SaveProgressError(NetworkException(e.toString()));
       return;
     }
 
