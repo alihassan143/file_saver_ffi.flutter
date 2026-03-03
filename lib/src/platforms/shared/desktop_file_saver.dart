@@ -340,16 +340,25 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
     _CancellationToken token,
     StreamController<SaveProgress> controller,
   ) async {
+    final uri = Uri.parse(url);
+
     _httpClient.connectionTimeout = timeout;
 
-    final request = await _httpClient.getUrl(Uri.parse(url));
+    final request = await _httpClient.getUrl(uri);
     token.activeRequest = request;
     headers?.forEach(request.headers.add);
 
-    final response = await request.close();
+    HttpClientResponse response;
+    try {
+      response = await request.close();
+    } catch (e) {
+      token.activeRequest = null;
+      throw NetworkException('Connection failed: $e');
+    }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       await response.drain<void>();
+      token.activeRequest = null;
       throw NetworkException(
         'HTTP ${response.statusCode}',
         response.statusCode,
@@ -361,27 +370,56 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
     final sink = dest.openWrite();
     int downloaded = 0;
 
+    Timer? idleTimer;
+
+    void resetIdleTimer() {
+      idleTimer?.cancel();
+      idleTimer = Timer(timeout, () {
+        token.activeRequest?.abort();
+      });
+    }
+
     try {
+      resetIdleTimer();
+
       await for (final chunk in response) {
         if (token.isCancelled) {
-          await sink.close();
-          await dest.delete();
-          return;
+          token.activeRequest?.abort();
+          break;
         }
+
+        resetIdleTimer();
+
         sink.add(chunk);
         downloaded += chunk.length;
+
         if (total > 0) {
           controller.add(SaveProgressUpdate(downloaded / total));
         }
       }
+
+      idleTimer?.cancel();
+      token.activeRequest = null;
+
+      if (token.isCancelled) {
+        await sink.close();
+        if (await dest.exists()) await dest.delete();
+        return;
+      }
+
       await sink.flush();
       await sink.close();
-      token.activeRequest = null;
     } catch (e) {
+      idleTimer?.cancel();
+      token.activeRequest?.abort();
+      token.activeRequest = null;
+
       await sink.close();
       if (await dest.exists()) await dest.delete();
+
       if (token.isCancelled) return;
-      rethrow;
+
+      throw FileIOException(e.toString());
     }
   }
 
