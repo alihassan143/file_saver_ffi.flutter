@@ -115,7 +115,7 @@ class FileSaverWeb extends FileSaverPlatform {
 
     try {
       if (headers == null) {
-        // No custom headers: browser streams natively, zero RAM.
+        // No custom headers: browser streams natively.
         _triggerUrlDownload(url, fullName);
       } else {
         // Custom headers require a manual fetch; buffer the response into RAM.
@@ -210,7 +210,6 @@ class FileSaverWeb extends FileSaverPlatform {
     required String fileName,
   }) async* {
     validateBytesInput(fileBytes, fileName);
-    yield const SaveProgressStarted();
 
     final fullName = '$fileName.${fileType.ext}';
     try {
@@ -229,6 +228,10 @@ class FileSaverWeb extends FileSaverPlatform {
 
   /// Streams [url] directly to [fileName] inside [handle] via `pipeTo` —
   /// the response body never enters JavaScript/Dart heap.
+  ///
+  /// Falls back to anchor-element download when the server does not send CORS
+  /// headers and no custom [headers] are required. In that case the file lands
+  /// in the browser's default Downloads folder, not the chosen directory.
   Stream<SaveProgress> _saveNetworkToDirectory({
     required FileSystemDirectoryHandle handle,
     required String url,
@@ -237,34 +240,46 @@ class FileSaverWeb extends FileSaverPlatform {
     required String fileName,
   }) async* {
     validateNetworkInput(url, fileName);
-    yield const SaveProgressStarted();
 
     final fullName = '$fileName.${fileType.ext}';
+    final init =
+        headers != null
+            ? RequestInit(headers: _headersToJs(headers))
+            : RequestInit();
+
+    Response response;
+    try {
+      response = await window.fetch(url.toJS, init).toDart;
+    } catch (e) {
+      // Most likely a CORS restriction. If no custom headers are needed the
+      // browser can still download via anchor element (no CORS check).
+      if (headers == null) {
+        _triggerUrlDownload(url, fullName);
+        yield SaveProgressComplete(Uri.parse(url));
+      } else {
+        yield SaveProgressError(NetworkException(e.toString()));
+      }
+      return;
+    }
+
+    if (!response.ok) {
+      yield SaveProgressError(
+        NetworkException('HTTP ${response.status}: ${response.statusText}'),
+      );
+      return;
+    }
+
+    // Response is ready — stream it directly into the chosen directory.
     try {
       final fileHandle =
           await handle
               .getFileHandle(fullName, FileSystemGetFileOptions(create: true))
               .toDart;
       final writable = await fileHandle.createWritable().toDart;
-
-      final init =
-          headers != null
-              ? RequestInit(headers: _headersToJs(headers))
-              : RequestInit();
-      final response = await window.fetch(url.toJS, init).toDart;
-
-      if (!response.ok) {
-        await writable.abort().toDart;
-        yield SaveProgressError(
-          NetworkException('HTTP ${response.status}: ${response.statusText}'),
-        );
-        return;
-      }
-
       await response.body!.pipeTo(writable).toDart;
       yield SaveProgressComplete(Uri.parse(url));
     } catch (e) {
-      yield SaveProgressError(NetworkException(e.toString()));
+      yield SaveProgressError(FileIOException(e.toString()));
     }
   }
 
@@ -289,7 +304,9 @@ class FileSaverWeb extends FileSaverPlatform {
     final anchor =
         document.createElement('a') as HTMLAnchorElement
           ..href = url
-          ..download = fullName;
+          ..download = fullName
+          ..target = '_blank'
+          ..rel = 'noopener noreferrer';
     document.body!.append(anchor);
     anchor.click();
     anchor.remove();
