@@ -144,11 +144,17 @@ abstract class FileSaverPlatform {
   Future<UserSelectedLocation?> pickDirectory({
     bool shouldPersist = true,
   }) async {
-    final location = await DirPicker.pick(
-      androidOptions: AndroidOptions(shouldPersist: shouldPersist),
-    );
-    if (location == null) return null;
-    return UserSelectedLocation(uri: location.uri!);
+    try {
+      final location = await DirPicker.pick(
+        androidOptions: AndroidOptions(shouldPersist: shouldPersist),
+      );
+      if (location == null) return null;
+      return UserSelectedLocation(uri: location.uri!);
+    } on FileSaverException {
+      rethrow;
+    } catch (e) {
+      throw PlatformException('Pick directory failed: $e');
+    }
   }
 
   /// Save to user-selected directory with progress streaming.
