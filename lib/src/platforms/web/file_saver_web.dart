@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:js_interop';
 import 'dart:typed_data';
 
@@ -65,9 +66,10 @@ class FileSaverWeb extends FileSaverPlatform {
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) async* {
     validateBytesInput(fileBytes, fileName);
-    yield const SaveProgressStarted();
     _triggerDownload(fileBytes, '$fileName.${fileType.ext}', fileType.mimeType);
-    yield SaveProgressComplete(Uri(path: '$fileName.${fileType.ext}'));
+    yield SaveProgressComplete(
+      Uri(scheme: 'web-directory', path: '$fileName.${fileType.ext}'),
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -96,7 +98,8 @@ class FileSaverWeb extends FileSaverPlatform {
   ///
   /// - No custom [headers]: anchor element with the direct URL; the browser
   ///   streams the file natively without loading it into RAM.
-  /// - With custom [headers]: `fetch()` + `arrayBuffer()` (loaded into RAM).
+  /// - With custom [headers]: `_fetch()` streams chunks into RAM then triggers
+  ///   a Blob download. [timeout] is enforced via `AbortController`.
   @override
   Stream<SaveProgress> saveNetwork({
     required String url,
@@ -109,7 +112,6 @@ class FileSaverWeb extends FileSaverPlatform {
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) async* {
     validateNetworkInput(url, fileName);
-    yield const SaveProgressStarted();
 
     final fullName = '$fileName.${fileType.ext}';
 
@@ -118,11 +120,10 @@ class FileSaverWeb extends FileSaverPlatform {
         // No custom headers: browser streams natively.
         _triggerUrlDownload(url, fullName);
       } else {
-        // Custom headers: fetch and stream chunks into RAM, then trigger download.
+        // Custom headers: fetch with timeout, stream chunks into RAM, then trigger download.
         Response response;
         try {
-          final reqInit = RequestInit(headers: _headersToJs(headers));
-          response = await window.fetch(url.toJS, reqInit).toDart;
+          response = await _fetch(url, headers: headers, timeout: timeout);
         } catch (e) {
           yield SaveProgressError(NetworkException(e.toString()));
           return;
@@ -160,7 +161,7 @@ class FileSaverWeb extends FileSaverPlatform {
         }
         _triggerDownload(allBytes, fullName, fileType.mimeType);
       }
-      yield SaveProgressComplete(Uri.parse(url));
+      yield SaveProgressComplete(Uri(scheme: 'web-directory', path: fullName));
     } catch (e) {
       yield SaveProgressError(NetworkException(e.toString()));
     }
@@ -187,13 +188,15 @@ class FileSaverWeb extends FileSaverPlatform {
           fileType: fileType,
           fileName: fileName,
         ),
-        SaveNetworkInput(:final url, :final headers) => _saveNetworkToDirectory(
-          handle: saveLocation.directoryHandle,
-          url: url,
-          headers: headers,
-          fileType: fileType,
-          fileName: fileName,
-        ),
+        SaveNetworkInput(:final url, :final headers, :final timeout) =>
+          _saveNetworkToDirectory(
+            handle: saveLocation.directoryHandle,
+            url: url,
+            headers: headers,
+            timeout: timeout,
+            fileType: fileType,
+            fileName: fileName,
+          ),
         SaveFileInput() =>
           throw const InvalidInputException(
             'saveFile is not supported on web.',
@@ -226,7 +229,6 @@ class FileSaverWeb extends FileSaverPlatform {
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Writes [fileBytes] to [fileName] inside [handle].
-  /// Zero RAM beyond the byte buffer already in memory.
   Stream<SaveProgress> _saveToDirectory({
     required FileSystemDirectoryHandle handle,
     required Uint8List fileBytes,
@@ -250,30 +252,25 @@ class FileSaverWeb extends FileSaverPlatform {
     }
   }
 
-  /// Streams [url] directly to [fileName] inside [handle] via `pipeTo` —
-  /// the response body never enters JavaScript/Dart heap.
+  /// Fetches [url] and streams it chunk-by-chunk into [fileName] inside [handle].
   ///
-  /// Falls back to anchor-element download when the server does not send CORS
-  /// headers and no custom [headers] are required. In that case the file lands
-  /// in the browser's default Downloads folder, not the chosen directory.
+  /// [timeout] is enforced via `AbortController`. Yields [SaveProgressUpdate]
+  /// events when the server includes a `Content-Length` response header.
   Stream<SaveProgress> _saveNetworkToDirectory({
     required FileSystemDirectoryHandle handle,
     required String url,
     Map<String, String>? headers,
+    Duration timeout = const Duration(seconds: 60),
     required FileType fileType,
     required String fileName,
   }) async* {
     validateNetworkInput(url, fileName);
 
     final fullName = '$fileName.${fileType.ext}';
-    final reqInit =
-        headers != null
-            ? RequestInit(headers: _headersToJs(headers))
-            : RequestInit();
 
     Response response;
     try {
-      response = await window.fetch(url.toJS, reqInit).toDart;
+      response = await _fetch(url, headers: headers, timeout: timeout);
     } catch (e) {
       yield SaveProgressError(NetworkException(e.toString()));
       return;
@@ -309,7 +306,7 @@ class FileSaverWeb extends FileSaverPlatform {
         }
       }
       await writable.close().toDart;
-      yield SaveProgressComplete(Uri.parse(url));
+      yield SaveProgressComplete(Uri(scheme: 'web-directory', path: fullName));
     } catch (e) {
       yield SaveProgressError(FileIOException(e.toString()));
     }
@@ -348,5 +345,31 @@ class FileSaverWeb extends FileSaverPlatform {
     final h = Headers();
     headers.forEach((key, value) => h.append(key, value));
     return h;
+  }
+
+  Future<Response> _fetch(
+    String url, {
+    Map<String, String>? headers,
+    Duration timeout = const Duration(seconds: 60),
+  }) async {
+    final controller = AbortController();
+
+    final init = RequestInit(
+      method: 'GET',
+      headers: headers != null ? _headersToJs(headers) : HeadersInit(),
+      signal: controller.signal,
+    );
+
+    final timer = Timer(
+      timeout,
+      () => controller.abort("Request timed out".toJS),
+    );
+
+    try {
+      final response = await window.fetch(url.toJS, init).toDart;
+      return response;
+    } finally {
+      timer.cancel();
+    }
   }
 }
