@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:xdg_directories/xdg_directories.dart' as xdg;
 
-import '../../models/save_location.dart';
+import '../../models/locations/save_location.dart';
 import '../shared/desktop_file_saver.dart';
 
 /// FileSaver implementation for Linux.

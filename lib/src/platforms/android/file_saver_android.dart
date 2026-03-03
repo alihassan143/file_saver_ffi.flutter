@@ -8,7 +8,7 @@ import '../../exceptions/file_saver_exceptions.dart';
 import '../../models/conflict_resolution.dart';
 import '../../models/file_type.dart';
 import '../../models/save_input.dart';
-import '../../models/save_location.dart';
+import '../../models/locations/save_location.dart';
 import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
 import 'bindings.g.dart' as bindings;

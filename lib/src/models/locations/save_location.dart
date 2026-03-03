@@ -155,6 +155,7 @@ enum LinuxSaveLocation implements SaveLocation {
 /// - **Android**: Storage Access Framework (ACTION_OPEN_DOCUMENT_TREE)
 /// - **iOS**: UIDocumentPickerViewController
 /// - **Windows**: IFileOpenDialog with FOS_PICKFOLDERS
+/// - **Web**: File System Access API — see [WebSelectedLocation]
 ///
 /// Use [FileSaver.pickDirectory] to obtain a [UserSelectedLocation], then
 /// pass it to [FileSaver.saveAs] or [FileSaver.saveAsAsync].
@@ -173,13 +174,17 @@ enum LinuxSaveLocation implements SaveLocation {
 ///   saveLocation: location,
 /// );
 /// ```
-final class UserSelectedLocation implements SaveLocation {
+class UserSelectedLocation implements SaveLocation {
   const UserSelectedLocation({required this.uri});
 
   /// Directory URI from the system picker.
   ///
   /// - **Android**: Content URI from SAF (e.g., `content://...`)
   /// - **iOS**: File URL from Document Picker (e.g., `file://...`)
+  /// - **macOS**: File URL from Open Panel (e.g., `file://...`)
+  /// - **Linux**: File URL from file chooser (e.g., `file://...`)
   /// - **Windows**: File system path (e.g., `C:\Users\...`)
+  /// - **Web**: Placeholder URI — browsers do not expose filesystem paths.
+  ///   Use [WebSelectedLocation] to access the [FileSystemDirectoryHandle].
   final Uri uri;
 }
