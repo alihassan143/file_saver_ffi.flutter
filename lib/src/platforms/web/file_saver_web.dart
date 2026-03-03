@@ -43,18 +43,19 @@ class FileSaverWeb extends FileSaverPlatform {
       }
 
       return WebSelectedLocation(location.handle);
-    } on FileSaverException {
-      rethrow;
     } catch (e) {
-      // dir_picker throws if the browser doesn't support showDirectoryPicker
-      // (Firefox / Safari). Surface this as an explicit PlatformException.
-      throw PlatformException('Directory picker unavailable: $e');
+      // dir_picker is an external package and will not throw FileSaverException.
+      // Any error here means the browser doesn't support showDirectoryPicker.
+      throw PlatformException(
+        'Directory picker unavailable. '
+        'File System Access API not supported in this browser. ($e)',
+      );
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // saveBytes
-  // ─────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────
+  // saveBytes (browser controlled)
+  // ─────────────────────────────────────────────
 
   @override
   Stream<SaveProgress> saveBytes({
@@ -68,7 +69,7 @@ class FileSaverWeb extends FileSaverPlatform {
     validateBytesInput(fileBytes, fileName);
     _triggerDownload(fileBytes, '$fileName.${fileType.ext}', fileType.mimeType);
     yield SaveProgressComplete(
-      Uri(scheme: 'web-directory', path: '$fileName.${fileType.ext}'),
+      Uri(scheme: 'browser-download', path: '$fileName.${fileType.ext}'),
     );
   }
 
@@ -90,16 +91,10 @@ class FileSaverWeb extends FileSaverPlatform {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // saveNetwork — silent download, no dialog
-  // ─────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────
+  // saveNetwork (browser controlled)
+  // ─────────────────────────────────────────────
 
-  /// Downloads [url] and triggers a browser download — no save dialog appears.
-  ///
-  /// - No custom [headers]: anchor element with the direct URL; the browser
-  ///   streams the file natively without loading it into RAM.
-  /// - With custom [headers]: `_fetch()` streams chunks into RAM then triggers
-  ///   a Blob download. [timeout] is enforced via `AbortController`.
   @override
   Stream<SaveProgress> saveNetwork({
     required String url,
@@ -113,21 +108,25 @@ class FileSaverWeb extends FileSaverPlatform {
   }) async* {
     validateNetworkInput(url, fileName);
 
+    yield const SaveProgressStarted();
+
     final fullName = '$fileName.${fileType.ext}';
 
     try {
-      if (headers == null) {
-        // No custom headers: browser streams natively.
-        _triggerUrlDownload(url, fullName);
-      } else {
-        // Custom headers: fetch with timeout, stream chunks into RAM, then trigger download.
-        Response response;
-        try {
-          response = await _fetch(url, headers: headers, timeout: timeout);
-        } catch (e) {
-          yield SaveProgressError(NetworkException(e.toString()));
-          return;
-        }
+      // No custom headers → let browser stream natively.
+      if (headers == null || headers.isEmpty) {
+        _triggerUrlDownload(url, fullName, fileType.mimeType);
+        yield SaveProgressComplete(
+          Uri(scheme: 'browser-download', path: fullName),
+        );
+        return;
+      }
+
+      // Custom headers require fetch() — loads file into memory (browser limitation).
+      final controller = AbortController();
+      final timer = Timer(timeout, () => controller.abort());
+      try {
+        final response = await _fetch(url, controller, headers: headers);
 
         if (!response.ok) {
           yield SaveProgressError(
@@ -136,41 +135,28 @@ class FileSaverWeb extends FileSaverPlatform {
           return;
         }
 
-        final totalBytes = int.tryParse(
-          response.headers.get('content-length') ?? '',
+        final blob = await response.blob().toDart;
+        _triggerBlobDownload(blob, fullName);
+        yield SaveProgressComplete(
+          Uri(scheme: 'browser-download', path: fullName),
         );
-        final reader =
-            response.body!.getReader() as ReadableStreamDefaultReader;
-        final chunks = <Uint8List>[];
-        var received = 0;
-        while (true) {
-          final result = await reader.read().toDart;
-          if (result.done) break;
-          final chunk = (result.value! as JSUint8Array).toDart;
-          chunks.add(chunk);
-          received += chunk.lengthInBytes;
-          if (totalBytes != null && totalBytes > 0) {
-            yield SaveProgressUpdate(received / totalBytes);
-          }
-        }
-        final allBytes = Uint8List(received);
-        var offset = 0;
-        for (final chunk in chunks) {
-          allBytes.setRange(offset, offset + chunk.length, chunk);
-          offset += chunk.length;
-        }
-        _triggerDownload(allBytes, fullName, fileType.mimeType);
+      } finally {
+        timer.cancel();
       }
-      yield SaveProgressComplete(Uri(scheme: 'web-directory', path: fullName));
     } catch (e) {
-      yield SaveProgressError(NetworkException(e.toString()));
+      if (e.toString().contains('AbortError')) {
+        yield SaveProgressError(
+          NetworkException('Download timed out or aborted'),
+        );
+      } else {
+        yield SaveProgressError(NetworkException(e.toString()));
+      }
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // saveAs
-  // ─────────────────────────────────────────────────────────────────────────
-
+  // ─────────────────────────────────────────────
+  // saveAs (FSA zero-RAM streaming)
+  // ─────────────────────────────────────────────
   @override
   Stream<SaveProgress> saveAs({
     required SaveInput input,
@@ -179,8 +165,8 @@ class FileSaverWeb extends FileSaverPlatform {
     required UserSelectedLocation saveLocation,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
+    // If FSA is supported and we have a valid WebSelectedLocation
     if (saveLocation is WebSelectedLocation) {
-      // FSA path: write directly into the user-chosen directory.
       return switch (input) {
         SaveBytesInput(:final fileBytes) => _saveToDirectory(
           handle: saveLocation.directoryHandle,
@@ -204,7 +190,11 @@ class FileSaverWeb extends FileSaverPlatform {
       };
     }
 
-    // Fallback: browser-controlled download (no directory choice).
+    // ─────────────────────────────────────────
+    // Fallback for browsers WITHOUT FSA
+    // ─────────────────────────────────────────
+
+    // ⚠ Browser will control download location.
     return switch (input) {
       SaveBytesInput(:final fileBytes) => saveBytes(
         fileBytes: fileBytes,
@@ -224,11 +214,10 @@ class FileSaverWeb extends FileSaverPlatform {
     };
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // FSA helpers
-  // ─────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────
+  // FSA: Save Bytes
+  // ─────────────────────────────────────────────
 
-  /// Writes [fileBytes] to [fileName] inside [handle].
   Stream<SaveProgress> _saveToDirectory({
     required FileSystemDirectoryHandle handle,
     required Uint8List fileBytes,
@@ -238,24 +227,29 @@ class FileSaverWeb extends FileSaverPlatform {
     validateBytesInput(fileBytes, fileName);
 
     final fullName = '$fileName.${fileType.ext}';
+
     try {
       final fileHandle =
           await handle
               .getFileHandle(fullName, FileSystemGetFileOptions(create: true))
               .toDart;
+
       final writable = await fileHandle.createWritable().toDart;
+
       await writable.write(fileBytes.toJS as FileSystemWriteChunkType).toDart;
+
       await writable.close().toDart;
+
       yield SaveProgressComplete(Uri(scheme: 'web-directory', path: fullName));
     } catch (e) {
       yield SaveProgressError(FileIOException(e.toString()));
     }
   }
 
-  /// Fetches [url] and streams it chunk-by-chunk into [fileName] inside [handle].
-  ///
-  /// [timeout] is enforced via `AbortController`. Yields [SaveProgressUpdate]
-  /// events when the server includes a `Content-Length` response header.
+  // ─────────────────────────────────────────────
+  // FSA: Zero-RAM streaming download
+  // ─────────────────────────────────────────────
+
   Stream<SaveProgress> _saveNetworkToDirectory({
     required FileSystemDirectoryHandle handle,
     required String url,
@@ -267,109 +261,129 @@ class FileSaverWeb extends FileSaverPlatform {
     validateNetworkInput(url, fileName);
 
     final fullName = '$fileName.${fileType.ext}';
+    final controller = AbortController();
 
-    Response response;
-    try {
-      response = await _fetch(url, headers: headers, timeout: timeout);
-    } catch (e) {
-      yield SaveProgressError(NetworkException(e.toString()));
-      return;
+    Timer? idleTimer;
+
+    void resetIdleTimer() {
+      idleTimer?.cancel();
+      idleTimer = Timer(timeout, () {
+        controller.abort();
+      });
     }
 
-    if (!response.ok) {
-      yield SaveProgressError(
-        NetworkException('HTTP ${response.status}: ${response.statusText}'),
-      );
-      return;
-    }
-
-    // Response is ready — stream chunks into the chosen directory.
     try {
+      final response = await _fetch(url, controller, headers: headers);
+
+      if (!response.ok) {
+        yield SaveProgressError(
+          NetworkException('HTTP ${response.status}: ${response.statusText}'),
+        );
+        return;
+      }
+
       final fileHandle =
           await handle
               .getFileHandle(fullName, FileSystemGetFileOptions(create: true))
               .toDart;
+
       final writable = await fileHandle.createWritable().toDart;
-      final totalBytes = int.tryParse(
-        response.headers.get('content-length') ?? '',
-      );
+
+      final total = int.tryParse(response.headers.get('content-length') ?? '');
+
       final reader = response.body!.getReader() as ReadableStreamDefaultReader;
-      var bytesWritten = 0;
+
+      int written = 0;
+
+      resetIdleTimer();
+
       while (true) {
         final result = await reader.read().toDart;
         if (result.done) break;
+
+        resetIdleTimer();
+
         final chunk = (result.value! as JSUint8Array).toDart;
+
         await writable.write(chunk.toJS as FileSystemWriteChunkType).toDart;
-        bytesWritten += chunk.lengthInBytes;
-        if (totalBytes != null && totalBytes > 0) {
-          yield SaveProgressUpdate(bytesWritten / totalBytes);
+
+        written += chunk.lengthInBytes;
+
+        if (total != null && total > 0) {
+          yield SaveProgressUpdate(written / total);
         }
       }
+
+      idleTimer?.cancel();
       await writable.close().toDart;
+
       yield SaveProgressComplete(Uri(scheme: 'web-directory', path: fullName));
     } catch (e) {
-      yield SaveProgressError(FileIOException(e.toString()));
+      idleTimer?.cancel();
+
+      if (e.toString().contains('AbortError')) {
+        yield SaveProgressError(
+          NetworkException('Download timed out or aborted'),
+        );
+      } else {
+        yield SaveProgressError(FileIOException(e.toString()));
+      }
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Anchor-based download helpers
-  // ─────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────
+  // Helpers
+  // ─────────────────────────────────────────────
 
   void _triggerDownload(Uint8List bytes, String fullName, String mimeType) {
     final blob = Blob([bytes.toJS].toJS, BlobPropertyBag(type: mimeType));
+    _triggerBlobDownload(blob, fullName);
+  }
+
+  void _triggerBlobDownload(Blob blob, String fullName) {
     final objectUrl = URL.createObjectURL(blob);
-    final anchor =
-        document.createElement('a') as HTMLAnchorElement
-          ..href = objectUrl
-          ..download = fullName;
-    document.body!.append(anchor);
-    anchor.click();
-    anchor.remove();
+    _anchorClick(
+      document.createElement('a') as HTMLAnchorElement
+        ..href = objectUrl
+        ..download = fullName,
+    );
     URL.revokeObjectURL(objectUrl);
   }
 
-  void _triggerUrlDownload(String url, String fullName) {
-    final anchor =
-        document.createElement('a') as HTMLAnchorElement
-          ..href = url
-          ..download = fullName
-          ..target = '_blank'
-          ..rel = 'noopener noreferrer';
+  void _triggerUrlDownload(String url, String fullName, String mimeType) {
+    _anchorClick(
+      document.createElement('a') as HTMLAnchorElement
+        ..href = url
+        ..type = mimeType
+        ..download = fullName,
+    );
+  }
+
+  void _anchorClick(HTMLAnchorElement anchor) {
     document.body!.append(anchor);
     anchor.click();
     anchor.remove();
   }
 
-  Headers _headersToJs(Map<String, String> headers) {
+  Headers _headersToJs(Map<String, String>? headers) {
     final h = Headers();
-    headers.forEach((key, value) => h.append(key, value));
+    headers?.forEach((key, value) => h.append(key, value));
     return h;
   }
 
   Future<Response> _fetch(
-    String url, {
+    String url,
+    AbortController controller, {
     Map<String, String>? headers,
-    Duration timeout = const Duration(seconds: 60),
-  }) async {
-    final controller = AbortController();
-
-    final init = RequestInit(
-      method: 'GET',
-      headers: headers != null ? _headersToJs(headers) : HeadersInit(),
-      signal: controller.signal,
-    );
-
-    final timer = Timer(
-      timeout,
-      () => controller.abort("Request timed out".toJS),
-    );
-
-    try {
-      final response = await window.fetch(url.toJS, init).toDart;
-      return response;
-    } finally {
-      timer.cancel();
-    }
-  }
+  }) =>
+      window
+          .fetch(
+            url.toJS,
+            RequestInit(
+              method: 'GET',
+              headers: _headersToJs(headers),
+              signal: controller.signal,
+            ),
+          )
+          .toDart;
 }
