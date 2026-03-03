@@ -660,9 +660,6 @@ class FileSaver {
           return;
         }
         resolvedLocation = picked;
-      } on FileSaverException catch (e) {
-        yield SaveProgressError(e);
-        return;
       } catch (e) {
         if (kIsWeb) {
           // Browser doesn't support FSA (Firefox / Safari).
