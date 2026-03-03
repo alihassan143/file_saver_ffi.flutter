@@ -135,6 +135,13 @@ class FileSaverWeb extends FileSaverPlatform {
           return;
         }
 
+        if (response.type == 'cors') {
+          yield SaveProgressError(
+            NetworkException('CORS error: Unable to download file.'),
+          );
+          return;
+        }
+
         final blob = await response.blob().toDart;
         _triggerBlobDownload(blob, fullName);
         yield SaveProgressComplete(
@@ -273,11 +280,19 @@ class FileSaverWeb extends FileSaverPlatform {
     }
 
     try {
+      resetIdleTimer();
       final response = await _fetch(url, controller, headers: headers);
 
       if (!response.ok) {
         yield SaveProgressError(
           NetworkException('HTTP ${response.status}: ${response.statusText}'),
+        );
+        return;
+      }
+
+      if (response.type == 'cors') {
+        yield SaveProgressError(
+          NetworkException('CORS error: Unable to download file.'),
         );
         return;
       }
