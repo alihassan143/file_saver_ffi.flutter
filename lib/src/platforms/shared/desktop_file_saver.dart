@@ -12,6 +12,7 @@ import '../../models/locations/save_location.dart';
 import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
 import 'conflict_resolver.dart';
+import 'file_entity.dart';
 
 /// 1MB chunk size for progress reporting.
 const int _chunkSize = 1048576;
@@ -24,6 +25,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
   final _httpClient = HttpClient();
   int _nextTokenId = 1;
   final _activeTokens = <int, _CancellationToken>{};
+  final _conflictResolver = ConflictResolver(const IOFileEntity());
 
   @override
   void dispose() {
@@ -52,7 +54,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
     return _executeSave((token, controller) async {
       final dir = await resolveDirectory(saveLocation, subDir);
       final filePath = p.join(dir, '$fileName.${fileType.ext}');
-      final resolved = await ConflictResolver.resolve(
+      final resolved = await _conflictResolver.resolve(
         filePath,
         conflictResolution,
       );
@@ -86,7 +88,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
 
       final dir = await resolveDirectory(saveLocation, subDir);
       final destPath = p.join(dir, '$fileName.${fileType.ext}');
-      final resolved = await ConflictResolver.resolve(
+      final resolved = await _conflictResolver.resolve(
         destPath,
         conflictResolution,
       );
@@ -116,7 +118,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
     return _executeSave((token, controller) async {
       final dir = await resolveDirectory(saveLocation, subDir);
       final destPath = p.join(dir, '$fileName.${fileType.ext}');
-      final resolved = await ConflictResolver.resolve(
+      final resolved = await _conflictResolver.resolve(
         destPath,
         conflictResolution,
       );
@@ -197,7 +199,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
   }) {
     return _executeSave((token, controller) async {
       final filePath = p.join(dirPath, '$fileName.$ext');
-      final resolved = await ConflictResolver.resolve(
+      final resolved = await _conflictResolver.resolve(
         filePath,
         conflictResolution,
       );
@@ -226,7 +228,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
       }
 
       final destPath = p.join(dirPath, '$fileName.$ext');
-      final resolved = await ConflictResolver.resolve(
+      final resolved = await _conflictResolver.resolve(
         destPath,
         conflictResolution,
       );
@@ -251,7 +253,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
   }) {
     return _executeSave((token, controller) async {
       final destPath = p.join(dirPath, '$fileName.$ext');
-      final resolved = await ConflictResolver.resolve(
+      final resolved = await _conflictResolver.resolve(
         destPath,
         conflictResolution,
       );
@@ -482,6 +484,16 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
     }
     return filePath;
   }
+}
+
+class IOFileEntity implements FileEntity {
+  const IOFileEntity();
+
+  @override
+  Future<bool> exists(String path) => File(path).exists();
+
+  @override
+  Future<void> delete(String path) => File(path).delete();
 }
 
 class _CancellationToken {
