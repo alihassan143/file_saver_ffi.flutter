@@ -3,10 +3,13 @@ import 'dart:js_interop';
 import 'dart:typed_data';
 
 import 'package:dir_picker/dir_picker.dart' as dp;
+
 import 'package:web/web.dart';
 
 import '../../exceptions/file_saver_exceptions.dart';
 import '../../models/conflict_resolution.dart';
+import '../shared/conflict_resolver.dart';
+import '../shared/file_entity.dart';
 import '../../models/file_type.dart';
 import '../../models/locations/save_location.dart';
 import '../../models/locations/web_save_location.dart';
@@ -175,6 +178,7 @@ class FileSaverWeb extends FileSaverPlatform {
           fileBytes: fileBytes,
           fileType: fileType,
           fileName: fileName,
+          conflictResolution: conflictResolution,
         ),
         SaveNetworkInput(:final url, :final headers, :final timeout) =>
           _saveNetworkToDirectory(
@@ -184,6 +188,7 @@ class FileSaverWeb extends FileSaverPlatform {
             timeout: timeout,
             fileType: fileType,
             fileName: fileName,
+            conflictResolution: conflictResolution,
           ),
         SaveFileInput() =>
           throw const InvalidInputException(
@@ -225,26 +230,46 @@ class FileSaverWeb extends FileSaverPlatform {
     required Uint8List fileBytes,
     required FileType fileType,
     required String fileName,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
     validateBytesInput(fileBytes, fileName);
     final fullName = '$fileName.${fileType.ext}';
 
     return _executeSave((token, controller) async {
+      final fileEntity = WebFileEntity(handle);
+      final resolvedName = await ConflictResolver(
+        fileEntity,
+      ).resolve(fullName, conflictResolution);
+      if (resolvedName == null) {
+        controller.addSync(
+          SaveProgressComplete(Uri(scheme: 'web-directory', path: fullName)),
+        );
+        return;
+      }
+
       final fileHandle =
           await handle
-              .getFileHandle(fullName, FileSystemGetFileOptions(create: true))
+              .getFileHandle(
+                resolvedName,
+                FileSystemGetFileOptions(create: true),
+              )
               .toDart;
+
+      if (conflictResolution != ConflictResolution.overwrite) {
+        token.setFileEntry(fileEntity, resolvedName);
+      }
+
       if (token.isCancelled) return;
 
       final writable = await fileHandle.createWritable().toDart;
       if (token.isCancelled) return;
 
       await writable.write(fileBytes.toJS as FileSystemWriteChunkType).toDart;
-      if (token.isCancelled) return; // don't close → FSA discards
+      if (token.isCancelled) return; // FSA discards .crswap automatically
 
       await writable.close().toDart;
       controller.addSync(
-        SaveProgressComplete(Uri(scheme: 'web-directory', path: fullName)),
+        SaveProgressComplete(Uri(scheme: 'web-directory', path: resolvedName)),
       );
     });
   }
@@ -260,11 +285,23 @@ class FileSaverWeb extends FileSaverPlatform {
     Duration timeout = const Duration(seconds: 60),
     required FileType fileType,
     required String fileName,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
     validateNetworkInput(url, fileName);
     final fullName = '$fileName.${fileType.ext}';
 
     return _executeSave((token, controller) async {
+      final fileEntity = WebFileEntity(handle);
+      final resolvedName = await ConflictResolver(
+        fileEntity,
+      ).resolve(fullName, conflictResolution);
+      if (resolvedName == null) {
+        controller.addSync(
+          SaveProgressComplete(Uri(scheme: 'web-directory', path: fullName)),
+        );
+        return;
+      }
+
       final fetchController = AbortController();
       token.setController(fetchController);
 
@@ -297,8 +334,16 @@ class FileSaverWeb extends FileSaverPlatform {
 
       final fileHandle =
           await handle
-              .getFileHandle(fullName, FileSystemGetFileOptions(create: true))
+              .getFileHandle(
+                resolvedName,
+                FileSystemGetFileOptions(create: true),
+              )
               .toDart;
+
+      if (conflictResolution != ConflictResolution.overwrite) {
+        token.setFileEntry(fileEntity, resolvedName);
+      }
+
       if (token.isCancelled) {
         idleTimer?.cancel();
         return;
@@ -329,11 +374,11 @@ class FileSaverWeb extends FileSaverPlatform {
       }
 
       idleTimer?.cancel();
-      if (token.isCancelled) return; // don't close → FSA discards
+      if (token.isCancelled) return; // FSA discards .crswap automatically
 
       await writable.close().toDart;
       controller.addSync(
-        SaveProgressComplete(Uri(scheme: 'web-directory', path: fullName)),
+        SaveProgressComplete(Uri(scheme: 'web-directory', path: resolvedName)),
       );
     });
   }
@@ -448,14 +493,41 @@ class FileSaverWeb extends FileSaverPlatform {
   }
 }
 
+class WebFileEntity implements FileEntity {
+  const WebFileEntity(this._handle);
+
+  final FileSystemDirectoryHandle _handle;
+
+  @override
+  Future<bool> exists(String name) async {
+    try {
+      await _handle.getFileHandle(name).toDart;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<void> delete(String name) => _handle.removeEntry(name).toDart;
+}
+
 class _WebCancellationToken {
   bool isCancelled = false;
   AbortController? _controller;
+  WebFileEntity? _fileEntity;
+  String? _fileName;
 
   void setController(AbortController c) => _controller = c;
+
+  void setFileEntry(WebFileEntity entity, String name) {
+    _fileEntity = entity;
+    _fileName = name;
+  }
 
   void cancel([String? reason]) {
     isCancelled = true;
     _controller?.abort(reason?.toJS);
+    _fileEntity?.delete(_fileName!).catchError((_) {});
   }
 }
