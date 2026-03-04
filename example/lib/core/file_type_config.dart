@@ -60,7 +60,8 @@ class SaveDemoConfig extends MediaConfig {
 
   static final video = SaveDemoConfig(
     category: MediaCategory.video,
-    downloadUrl: 'https://download.samplelib.com/mp4/sample-30s.mp4',
+    downloadUrl:
+        'https://raw.githubusercontent.com/chthomos/video-media-samples/refs/heads/master/big-buck-bunny-1080p-30sec.mp4',
     fileNamePrefix: 'video',
     fileType: VideoType.mp4,
     saveLocation: switch (defaultTargetPlatform) {
@@ -76,7 +77,7 @@ class SaveDemoConfig extends MediaConfig {
   static final audio = SaveDemoConfig(
     category: MediaCategory.audio,
     downloadUrl:
-        'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+        'https://cdn.jsdelivr.net/gh/captbaritone/webamp@43434d82cfe0e37286dbbe0666072dc3190a83bc/mp3/llama-2.91.mp3',
     fileNamePrefix: 'audio',
     fileType: AudioType.mp3,
     saveLocation: switch (defaultTargetPlatform) {
