@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:xdg_directories/xdg_directories.dart' as xdg;
 
 import '../../models/locations/save_location.dart';
+import '../../platform_interface/file_saver_platform.dart';
 import '../shared/desktop_file_saver.dart';
 
 /// FileSaver implementation for Linux.
@@ -12,11 +13,10 @@ import '../shared/desktop_file_saver.dart';
 /// Directory resolution uses the XDG Base Directory Specification (`xdg-user-dirs`).
 /// Falls back to `~/.cache/Downloads` if the XDG variable is not configured.
 class FileSaverLinux extends DesktopFileSaver {
-  /// Placeholder required by Flutter's `dartPluginClass` mechanism.
-  ///
-  /// Called by the generated plugin registrant, but initialization is handled
-  /// uniformly via [FileSaver.instance] like all other platforms.
-  static void registerWith() {}
+  /// Registers this class as the default instance of [FileSaverPlatform].
+  static void registerWith() {
+    FileSaverPlatform.instance = FileSaverLinux();
+  }
 
   @override
   Future<String> resolveDirectory(

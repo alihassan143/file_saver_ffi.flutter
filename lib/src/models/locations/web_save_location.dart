@@ -11,10 +11,10 @@ import 'save_location.dart';
 ///
 /// Example:
 /// ```dart
-/// final location = await FileSaver.instance.pickDirectory();
+/// final location = await FileSaver.pickDirectory();
 /// if (location == null) return; // cancelled or not supported
 ///
-/// await FileSaver.instance.saveAsAsync(
+/// await FileSaver.saveAsAsync(
 ///   input: SaveInput.bytes(imageBytes),
 ///   fileType: ImageType.png,
 ///   fileName: 'screenshot',

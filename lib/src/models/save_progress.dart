@@ -4,7 +4,7 @@ import '../exceptions/file_saver_exceptions.dart';
 ///
 /// Use pattern matching to handle different event types:
 /// ```dart
-/// await for (final event in FileSaver.instance.saveBytes(...)) {
+/// await for (final event in FileSaver.saveBytes(...)) {
 ///   switch (event) {
 ///     case SaveProgressStarted():
 ///       showLoadingIndicator();

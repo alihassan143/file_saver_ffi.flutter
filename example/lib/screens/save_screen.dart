@@ -165,7 +165,7 @@ class _SaveScreenState extends State<SaveScreen> with DemoSaveScreenMixin {
     required SaveLocation? saveLocation,
   }) async {
     await runSaveCatching(
-      () => FileSaver.instance.saveAsync(
+      () => FileSaver.saveAsync(
         input: input,
         fileType: fileType,
         fileName: fileName,
@@ -183,7 +183,7 @@ class _SaveScreenState extends State<SaveScreen> with DemoSaveScreenMixin {
     required String fileName,
     required SaveLocation? saveLocation,
   }) async {
-    final stream = FileSaver.instance.save(
+    final stream = FileSaver.save(
       input: input,
       fileType: fileType,
       fileName: fileName,

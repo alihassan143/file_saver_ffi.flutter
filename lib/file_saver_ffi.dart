@@ -9,11 +9,6 @@ import 'src/models/save_input.dart';
 import 'src/models/locations/save_location.dart';
 import 'src/models/save_progress.dart';
 import 'src/platform_interface/file_saver_platform.dart';
-// Conditional imports — IO platforms on non-web, stubs on web.
-import 'src/platforms/io_platforms.dart'
-    if (dart.library.html) 'src/platforms/io_stub.dart';
-import 'src/platforms/web/file_saver_web.dart'
-    if (dart.library.io) 'src/platforms/web_stub.dart';
 
 // Public API
 export 'src/exceptions/file_saver_exceptions.dart';
@@ -30,30 +25,13 @@ export 'src/platforms/web/file_saver_web.dart'
     if (dart.library.io) 'src/platforms/web_stub.dart';
 
 class FileSaver {
-  FileSaver._() {
-    // All platforms are initialized here on first access to FileSaver.instance.
-    FileSaverPlatform.instance =
-        kIsWeb
-            ? FileSaverWeb()
-            : switch (defaultTargetPlatform) {
-              TargetPlatform.android => FileSaverAndroid(),
-              TargetPlatform.iOS || TargetPlatform.macOS => FileSaverDarwin(),
-              TargetPlatform.linux => FileSaverLinux(),
-              TargetPlatform.windows => FileSaverWindows(),
-              _ =>
-                throw UnsupportedError(
-                  'FileSaver is not supported on $defaultTargetPlatform',
-                ),
-            };
-  }
+  FileSaver._();
 
-  static final FileSaver instance = FileSaver._();
-
-  FileSaverPlatform get _platform => FileSaverPlatform.instance;
+  static FileSaverPlatform get _platform => FileSaverPlatform.instance;
 
   /// Resources are automatically released on app termination,
   /// but call dispose() for timely cleanup.
-  void dispose() {
+  static void dispose() {
     _platform.dispose();
   }
 
@@ -61,7 +39,7 @@ class FileSaver {
   ///
   /// Delegates to [saveBytes], [saveFile], or [saveNetwork] based on [input].
   /// See those APIs for detailed behavior and platform notes.
-  Stream<SaveProgress> save({
+  static Stream<SaveProgress> save({
     required SaveInput input,
     required FileType fileType,
     required String fileName,
@@ -104,7 +82,7 @@ class FileSaver {
   ///
   /// Delegates to [saveBytesAsync], [saveFileAsync], or [saveNetworkAsync]
   /// based on [input]. See those APIs for detailed behavior and errors.
-  Future<Uri> saveAsync({
+  static Future<Uri> saveAsync({
     required SaveInput input,
     required FileType fileType,
     required String fileName,
@@ -169,7 +147,7 @@ class FileSaver {
   ///
   /// Example:
   /// ```dart
-  /// await for (final event in FileSaver.instance.saveBytes(
+  /// await for (final event in FileSaver.saveBytes(
   ///   fileBytes: imageBytes,
   ///   fileName: 'photo',
   ///   fileType: ImageType.jpg,
@@ -188,7 +166,7 @@ class FileSaver {
   ///   }
   /// }
   /// ```
-  Stream<SaveProgress> saveBytes({
+  static Stream<SaveProgress> saveBytes({
     required Uint8List fileBytes,
     required FileType fileType,
     required String fileName,
@@ -225,14 +203,14 @@ class FileSaver {
   ///
   /// Example:
   /// ```dart
-  /// final uri = await FileSaver.instance.saveBytesAsync(
+  /// final uri = await FileSaver.saveBytesAsync(
   ///   fileBytes: imageBytes,
   ///   fileName: 'photo',
   ///   fileType: ImageType.jpg,
   ///   onProgress: (progress) => print('${(progress * 100).toInt()}%'),
   /// );
   /// ```
-  Future<Uri> saveBytesAsync({
+  static Future<Uri> saveBytesAsync({
     required Uint8List fileBytes,
     required FileType fileType,
     required String fileName,
@@ -299,7 +277,7 @@ class FileSaver {
   ///
   /// Example:
   /// ```dart
-  /// await for (final event in FileSaver.instance.saveFile(
+  /// await for (final event in FileSaver.saveFile(
   ///   filePath: '/path/to/large_video.mp4',
   ///   fileName: 'my_video',
   ///   fileType: VideoType.mp4,
@@ -318,7 +296,7 @@ class FileSaver {
   ///   }
   /// }
   /// ```
-  Stream<SaveProgress> saveFile({
+  static Stream<SaveProgress> saveFile({
     required String filePath,
     required String fileName,
     required FileType fileType,
@@ -355,14 +333,14 @@ class FileSaver {
   ///
   /// Example:
   /// ```dart
-  /// final uri = await FileSaver.instance.saveFileAsync(
+  /// final uri = await FileSaver.saveFileAsync(
   ///   filePath: pickedFile.path,
   ///   fileName: 'document',
   ///   fileType: CustomFileType(ext: 'pdf', mimeType: 'application/pdf'),
   ///   onProgress: (progress) => print('${(progress * 100).toInt()}%'),
   /// );
   /// ```
-  Future<Uri> saveFileAsync({
+  static Future<Uri> saveFileAsync({
     required String filePath,
     required String fileName,
     required FileType fileType,
@@ -433,7 +411,7 @@ class FileSaver {
   ///
   /// Example:
   /// ```dart
-  /// await for (final event in FileSaver.instance.saveNetwork(
+  /// await for (final event in FileSaver.saveNetwork(
   ///   url: 'https://example.com/photo.jpg',
   ///   headers: {'Authorization': 'Bearer token'},
   ///   fileName: 'photo',
@@ -453,7 +431,7 @@ class FileSaver {
   ///   }
   /// }
   /// ```
-  Stream<SaveProgress> saveNetwork({
+  static Stream<SaveProgress> saveNetwork({
     required String url,
     required String fileName,
     required FileType fileType,
@@ -495,14 +473,14 @@ class FileSaver {
   ///
   /// Example:
   /// ```dart
-  /// final uri = await FileSaver.instance.saveNetworkAsync(
+  /// final uri = await FileSaver.saveNetworkAsync(
   ///   url: 'https://example.com/photo.jpg',
   ///   fileName: 'photo',
   ///   fileType: ImageType.jpg,
   ///   onProgress: (progress) => print('${(progress * 100).toInt()}%'),
   /// );
   /// ```
-  Future<Uri> saveNetworkAsync({
+  static Future<Uri> saveNetworkAsync({
     required String url,
     required String fileName,
     required FileType fileType,
@@ -570,21 +548,23 @@ class FileSaver {
   ///
   /// Example:
   /// ```dart
-  /// final location = await FileSaver.instance.pickDirectory();
+  /// final location = await FileSaver.pickDirectory();
   /// if (location == null) {
   ///   print('User cancelled');
   ///   return;
   /// }
   ///
   /// // Save a file to the selected directory
-  /// await FileSaver.instance.saveAsAsync(
+  /// await FileSaver.saveAsAsync(
   ///   input: SaveInput.bytes(imageBytes),
   ///   fileType: ImageType.png,
   ///   fileName: 'screenshot',
   ///   saveLocation: location,
   /// );
   /// ```
-  Future<UserSelectedLocation?> pickDirectory({bool shouldPersist = true}) {
+  static Future<UserSelectedLocation?> pickDirectory({
+    bool shouldPersist = true,
+  }) {
     return _platform.pickDirectory(shouldPersist: shouldPersist);
   }
 
@@ -604,7 +584,7 @@ class FileSaver {
   ///
   /// Example (auto picker):
   /// ```dart
-  /// await for (final event in FileSaver.instance.saveAs(
+  /// await for (final event in FileSaver.saveAs(
   ///   input: SaveInput.bytes(imageBytes),
   ///   fileType: ImageType.png,
   ///   fileName: 'screenshot',
@@ -627,11 +607,11 @@ class FileSaver {
   ///
   /// Example (batch save with picked location):
   /// ```dart
-  /// final location = await FileSaver.instance.pickDirectory();
+  /// final location = await FileSaver.pickDirectory();
   /// if (location == null) return;
   ///
   /// for (final file in files) {
-  ///   await for (final event in FileSaver.instance.saveAs(
+  ///   await for (final event in FileSaver.saveAs(
   ///     input: SaveInput.bytes(file.bytes),
   ///     fileType: file.type,
   ///     fileName: file.name,
@@ -641,7 +621,7 @@ class FileSaver {
   ///   }
   /// }
   /// ```
-  Stream<SaveProgress> saveAs({
+  static Stream<SaveProgress> saveAs({
     required SaveInput input,
     required FileType fileType,
     required String fileName,
@@ -698,7 +678,7 @@ class FileSaver {
   ///
   /// Example:
   /// ```dart
-  /// final uri = await FileSaver.instance.saveAsAsync(
+  /// final uri = await FileSaver.saveAsAsync(
   ///   input: SaveInput.bytes(imageBytes),
   ///   fileType: ImageType.png,
   ///   fileName: 'screenshot',
@@ -711,7 +691,7 @@ class FileSaver {
   ///   print('Saved to: $uri');
   /// }
   /// ```
-  Future<Uri?> saveAsAsync({
+  static Future<Uri?> saveAsAsync({
     required SaveInput input,
     required FileType fileType,
     required String fileName,

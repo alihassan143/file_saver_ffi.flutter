@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:dir_picker/dir_picker.dart' as dp;
 import 'package:flutter/foundation.dart';
+import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
 import 'package:web/web.dart';
 
@@ -20,8 +21,10 @@ import 'web_file_entity.dart';
 import 'web_utils.dart';
 
 class FileSaverWeb extends FileSaverPlatform {
-  static void registerWith(dynamic registrar) =>
-      FileSaverPlatform.instance = FileSaverWeb();
+  /// Registers this class as the default instance of [FileSaverPlatform].
+  static void registerWith(Registrar registrar) {
+    FileSaverPlatform.instance = FileSaverWeb();
+  }
 
   @override
   void dispose() {}

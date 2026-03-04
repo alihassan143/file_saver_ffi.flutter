@@ -21,6 +21,11 @@ class FileSaverAndroid extends FileSaverPlatform {
   /// Native FileSaver instance
   late final bindings.FileSaver _fileSaver;
 
+  /// Registers this class as the default instance of [FileSaverPlatform].
+  static void registerWith() {
+    FileSaverPlatform.instance = FileSaverAndroid();
+  }
+
   @override
   void dispose() {
     _fileSaver.release();

@@ -17,29 +17,21 @@ import '../models/save_progress.dart';
 /// - iOS/macOS: Uses FFI to call Swift code (shared darwin source)
 /// - Android: Uses JNI to call Kotlin code
 /// - Windows: Dart FFI via path_provider_windows (SHGetKnownFolderPath) + dart:io
+/// - Linux: Dart FFI via xdg-user-dir + dart:io
+/// - Web: Uses browser APIs via dart:web + dart:js_interop
 abstract class FileSaverPlatform {
   static FileSaverPlatform? _instance;
 
   /// The current platform implementation.
   ///
-  /// Set automatically during app startup:
-  /// - **Windows**: via `dartPluginClass` → [FileSaverWindows.registerWith]
-  ///   (called by Flutter's generated plugin registrant before [runApp]).
-  /// - **Android / iOS / macOS**: via [FileSaver] initialization on first
-  ///   access to [FileSaver.instance].
+  /// Set automatically before [runApp] via each platform's [registerWith] method,
+  /// which is invoked by Flutter's generated plugin registrant.
   static FileSaverPlatform get instance {
-    assert(
-      _instance != null,
-      'FileSaverPlatform.instance is not set. '
-      'Access FileSaver.instance first to trigger initialization.',
-    );
+    assert(_instance != null, 'FileSaverPlatform.instance is not set.');
     return _instance!;
   }
 
-  /// Override the platform instance.
-  ///
-  /// Used by platform implementations (e.g. Windows via [dartPluginClass]) to
-  /// register themselves before [instance] is first accessed.
+  /// Used by each platform's [registerWith] to register itself.
   static set instance(FileSaverPlatform value) {
     _instance = value;
   }

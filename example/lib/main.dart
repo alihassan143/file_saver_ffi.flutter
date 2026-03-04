@@ -18,9 +18,7 @@ class AppLifecycleStateObserver extends WidgetsBindingObserver {
 
 void main() {
   final binding = WidgetsFlutterBinding.ensureInitialized();
-  binding.addObserver(
-    AppLifecycleStateObserver(onDetached: FileSaver.instance.dispose),
-  );
+  binding.addObserver(AppLifecycleStateObserver(onDetached: FileSaver.dispose));
   runApp(const MyApp());
 }
 
