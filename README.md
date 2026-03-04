@@ -5,18 +5,19 @@
 ## File Saver FFI
 
 <p align="left">
-  <a href="https://github.com/vanvixi/file_saver_ffi"><img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows%20%7C%20Linux-blue.svg" alt="Platform"></a>
+  <a href="https://github.com/vanvixi/file_saver_ffi"><img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20Web-blue.svg" alt="Platform"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-purple.svg" alt="License: MIT"></a>
   <a href="https://deepwiki.com/vanvixi/file_saver_ffi.flutter"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
 
-A high-performance file saver for Flutter using FFI and JNI. Effortlessly save to gallery (images/videos) or device
-storage with original quality and custom album support.
+A high-performance file saver for Flutter supporting Android, iOS, macOS, Windows, Linux, and Web. Save to gallery,
+device storage, or a user-chosen directory — with real-time progress tracking.
 
 ## Features
 
 - 🖼️ **Gallery Saving** – Save images and videos to iOS Photos or Android Gallery with custom albums
-- ⚡ **Native Performance** – Powered by FFI (iOS/macOS/Windows) and JNI (Android) for near-zero latency
+- ⚡ **Native Performance** – Powered by FFI (iOS/macOS/Windows/Linux) and JNI (Android) for near-zero latency
+- 🌐 **Web Support** – Browser download via anchor element or File System Access API (FSA) for Chrome/Edge
 - 📁 **Universal Storage** – Save any file type (PDF, ZIP, DOCX, etc.) to device storage
 - 💾 **Original Quality** – Files saved bit-for-bit without compression or metadata loss
 - 📊 **Progress & Cancellation** – Real-time progress tracking with cancellable operations
@@ -153,6 +154,34 @@ No additional app configuration needed. Directories are resolved via the XDG Bas
 
 </details>
 
+<details>
+<summary><b>Web Configuration</b></summary>
+
+**Supported:** All modern browsers (Chrome / Edge 86+ recommended)
+
+**Browser capabilities:**
+
+| Feature                     | Chrome / Edge 86+                                             | Firefox                          | Safari                           |
+|-----------------------------|---------------------------------------------------------------|----------------------------------|----------------------------------|
+| `save` / `saveNetwork`      | ✅                                                             | ✅                                | ✅                                |
+| `saveAs` (directory picker) | ✅ File System Access API                                      | ❌ falls back to browser download | ❌ falls back to browser download |
+| Download progress           | ✅ `saveAs` + `SaveNetworkInput` only (needs `Content-Length`) | ❌                                | ❌                                |
+
+**Download mechanism:**
+
+| API           | Scenario              | Mechanism                                          | CORS required | Progress                   |
+|---------------|-----------------------|----------------------------------------------------|---------------|----------------------------|
+| `saveNetwork` | No custom `headers`   | `<a href=url download>` — browser native streaming | ❌             | ❌                          |
+| `saveNetwork` | With custom `headers` | `window.fetch()` → Blob → `<a download>`           | ✅             | ❌                          |
+| `saveAs`      | Chrome / Edge 86+     | FSA: streams chunks directly to disk (zero RAM)    | ✅             | ✅ (needs `Content-Length`) |
+| `saveAs`      | Firefox / Safari      | Falls back to standard browser download            | —             | —                          |
+
+> **Note:** `saveAs` with directory selection requires the app to be served over **HTTPS** or `localhost`. `http://` origins cannot use `showDirectoryPicker`.
+
+See **[Web – Limitations](WEB_LIMITATIONS.md)** for CORS, memory usage, and browser-specific constraints.
+
+</details>
+
 ### Basic Usage
 
 ```dart
@@ -195,6 +224,9 @@ Use the appropriate input class for your data source:
 | **`SaveFileInput`**    | `String` (path) | Large files from disk (videos, recordings)     |
 | **`SaveNetworkInput`** | `String` (URL)  | Download and save directly from internet       |
 
+> **Web:** `SaveFileInput` is not supported and throws `InvalidInputException`. Use `SaveBytesInput` or `SaveNetworkInput` instead.
+
+
 #### Usage Matrix 📊
 
 |                                            | **Standard Location**<br>*(Downloads, Photos, etc.)* | **User-Chosen Location**<br>*(System Picker)* |
@@ -233,6 +265,8 @@ Control where files are saved using platform-specific enum values:
 | `.dcim`      | **DCIM/**                       | -                        | -                           | -                               | -                           |
 | `.documents` | -                               | **Documents/** (default) | **Documents/**              | **Documents/**                  | **~/Documents/**            |
 | `.photos`    | -                               | **Photos Library**       | -                           | -                               | -                           |
+
+> **Web:** Platform-specific `SaveLocation` enums are not available. The `saveLocation` parameter in `save`/`saveAsync` is ignored — the browser controls the download destination (usually the Downloads folder). To save to a specific directory, use `saveAs` with `pickDirectory()` (requires Chrome / Edge 86+).
 
 
 ### Conflict Resolution
@@ -400,7 +434,7 @@ Future<UserSelectedLocation?> pickDirectory({bool shouldPersist = true})
 #### `SaveNetworkInput`
 - `url`: `String` (Required)
 - `headers`: `Map<String, String>?` (Optional)
-- `timeout`: `Duration` (Default: 60s)
+- `timeout`: `Duration` (Default: 60s) — enforced on Web via `AbortController` when custom `headers` are used; ignored for header-less requests (anchor element)
 
 ### Direct API
 
@@ -454,7 +488,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 * ~~MacOS Support~~
 * ~~Windows Support~~
 * ~~Linux Support~~
-* Web Support
+* ~~Web Support~~
 
 
 ## FAQ
@@ -489,6 +523,7 @@ Add the required keys (e.g., `com.apple.security.files.downloads.read-write`) to
 Check the **MacOS Configuration** section above for the full list of required keys.
 
 </details>
+
 
 ## License
 

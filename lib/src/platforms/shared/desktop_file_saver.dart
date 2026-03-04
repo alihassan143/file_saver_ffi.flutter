@@ -8,10 +8,11 @@ import '../../exceptions/file_saver_exceptions.dart';
 import '../../models/conflict_resolution.dart';
 import '../../models/file_type.dart';
 import '../../models/save_input.dart';
-import '../../models/save_location.dart';
+import '../../models/locations/save_location.dart';
 import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
 import 'conflict_resolver.dart';
+import 'file_entity.dart';
 
 /// 1MB chunk size for progress reporting.
 const int _chunkSize = 1048576;
@@ -24,6 +25,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
   final _httpClient = HttpClient();
   int _nextTokenId = 1;
   final _activeTokens = <int, _CancellationToken>{};
+  final _conflictResolver = ConflictResolver(const IOFileEntity());
 
   @override
   void dispose() {
@@ -52,7 +54,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
     return _executeSave((token, controller) async {
       final dir = await resolveDirectory(saveLocation, subDir);
       final filePath = p.join(dir, '$fileName.${fileType.ext}');
-      final resolved = await ConflictResolver.resolve(
+      final resolved = await _conflictResolver.resolve(
         filePath,
         conflictResolution,
       );
@@ -86,7 +88,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
 
       final dir = await resolveDirectory(saveLocation, subDir);
       final destPath = p.join(dir, '$fileName.${fileType.ext}');
-      final resolved = await ConflictResolver.resolve(
+      final resolved = await _conflictResolver.resolve(
         destPath,
         conflictResolution,
       );
@@ -116,7 +118,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
     return _executeSave((token, controller) async {
       final dir = await resolveDirectory(saveLocation, subDir);
       final destPath = p.join(dir, '$fileName.${fileType.ext}');
-      final resolved = await ConflictResolver.resolve(
+      final resolved = await _conflictResolver.resolve(
         destPath,
         conflictResolution,
       );
@@ -197,7 +199,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
   }) {
     return _executeSave((token, controller) async {
       final filePath = p.join(dirPath, '$fileName.$ext');
-      final resolved = await ConflictResolver.resolve(
+      final resolved = await _conflictResolver.resolve(
         filePath,
         conflictResolution,
       );
@@ -226,7 +228,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
       }
 
       final destPath = p.join(dirPath, '$fileName.$ext');
-      final resolved = await ConflictResolver.resolve(
+      final resolved = await _conflictResolver.resolve(
         destPath,
         conflictResolution,
       );
@@ -251,7 +253,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
   }) {
     return _executeSave((token, controller) async {
       final destPath = p.join(dirPath, '$fileName.$ext');
-      final resolved = await ConflictResolver.resolve(
+      final resolved = await _conflictResolver.resolve(
         destPath,
         conflictResolution,
       );
@@ -340,16 +342,25 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
     _CancellationToken token,
     StreamController<SaveProgress> controller,
   ) async {
+    final uri = Uri.parse(url);
+
     _httpClient.connectionTimeout = timeout;
 
-    final request = await _httpClient.getUrl(Uri.parse(url));
+    final request = await _httpClient.getUrl(uri);
     token.activeRequest = request;
     headers?.forEach(request.headers.add);
 
-    final response = await request.close();
+    HttpClientResponse response;
+    try {
+      response = await request.close();
+    } catch (e) {
+      token.activeRequest = null;
+      throw NetworkException('Connection failed: $e');
+    }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       await response.drain<void>();
+      token.activeRequest = null;
       throw NetworkException(
         'HTTP ${response.statusCode}',
         response.statusCode,
@@ -361,27 +372,56 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
     final sink = dest.openWrite();
     int downloaded = 0;
 
+    Timer? idleTimer;
+
+    void resetIdleTimer() {
+      idleTimer?.cancel();
+      idleTimer = Timer(timeout, () {
+        token.activeRequest?.abort();
+      });
+    }
+
     try {
+      resetIdleTimer();
+
       await for (final chunk in response) {
         if (token.isCancelled) {
-          await sink.close();
-          await dest.delete();
-          return;
+          token.activeRequest?.abort();
+          break;
         }
+
+        resetIdleTimer();
+
         sink.add(chunk);
         downloaded += chunk.length;
+
         if (total > 0) {
           controller.add(SaveProgressUpdate(downloaded / total));
         }
       }
+
+      idleTimer?.cancel();
+      token.activeRequest = null;
+
+      if (token.isCancelled) {
+        await sink.close();
+        if (await dest.exists()) await dest.delete();
+        return;
+      }
+
       await sink.flush();
       await sink.close();
-      token.activeRequest = null;
     } catch (e) {
+      idleTimer?.cancel();
+      token.activeRequest?.abort();
+      token.activeRequest = null;
+
       await sink.close();
       if (await dest.exists()) await dest.delete();
+
       if (token.isCancelled) return;
-      rethrow;
+
+      throw FileIOException(e.toString());
     }
   }
 
@@ -392,7 +432,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
   Stream<SaveProgress> _executeSave(
     Future<void> Function(
       _CancellationToken token,
-      StreamController<SaveProgress> controller,
+      MultiStreamController<SaveProgress> controller,
     )
     operation,
   ) {
@@ -444,6 +484,16 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
     }
     return filePath;
   }
+}
+
+class IOFileEntity implements FileEntity {
+  const IOFileEntity();
+
+  @override
+  Future<bool> exists(String path) => File(path).exists();
+
+  @override
+  Future<void> delete(String path) => File(path).delete();
 }
 
 class _CancellationToken {

@@ -5,7 +5,7 @@ import '../exceptions/file_saver_exceptions.dart';
 import '../models/conflict_resolution.dart';
 import '../models/file_type.dart';
 import '../models/save_input.dart';
-import '../models/save_location.dart';
+import '../models/locations/save_location.dart';
 import '../models/save_progress.dart';
 
 /// Platform interface for file saver implementations.
@@ -144,11 +144,17 @@ abstract class FileSaverPlatform {
   Future<UserSelectedLocation?> pickDirectory({
     bool shouldPersist = true,
   }) async {
-    final uri = await DirPicker.pick(
-      androidOptions: AndroidOptions(shouldPersist: shouldPersist),
-    );
-    if (uri == null) return null;
-    return UserSelectedLocation(uri: uri);
+    try {
+      final location = await DirPicker.pick(
+        androidOptions: AndroidOptions(shouldPersist: shouldPersist),
+      );
+      if (location == null) return null;
+      return UserSelectedLocation(uri: location.uri!);
+    } on FileSaverException {
+      rethrow;
+    } catch (e) {
+      throw PlatformException('Pick directory failed: $e');
+    }
   }
 
   /// Save to user-selected directory with progress streaming.

@@ -4,7 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider_windows/path_provider_windows.dart';
 
 import '../../exceptions/file_saver_exceptions.dart';
-import '../../models/save_location.dart';
+import '../../models/locations/save_location.dart';
 import '../shared/desktop_file_saver.dart';
 
 // Windows Known Folder GUIDs — mirrors WindowsKnownFolder from path_provider_windows.

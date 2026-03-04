@@ -6,39 +6,45 @@ import 'src/exceptions/file_saver_exceptions.dart';
 import 'src/models/conflict_resolution.dart';
 import 'src/models/file_type.dart';
 import 'src/models/save_input.dart';
-import 'src/models/save_location.dart';
+import 'src/models/locations/save_location.dart';
 import 'src/models/save_progress.dart';
 import 'src/platform_interface/file_saver_platform.dart';
-import 'src/platforms/android/file_saver_android.dart';
-import 'src/platforms/darwin/file_saver_darwin.dart';
-import 'src/platforms/linux/file_saver_linux.dart';
-import 'src/platforms/windows/file_saver_windows.dart';
+// Conditional imports — IO platforms on non-web, stubs on web.
+import 'src/platforms/io_platforms.dart'
+    if (dart.library.html) 'src/platforms/io_stub.dart';
+import 'src/platforms/web/file_saver_web.dart'
+    if (dart.library.io) 'src/platforms/web_stub.dart';
 
 // Public API
 export 'src/exceptions/file_saver_exceptions.dart';
 export 'src/models/conflict_resolution.dart';
 export 'src/models/file_type.dart';
 export 'src/models/save_input.dart';
-export 'src/models/save_location.dart';
+export 'src/models/locations/save_location.dart';
 export 'src/models/save_progress.dart';
-// Required for dartPluginClass: Flutter's dart_plugin_registrant.dart imports
-// this library and calls the platform's registerWith() method.
-export 'src/platforms/linux/file_saver_linux.dart' show FileSaverLinux;
-export 'src/platforms/windows/file_saver_windows.dart' show FileSaverWindows;
+// Required for dartPluginClass / pluginClass: Flutter's dart_plugin_registrant.dart
+// imports this library and calls the platform's registerWith() method.
+export 'src/platforms/io_platforms.dart'
+    if (dart.library.html) 'src/platforms/io_stub.dart';
+export 'src/platforms/web/file_saver_web.dart'
+    if (dart.library.io) 'src/platforms/web_stub.dart';
 
 class FileSaver {
   FileSaver._() {
     // All platforms are initialized here on first access to FileSaver.instance.
-    FileSaverPlatform.instance = switch (defaultTargetPlatform) {
-      TargetPlatform.android => FileSaverAndroid(),
-      TargetPlatform.iOS || TargetPlatform.macOS => FileSaverDarwin(),
-      TargetPlatform.linux => FileSaverLinux(),
-      TargetPlatform.windows => FileSaverWindows(),
-      _ =>
-        throw UnsupportedError(
-          'FileSaver is not supported on $defaultTargetPlatform',
-        ),
-    };
+    FileSaverPlatform.instance =
+        kIsWeb
+            ? FileSaverWeb()
+            : switch (defaultTargetPlatform) {
+              TargetPlatform.android => FileSaverAndroid(),
+              TargetPlatform.iOS || TargetPlatform.macOS => FileSaverDarwin(),
+              TargetPlatform.linux => FileSaverLinux(),
+              TargetPlatform.windows => FileSaverWindows(),
+              _ =>
+                throw UnsupportedError(
+                  'FileSaver is not supported on $defaultTargetPlatform',
+                ),
+            };
   }
 
   static final FileSaver instance = FileSaver._();
@@ -642,19 +648,27 @@ class FileSaver {
     UserSelectedLocation? saveLocation,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) async* {
-    yield const SaveProgressStarted();
-
     // Resolve location
-    final UserSelectedLocation resolvedLocation;
-    if (saveLocation == null) {
-      final picked = await pickDirectory();
-      if (picked == null) {
-        yield const SaveProgressCancelled();
-        return;
+    UserSelectedLocation? resolvedLocation = saveLocation;
+    if (resolvedLocation == null) {
+      try {
+        final picked = await pickDirectory();
+        if (picked == null) {
+          yield const SaveProgressCancelled();
+          return;
+        }
+        resolvedLocation = picked;
+      } catch (e) {
+        if (kIsWeb) {
+          // Browser doesn't support FSA (Firefox / Safari).
+          // Pass a plain UserSelectedLocation so FileSaverWeb.saveAs()
+          // falls through to its anchor-download fallback.
+          resolvedLocation = UserSelectedLocation(uri: Uri());
+        } else {
+          yield SaveProgressError(PlatformException(e.toString()));
+          return;
+        }
       }
-      resolvedLocation = picked;
-    } else {
-      resolvedLocation = saveLocation;
     }
 
     // Delegate to platform

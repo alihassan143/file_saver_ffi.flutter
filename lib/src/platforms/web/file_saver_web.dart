@@ -1,0 +1,403 @@
+import 'dart:async';
+import 'dart:js_interop';
+import 'dart:typed_data';
+
+import 'package:dir_picker/dir_picker.dart' as dp;
+import 'package:flutter/foundation.dart';
+
+import 'package:web/web.dart';
+
+import '../../exceptions/file_saver_exceptions.dart';
+import '../../models/conflict_resolution.dart';
+import '../shared/conflict_resolver.dart';
+import '../../models/file_type.dart';
+import '../../models/locations/save_location.dart';
+import '../../models/locations/web_save_location.dart';
+import '../../models/save_input.dart';
+import '../../models/save_progress.dart';
+import '../../platform_interface/file_saver_platform.dart';
+import 'web_file_entity.dart';
+import 'web_utils.dart';
+
+class FileSaverWeb extends FileSaverPlatform {
+  static void registerWith(dynamic registrar) =>
+      FileSaverPlatform.instance = FileSaverWeb();
+
+  @override
+  void dispose() {}
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // pickDirectory
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Shows `window.showDirectoryPicker()` via `dir_picker` and returns a
+  /// [WebSelectedLocation] wrapping the chosen [FileSystemDirectoryHandle].
+  ///
+  /// Returns `null` if the user cancels.
+  /// Throws [PlatformException] if the browser does not support the
+  /// File System Access API (Firefox / Safari).
+  @override
+  Future<UserSelectedLocation?> pickDirectory({
+    bool shouldPersist = true,
+  }) async {
+    try {
+      final location = await dp.DirPicker.pick();
+      if (location == null) return null; // user cancelled
+      if (location is! dp.WebSelectedLocation) {
+        throw const PlatformException('Unexpected picker result on web.');
+      }
+
+      return WebSelectedLocation(location.handle);
+    } catch (e) {
+      // dir_picker is an external package and will not throw FileSaverException.
+      // Any error here means the browser doesn't support showDirectoryPicker.
+      throw PlatformException(
+        'Directory picker unavailable. '
+        'File System Access API not supported in this browser. ($e)',
+      );
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // saveBytes (browser controlled)
+  // ─────────────────────────────────────────────
+
+  @override
+  Stream<SaveProgress> saveBytes({
+    required Uint8List fileBytes,
+    required FileType fileType,
+    required String fileName,
+    SaveLocation? saveLocation,
+    String? subDir,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) async* {
+    yield const SaveProgressStarted();
+    validateBytesInput(fileBytes, fileName);
+    WebUtils.triggerBytesDownload(
+      fileBytes,
+      '$fileName.${fileType.ext}',
+      fileType.mimeType,
+    );
+    yield SaveProgressComplete(
+      Uri(scheme: 'browser-download', path: '$fileName.${fileType.ext}'),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // saveFile
+  // ─────────────────────────────────────────────────────────────────────────
+
+  @override
+  Stream<SaveProgress> saveFile({
+    required String filePath,
+    required String fileName,
+    required FileType fileType,
+    SaveLocation? saveLocation,
+    String? subDir,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) async* {
+    throw const InvalidInputException(
+      'saveFile is not supported on web. Use saveBytes or saveNetwork instead.',
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // saveNetwork (browser controlled)
+  // ─────────────────────────────────────────────
+
+  @override
+  Stream<SaveProgress> saveNetwork({
+    required String url,
+    required String fileName,
+    required FileType fileType,
+    Map<String, String>? headers,
+    Duration timeout = const Duration(seconds: 60),
+    SaveLocation? saveLocation,
+    String? subDir,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) {
+    validateNetworkInput(url, fileName);
+    final fullName = '$fileName.${fileType.ext}';
+
+    return WebUtils.executeSave((token, controller) async {
+      // No custom headers → let browser stream natively.
+      if (headers == null || headers.isEmpty) {
+        WebUtils.triggerUrlDownload(url, fullName, fileType.mimeType);
+        controller.addSync(
+          SaveProgressComplete(Uri(scheme: 'browser-download', path: fullName)),
+        );
+        return;
+      }
+
+      // Custom headers require fetch() — loads file into memory (browser limitation).
+      final fetchController = AbortController();
+      token.setController(fetchController);
+      final timer = Timer(
+        timeout,
+        () => fetchController.abort("Request timed out".toJS),
+      );
+
+      try {
+        final response = await WebUtils.fetch(
+          url,
+          fetchController,
+          headers: headers,
+        );
+        if (token.isCancelled) return;
+
+        if (!response.ok) {
+          controller.addSync(
+            SaveProgressError(
+              NetworkException(
+                'HTTP ${response.status}: ${response.statusText}',
+              ),
+            ),
+          );
+          return;
+        }
+
+        final blob = await response.blob().toDart;
+        if (token.isCancelled) return;
+
+        WebUtils.triggerBlobDownload(blob, fullName);
+        controller.addSync(
+          SaveProgressComplete(Uri(scheme: 'browser-download', path: fullName)),
+        );
+      } finally {
+        timer.cancel();
+      }
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  // saveAs (FSA zero-RAM streaming)
+  // ─────────────────────────────────────────────
+  @override
+  Stream<SaveProgress> saveAs({
+    required SaveInput input,
+    required FileType fileType,
+    required String fileName,
+    required UserSelectedLocation saveLocation,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) {
+    // If FSA is supported and we have a valid WebSelectedLocation
+    if (saveLocation is WebSelectedLocation) {
+      return switch (input) {
+        SaveBytesInput(:final fileBytes) => _saveToDirectory(
+          handle: saveLocation.directoryHandle,
+          fileBytes: fileBytes,
+          fileType: fileType,
+          fileName: fileName,
+          conflictResolution: conflictResolution,
+        ),
+        SaveNetworkInput(:final url, :final headers, :final timeout) =>
+          _saveNetworkToDirectory(
+            handle: saveLocation.directoryHandle,
+            url: url,
+            headers: headers,
+            timeout: timeout,
+            fileType: fileType,
+            fileName: fileName,
+            conflictResolution: conflictResolution,
+          ),
+        SaveFileInput() =>
+          throw const InvalidInputException(
+            'saveFile is not supported on web.',
+          ),
+      };
+    }
+
+    // ─────────────────────────────────────────
+    // Fallback for browsers WITHOUT FSA
+    // ─────────────────────────────────────────
+
+    // ⚠ Browser will control download location.
+    return switch (input) {
+      SaveBytesInput(:final fileBytes) => saveBytes(
+        fileBytes: fileBytes,
+        fileType: fileType,
+        fileName: fileName,
+      ),
+      SaveNetworkInput(:final url, :final headers, :final timeout) =>
+        saveNetwork(
+          url: url,
+          fileName: fileName,
+          fileType: fileType,
+          headers: headers,
+          timeout: timeout,
+        ),
+      SaveFileInput() =>
+        throw const InvalidInputException('saveFile is not supported on web.'),
+    };
+  }
+
+  // ─────────────────────────────────────────────
+  // FSA: Save Bytes
+  // ─────────────────────────────────────────────
+
+  Stream<SaveProgress> _saveToDirectory({
+    required FileSystemDirectoryHandle handle,
+    required Uint8List fileBytes,
+    required FileType fileType,
+    required String fileName,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) {
+    validateBytesInput(fileBytes, fileName);
+    final fullName = '$fileName.${fileType.ext}';
+
+    return WebUtils.executeSave((token, controller) async {
+      final fileEntity = WebFileEntity(handle);
+      final resolvedName = await ConflictResolver(
+        fileEntity,
+      ).resolve(fullName, conflictResolution);
+      if (resolvedName == null) {
+        controller.addSync(
+          SaveProgressComplete(Uri(scheme: 'web-directory', path: fullName)),
+        );
+        return;
+      }
+
+      final fileHandle =
+          await handle
+              .getFileHandle(
+                resolvedName,
+                FileSystemGetFileOptions(create: true),
+              )
+              .toDart;
+
+      if (conflictResolution != ConflictResolution.overwrite) {
+        token.setFileEntry(fileEntity, resolvedName);
+      }
+
+      if (token.isCancelled) return;
+
+      final writable = await fileHandle.createWritable().toDart;
+      token.setWritable(writable);
+      if (token.isCancelled) return;
+
+      await writable.write(fileBytes.toJS as FileSystemWriteChunkType).toDart;
+      if (token.isCancelled) return; // FSA discards .crswap automatically
+
+      await writable.close().toDart;
+      token.complete();
+      controller.addSync(
+        SaveProgressComplete(Uri(scheme: 'web-directory', path: resolvedName)),
+      );
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  // FSA: Zero-RAM streaming download
+  // ─────────────────────────────────────────────
+
+  Stream<SaveProgress> _saveNetworkToDirectory({
+    required FileSystemDirectoryHandle handle,
+    required String url,
+    Map<String, String>? headers,
+    Duration timeout = const Duration(seconds: 60),
+    required FileType fileType,
+    required String fileName,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) {
+    validateNetworkInput(url, fileName);
+    final fullName = '$fileName.${fileType.ext}';
+
+    return WebUtils.executeSave((token, controller) async {
+      final fileEntity = WebFileEntity(handle);
+      final resolvedName = await ConflictResolver(
+        fileEntity,
+      ).resolve(fullName, conflictResolution);
+      if (resolvedName == null) {
+        controller.addSync(
+          SaveProgressComplete(Uri(scheme: 'web-directory', path: fullName)),
+        );
+        return;
+      }
+
+      final fetchController = AbortController();
+      token.setController(fetchController);
+
+      Timer? idleTimer;
+
+      void resetIdleTimer() {
+        idleTimer?.cancel();
+        idleTimer = Timer(
+          timeout,
+          () => fetchController.abort("Request timed out".toJS),
+        );
+      }
+
+      resetIdleTimer();
+      final response = await WebUtils.fetch(
+        url,
+        fetchController,
+        headers: headers,
+      );
+      if (token.isCancelled) {
+        idleTimer?.cancel();
+        return;
+      }
+
+      if (!response.ok) {
+        idleTimer?.cancel();
+        controller.addSync(
+          SaveProgressError(
+            NetworkException('HTTP ${response.status}: ${response.statusText}'),
+          ),
+        );
+        return;
+      }
+
+      final fileHandle =
+          await handle
+              .getFileHandle(
+                resolvedName,
+                FileSystemGetFileOptions(create: true),
+              )
+              .toDart;
+
+      if (conflictResolution != ConflictResolution.overwrite) {
+        token.setFileEntry(fileEntity, resolvedName);
+      }
+
+      if (token.isCancelled) {
+        idleTimer?.cancel();
+        return;
+      }
+
+      final writable = await fileHandle.createWritable().toDart;
+      token.setWritable(writable);
+      final total = int.tryParse(response.headers.get('content-length') ?? '');
+      final reader = response.body!.getReader() as ReadableStreamDefaultReader;
+
+      int written = 0;
+      resetIdleTimer();
+
+      while (true) {
+        if (token.isCancelled) break;
+
+        final result = await reader.read().toDart;
+        if (result.done) break;
+
+        resetIdleTimer();
+
+        final chunk = (result.value! as JSUint8Array).toDart;
+        await writable.write(chunk.toJS as FileSystemWriteChunkType).toDart;
+        written += chunk.lengthInBytes;
+
+        if (total != null && total > 0) {
+          controller.addSync(SaveProgressUpdate(written / total));
+        }
+      }
+
+      idleTimer?.cancel();
+      if (token.isCancelled) return; // FSA discards .crswap automatically
+
+      await writable.close().toDart;
+      token.complete();
+      controller.addSync(
+        SaveProgressComplete(Uri(scheme: 'web-directory', path: resolvedName)),
+      );
+    });
+  }
+}
