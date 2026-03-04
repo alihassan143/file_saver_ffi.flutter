@@ -135,13 +135,6 @@ class FileSaverWeb extends FileSaverPlatform {
           return;
         }
 
-        if (response.type == 'cors') {
-          yield SaveProgressError(
-            NetworkException('CORS error: Unable to download file.'),
-          );
-          return;
-        }
-
         final blob = await response.blob().toDart;
         _triggerBlobDownload(blob, fullName);
         yield SaveProgressComplete(
@@ -150,6 +143,8 @@ class FileSaverWeb extends FileSaverPlatform {
       } finally {
         timer.cancel();
       }
+    } on FileSaverException catch (e) {
+      yield SaveProgressError(e);
     } catch (e) {
       if (e.toString().contains('AbortError')) {
         yield SaveProgressError(
@@ -290,13 +285,6 @@ class FileSaverWeb extends FileSaverPlatform {
         return;
       }
 
-      if (response.type == 'cors') {
-        yield SaveProgressError(
-          NetworkException('CORS error: Unable to download file.'),
-        );
-        return;
-      }
-
       final fileHandle =
           await handle
               .getFileHandle(fullName, FileSystemGetFileOptions(create: true))
@@ -333,6 +321,8 @@ class FileSaverWeb extends FileSaverPlatform {
       await writable.close().toDart;
 
       yield SaveProgressComplete(Uri(scheme: 'web-directory', path: fullName));
+    } on FileSaverException catch (e) {
+      yield SaveProgressError(e);
     } catch (e) {
       idleTimer?.cancel();
 
@@ -390,8 +380,9 @@ class FileSaverWeb extends FileSaverPlatform {
     String url,
     AbortController controller, {
     Map<String, String>? headers,
-  }) =>
-      window
+  }) async {
+    try {
+      return await window
           .fetch(
             url.toJS,
             RequestInit(
@@ -401,4 +392,9 @@ class FileSaverWeb extends FileSaverPlatform {
             ),
           )
           .toDart;
+    } catch (e) {
+      // fetch() will throw on network errors or CORS issues.
+      throw NetworkException(e.toString());
+    }
+  }
 }
