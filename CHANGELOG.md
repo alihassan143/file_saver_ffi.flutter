@@ -1,3 +1,13 @@
+## 0.7.0
+
+### Added
+
+- **Web Support**: Full file saving support on Flutter Web
+
+### Fixed
+
+- **Desktop `saveNetwork`**: Added per-chunk idle timer — previously only the connection timeout was enforced; a stalled download would hang indefinitely after the connection was established
+
 ## 0.6.0
 
 ### Added
