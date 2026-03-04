@@ -648,8 +648,6 @@ class FileSaver {
     UserSelectedLocation? saveLocation,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) async* {
-    yield const SaveProgressStarted();
-
     // Resolve location
     UserSelectedLocation? resolvedLocation = saveLocation;
     if (resolvedLocation == null) {

@@ -66,6 +66,7 @@ class FileSaverWeb extends FileSaverPlatform {
     String? subDir,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) async* {
+    yield const SaveProgressStarted();
     validateBytesInput(fileBytes, fileName);
     _triggerDownload(fileBytes, '$fileName.${fileType.ext}', fileType.mimeType);
     yield SaveProgressComplete(
@@ -105,55 +106,54 @@ class FileSaverWeb extends FileSaverPlatform {
     SaveLocation? saveLocation,
     String? subDir,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
-  }) async* {
+  }) {
     validateNetworkInput(url, fileName);
-
-    yield const SaveProgressStarted();
-
     final fullName = '$fileName.${fileType.ext}';
 
-    try {
+    return _executeSave((token, controller) async {
       // No custom headers → let browser stream natively.
       if (headers == null || headers.isEmpty) {
         _triggerUrlDownload(url, fullName, fileType.mimeType);
-        yield SaveProgressComplete(
-          Uri(scheme: 'browser-download', path: fullName),
+        controller.addSync(
+          SaveProgressComplete(Uri(scheme: 'browser-download', path: fullName)),
         );
         return;
       }
 
       // Custom headers require fetch() — loads file into memory (browser limitation).
-      final controller = AbortController();
-      final timer = Timer(timeout, () => controller.abort());
+      final fetchController = AbortController();
+      token.setController(fetchController);
+      final timer = Timer(
+        timeout,
+        () => fetchController.abort("Request timed out".toJS),
+      );
+
       try {
-        final response = await _fetch(url, controller, headers: headers);
+        final response = await _fetch(url, fetchController, headers: headers);
+        if (token.isCancelled) return;
 
         if (!response.ok) {
-          yield SaveProgressError(
-            NetworkException('HTTP ${response.status}: ${response.statusText}'),
+          controller.addSync(
+            SaveProgressError(
+              NetworkException(
+                'HTTP ${response.status}: ${response.statusText}',
+              ),
+            ),
           );
           return;
         }
 
         final blob = await response.blob().toDart;
+        if (token.isCancelled) return;
+
         _triggerBlobDownload(blob, fullName);
-        yield SaveProgressComplete(
-          Uri(scheme: 'browser-download', path: fullName),
+        controller.addSync(
+          SaveProgressComplete(Uri(scheme: 'browser-download', path: fullName)),
         );
       } finally {
         timer.cancel();
       }
-    } on FileSaverException catch (e) {
-      yield SaveProgressError(e);
-    } catch (e) {
-      if (e.toString().contains('AbortError')) {
-        yield SaveProgressError(
-          NetworkException('Download timed out or aborted'),
-        );
-      } else {
-        yield SaveProgressError(NetworkException(e.toString()));
-      }
-    }
+    });
   }
 
   // ─────────────────────────────────────────────
@@ -225,27 +225,28 @@ class FileSaverWeb extends FileSaverPlatform {
     required Uint8List fileBytes,
     required FileType fileType,
     required String fileName,
-  }) async* {
+  }) {
     validateBytesInput(fileBytes, fileName);
-
     final fullName = '$fileName.${fileType.ext}';
 
-    try {
+    return _executeSave((token, controller) async {
       final fileHandle =
           await handle
               .getFileHandle(fullName, FileSystemGetFileOptions(create: true))
               .toDart;
+      if (token.isCancelled) return;
 
       final writable = await fileHandle.createWritable().toDart;
+      if (token.isCancelled) return;
 
       await writable.write(fileBytes.toJS as FileSystemWriteChunkType).toDart;
+      if (token.isCancelled) return; // don't close → FSA discards
 
       await writable.close().toDart;
-
-      yield SaveProgressComplete(Uri(scheme: 'web-directory', path: fullName));
-    } catch (e) {
-      yield SaveProgressError(FileIOException(e.toString()));
-    }
+      controller.addSync(
+        SaveProgressComplete(Uri(scheme: 'web-directory', path: fullName)),
+      );
+    });
   }
 
   // ─────────────────────────────────────────────
@@ -259,28 +260,37 @@ class FileSaverWeb extends FileSaverPlatform {
     Duration timeout = const Duration(seconds: 60),
     required FileType fileType,
     required String fileName,
-  }) async* {
+  }) {
     validateNetworkInput(url, fileName);
-
     final fullName = '$fileName.${fileType.ext}';
-    final controller = AbortController();
 
-    Timer? idleTimer;
+    return _executeSave((token, controller) async {
+      final fetchController = AbortController();
+      token.setController(fetchController);
 
-    void resetIdleTimer() {
-      idleTimer?.cancel();
-      idleTimer = Timer(timeout, () {
-        controller.abort();
-      });
-    }
+      Timer? idleTimer;
 
-    try {
+      void resetIdleTimer() {
+        idleTimer?.cancel();
+        idleTimer = Timer(
+          timeout,
+          () => fetchController.abort("Request timed out".toJS),
+        );
+      }
+
       resetIdleTimer();
-      final response = await _fetch(url, controller, headers: headers);
+      final response = await _fetch(url, fetchController, headers: headers);
+      if (token.isCancelled) {
+        idleTimer?.cancel();
+        return;
+      }
 
       if (!response.ok) {
-        yield SaveProgressError(
-          NetworkException('HTTP ${response.status}: ${response.statusText}'),
+        idleTimer?.cancel();
+        controller.addSync(
+          SaveProgressError(
+            NetworkException('HTTP ${response.status}: ${response.statusText}'),
+          ),
         );
         return;
       }
@@ -289,51 +299,90 @@ class FileSaverWeb extends FileSaverPlatform {
           await handle
               .getFileHandle(fullName, FileSystemGetFileOptions(create: true))
               .toDart;
+      if (token.isCancelled) {
+        idleTimer?.cancel();
+        return;
+      }
 
       final writable = await fileHandle.createWritable().toDart;
-
       final total = int.tryParse(response.headers.get('content-length') ?? '');
-
       final reader = response.body!.getReader() as ReadableStreamDefaultReader;
 
       int written = 0;
-
       resetIdleTimer();
 
       while (true) {
+        if (token.isCancelled) break;
+
         final result = await reader.read().toDart;
         if (result.done) break;
 
         resetIdleTimer();
 
         final chunk = (result.value! as JSUint8Array).toDart;
-
         await writable.write(chunk.toJS as FileSystemWriteChunkType).toDart;
-
         written += chunk.lengthInBytes;
 
         if (total != null && total > 0) {
-          yield SaveProgressUpdate(written / total);
+          controller.addSync(SaveProgressUpdate(written / total));
         }
       }
 
       idleTimer?.cancel();
+      if (token.isCancelled) return; // don't close → FSA discards
+
       await writable.close().toDart;
+      controller.addSync(
+        SaveProgressComplete(Uri(scheme: 'web-directory', path: fullName)),
+      );
+    });
+  }
 
-      yield SaveProgressComplete(Uri(scheme: 'web-directory', path: fullName));
-    } on FileSaverException catch (e) {
-      yield SaveProgressError(e);
-    } catch (e) {
-      idleTimer?.cancel();
+  // ─────────────────────────────────────────────
+  // _executeSave (Stream.multi wrapper)
+  // ─────────────────────────────────────────────
 
-      if (e.toString().contains('AbortError')) {
-        yield SaveProgressError(
-          NetworkException('Download timed out or aborted'),
-        );
-      } else {
-        yield SaveProgressError(FileIOException(e.toString()));
-      }
-    }
+  Stream<SaveProgress> _executeSave(
+    Future<void> Function(
+      _WebCancellationToken token,
+      MultiStreamController<SaveProgress> controller,
+    )
+    operation,
+  ) {
+    return Stream.multi((controller) {
+      final token = _WebCancellationToken();
+      controller.addSync(const SaveProgressStarted());
+
+      operation(token, controller)
+          .then((_) {
+            if (!controller.isClosed) controller.closeSync();
+          })
+          .catchError((Object e) {
+            if (token.isCancelled) {
+              if (!controller.isClosed) {
+                controller.addSync(const SaveProgressCancelled());
+                controller.closeSync();
+              }
+              return;
+            }
+            if (!controller.isClosed) {
+              final ex =
+                  e is FileSaverException ? e : FileSaverException.fromObj(e);
+              controller.addSync(SaveProgressError(ex));
+              controller.closeSync();
+            }
+          });
+
+      controller.onCancel = () {
+        token.cancel();
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (!controller.isClosed) {
+            controller.addSync(const SaveProgressCancelled());
+            controller.closeSync();
+          }
+        });
+      };
+    });
   }
 
   // ─────────────────────────────────────────────
@@ -396,5 +445,17 @@ class FileSaverWeb extends FileSaverPlatform {
       // fetch() will throw on network errors or CORS issues.
       throw NetworkException(e.toString());
     }
+  }
+}
+
+class _WebCancellationToken {
+  bool isCancelled = false;
+  AbortController? _controller;
+
+  void setController(AbortController c) => _controller = c;
+
+  void cancel([String? reason]) {
+    isCancelled = true;
+    _controller?.abort(reason?.toJS);
   }
 }
