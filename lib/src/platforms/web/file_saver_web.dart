@@ -3,19 +3,21 @@ import 'dart:js_interop';
 import 'dart:typed_data';
 
 import 'package:dir_picker/dir_picker.dart' as dp;
+import 'package:flutter/foundation.dart';
 
 import 'package:web/web.dart';
 
 import '../../exceptions/file_saver_exceptions.dart';
 import '../../models/conflict_resolution.dart';
 import '../shared/conflict_resolver.dart';
-import '../shared/file_entity.dart';
 import '../../models/file_type.dart';
 import '../../models/locations/save_location.dart';
 import '../../models/locations/web_save_location.dart';
 import '../../models/save_input.dart';
 import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
+import 'web_file_entity.dart';
+import 'web_utils.dart';
 
 class FileSaverWeb extends FileSaverPlatform {
   static void registerWith(dynamic registrar) =>
@@ -71,7 +73,11 @@ class FileSaverWeb extends FileSaverPlatform {
   }) async* {
     yield const SaveProgressStarted();
     validateBytesInput(fileBytes, fileName);
-    _triggerDownload(fileBytes, '$fileName.${fileType.ext}', fileType.mimeType);
+    WebUtils.triggerBytesDownload(
+      fileBytes,
+      '$fileName.${fileType.ext}',
+      fileType.mimeType,
+    );
     yield SaveProgressComplete(
       Uri(scheme: 'browser-download', path: '$fileName.${fileType.ext}'),
     );
@@ -113,10 +119,10 @@ class FileSaverWeb extends FileSaverPlatform {
     validateNetworkInput(url, fileName);
     final fullName = '$fileName.${fileType.ext}';
 
-    return _executeSave((token, controller) async {
+    return WebUtils.executeSave((token, controller) async {
       // No custom headers → let browser stream natively.
       if (headers == null || headers.isEmpty) {
-        _triggerUrlDownload(url, fullName, fileType.mimeType);
+        WebUtils.triggerUrlDownload(url, fullName, fileType.mimeType);
         controller.addSync(
           SaveProgressComplete(Uri(scheme: 'browser-download', path: fullName)),
         );
@@ -132,7 +138,11 @@ class FileSaverWeb extends FileSaverPlatform {
       );
 
       try {
-        final response = await _fetch(url, fetchController, headers: headers);
+        final response = await WebUtils.fetch(
+          url,
+          fetchController,
+          headers: headers,
+        );
         if (token.isCancelled) return;
 
         if (!response.ok) {
@@ -149,7 +159,7 @@ class FileSaverWeb extends FileSaverPlatform {
         final blob = await response.blob().toDart;
         if (token.isCancelled) return;
 
-        _triggerBlobDownload(blob, fullName);
+        WebUtils.triggerBlobDownload(blob, fullName);
         controller.addSync(
           SaveProgressComplete(Uri(scheme: 'browser-download', path: fullName)),
         );
@@ -235,7 +245,7 @@ class FileSaverWeb extends FileSaverPlatform {
     validateBytesInput(fileBytes, fileName);
     final fullName = '$fileName.${fileType.ext}';
 
-    return _executeSave((token, controller) async {
+    return WebUtils.executeSave((token, controller) async {
       final fileEntity = WebFileEntity(handle);
       final resolvedName = await ConflictResolver(
         fileEntity,
@@ -262,12 +272,14 @@ class FileSaverWeb extends FileSaverPlatform {
       if (token.isCancelled) return;
 
       final writable = await fileHandle.createWritable().toDart;
+      token.setWritable(writable);
       if (token.isCancelled) return;
 
       await writable.write(fileBytes.toJS as FileSystemWriteChunkType).toDart;
       if (token.isCancelled) return; // FSA discards .crswap automatically
 
       await writable.close().toDart;
+      token.complete();
       controller.addSync(
         SaveProgressComplete(Uri(scheme: 'web-directory', path: resolvedName)),
       );
@@ -290,7 +302,7 @@ class FileSaverWeb extends FileSaverPlatform {
     validateNetworkInput(url, fileName);
     final fullName = '$fileName.${fileType.ext}';
 
-    return _executeSave((token, controller) async {
+    return WebUtils.executeSave((token, controller) async {
       final fileEntity = WebFileEntity(handle);
       final resolvedName = await ConflictResolver(
         fileEntity,
@@ -316,7 +328,11 @@ class FileSaverWeb extends FileSaverPlatform {
       }
 
       resetIdleTimer();
-      final response = await _fetch(url, fetchController, headers: headers);
+      final response = await WebUtils.fetch(
+        url,
+        fetchController,
+        headers: headers,
+      );
       if (token.isCancelled) {
         idleTimer?.cancel();
         return;
@@ -350,6 +366,7 @@ class FileSaverWeb extends FileSaverPlatform {
       }
 
       final writable = await fileHandle.createWritable().toDart;
+      token.setWritable(writable);
       final total = int.tryParse(response.headers.get('content-length') ?? '');
       final reader = response.body!.getReader() as ReadableStreamDefaultReader;
 
@@ -377,157 +394,10 @@ class FileSaverWeb extends FileSaverPlatform {
       if (token.isCancelled) return; // FSA discards .crswap automatically
 
       await writable.close().toDart;
+      token.complete();
       controller.addSync(
         SaveProgressComplete(Uri(scheme: 'web-directory', path: resolvedName)),
       );
     });
-  }
-
-  // ─────────────────────────────────────────────
-  // _executeSave (Stream.multi wrapper)
-  // ─────────────────────────────────────────────
-
-  Stream<SaveProgress> _executeSave(
-    Future<void> Function(
-      _WebCancellationToken token,
-      MultiStreamController<SaveProgress> controller,
-    )
-    operation,
-  ) {
-    return Stream.multi((controller) {
-      final token = _WebCancellationToken();
-      controller.addSync(const SaveProgressStarted());
-
-      operation(token, controller)
-          .then((_) {
-            if (!controller.isClosed) controller.closeSync();
-          })
-          .catchError((Object e) {
-            if (token.isCancelled) {
-              if (!controller.isClosed) {
-                controller.addSync(const SaveProgressCancelled());
-                controller.closeSync();
-              }
-              return;
-            }
-            if (!controller.isClosed) {
-              final ex =
-                  e is FileSaverException ? e : FileSaverException.fromObj(e);
-              controller.addSync(SaveProgressError(ex));
-              controller.closeSync();
-            }
-          });
-
-      controller.onCancel = () {
-        token.cancel();
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (!controller.isClosed) {
-            controller.addSync(const SaveProgressCancelled());
-            controller.closeSync();
-          }
-        });
-      };
-    });
-  }
-
-  // ─────────────────────────────────────────────
-  // Helpers
-  // ─────────────────────────────────────────────
-
-  void _triggerDownload(Uint8List bytes, String fullName, String mimeType) {
-    final blob = Blob([bytes.toJS].toJS, BlobPropertyBag(type: mimeType));
-    _triggerBlobDownload(blob, fullName);
-  }
-
-  void _triggerBlobDownload(Blob blob, String fullName) {
-    final objectUrl = URL.createObjectURL(blob);
-    _anchorClick(
-      document.createElement('a') as HTMLAnchorElement
-        ..href = objectUrl
-        ..download = fullName,
-    );
-    URL.revokeObjectURL(objectUrl);
-  }
-
-  void _triggerUrlDownload(String url, String fullName, String mimeType) {
-    _anchorClick(
-      document.createElement('a') as HTMLAnchorElement
-        ..href = url
-        ..type = mimeType
-        ..download = fullName,
-    );
-  }
-
-  void _anchorClick(HTMLAnchorElement anchor) {
-    document.body!.append(anchor);
-    anchor.click();
-    anchor.remove();
-  }
-
-  Headers _headersToJs(Map<String, String>? headers) {
-    final h = Headers();
-    headers?.forEach((key, value) => h.append(key, value));
-    return h;
-  }
-
-  Future<Response> _fetch(
-    String url,
-    AbortController controller, {
-    Map<String, String>? headers,
-  }) async {
-    try {
-      return await window
-          .fetch(
-            url.toJS,
-            RequestInit(
-              method: 'GET',
-              headers: _headersToJs(headers),
-              signal: controller.signal,
-            ),
-          )
-          .toDart;
-    } catch (e) {
-      // fetch() will throw on network errors or CORS issues.
-      throw NetworkException(e.toString());
-    }
-  }
-}
-
-class WebFileEntity implements FileEntity {
-  const WebFileEntity(this._handle);
-
-  final FileSystemDirectoryHandle _handle;
-
-  @override
-  Future<bool> exists(String name) async {
-    try {
-      await _handle.getFileHandle(name).toDart;
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  @override
-  Future<void> delete(String name) => _handle.removeEntry(name).toDart;
-}
-
-class _WebCancellationToken {
-  bool isCancelled = false;
-  AbortController? _controller;
-  WebFileEntity? _fileEntity;
-  String? _fileName;
-
-  void setController(AbortController c) => _controller = c;
-
-  void setFileEntry(WebFileEntity entity, String name) {
-    _fileEntity = entity;
-    _fileName = name;
-  }
-
-  void cancel([String? reason]) {
-    isCancelled = true;
-    _controller?.abort(reason?.toJS);
-    _fileEntity?.delete(_fileName!).catchError((_) {});
   }
 }
