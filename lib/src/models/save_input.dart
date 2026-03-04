@@ -29,6 +29,7 @@ final class SaveBytesInput extends SaveInput {
 }
 
 /// Input from a file path on disk.
+/// Does not support web, as browsers cannot access arbitrary file paths.
 final class SaveFileInput extends SaveInput {
   const SaveFileInput(this.filePath);
 
