@@ -430,7 +430,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
   Stream<SaveProgress> _executeSave(
     Future<void> Function(
       _CancellationToken token,
-      StreamController<SaveProgress> controller,
+      MultiStreamController<SaveProgress> controller,
     )
     operation,
   ) {
