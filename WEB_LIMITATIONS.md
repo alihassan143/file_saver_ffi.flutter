@@ -27,13 +27,15 @@ This is a browser security constraint and cannot be overridden.
 
 ## 2. Media / PDF Files May Open Instead of Download
 
-If the server response does **not** include:
+When `saveNetwork` is called without custom headers, the library uses `<a href=url download>` (anchor element). For **cross-origin URLs**, the browser ignores the `download` attribute entirely and instead respects the server's `Content-Disposition` header.
 
-```
-Content-Disposition: attachment
-```
+The file opens in the current tab (instead of downloading) in either of these cases:
 
-browsers may open certain file types directly in the current tab instead of downloading them (PDF, images, audio, video).
+| Server `Content-Disposition` | Result                                                        |
+|------------------------------|---------------------------------------------------------------|
+| `attachment; filename="..."` | ✅ Downloaded                                                  |
+| `inline; filename="..."`     | ❌ Opens in tab                                                |
+| *(absent)*                   | ❌ Opens in tab for viewable types (PDF, images, audio, video) |
 
 ### To Force Download
 
@@ -43,7 +45,7 @@ Your server must return:
 Content-Disposition: attachment; filename="file.ext"
 ```
 
-> The `download` attribute on `<a>` elements is **not** sufficient for cross-origin files — the browser ignores it silently.
+> The `download` attribute on `<a>` elements is **not** sufficient for cross-origin files — the browser ignores it silently. Only same-origin URLs respect the `download` attribute unconditionally.
 
 ---
 
