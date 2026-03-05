@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 
 import 'package:dir_picker/dir_picker.dart' as dp;
@@ -155,9 +156,29 @@ class FileSaverWeb extends FileSaverPlatform {
         return;
       }
 
-      final blob = await response.blob().toDart;
+      final total = int.tryParse(response.headers.get('content-length') ?? '');
+      final reader = response.body!.getReader() as ReadableStreamDefaultReader;
+      final jsChunks = <JSUint8Array>[];
+      int received = 0;
+
+      while (true) {
+        if (token.isCancelled) return;
+        final result = await reader.read().toDart;
+        if (result.done) break;
+        final chunk = result.value! as JSUint8Array;
+        jsChunks.add(chunk);
+        received += (chunk.getProperty('length'.toJS) as JSNumber).toDartInt;
+        if (total != null && total > 0) {
+          controller.addSync(SaveProgressUpdate(received / total));
+        }
+      }
+
       if (token.isCancelled) return;
 
+      final blob = Blob(
+        jsChunks.toJS as JSArray<BlobPart>,
+        BlobPropertyBag(type: fileType.mimeType),
+      );
       WebUtils.triggerBlobDownload(blob, fullName);
       controller.addSync(
         SaveProgressComplete(Uri(scheme: 'browser-download', path: fullName)),
@@ -267,13 +288,14 @@ class FileSaverWeb extends FileSaverPlatform {
 
       if (token.isCancelled) return;
 
+      controller.addSync(const SaveProgressUpdate(0.1));
       final writable = await fileHandle.createWritable().toDart;
       token.setWritable(writable);
       if (token.isCancelled) return;
 
       await writable.write(fileBytes.toJS as FileSystemWriteChunkType).toDart;
-      if (token.isCancelled) return; // FSA discards .crswap automatically
-
+      if (token.isCancelled) return;
+      controller.addSync(const SaveProgressUpdate(1.0));
       await writable.close().toDart;
       token.complete();
       controller.addSync(
@@ -387,7 +409,7 @@ class FileSaverWeb extends FileSaverPlatform {
       }
 
       idleTimer?.cancel();
-      if (token.isCancelled) return; // FSA discards .crswap automatically
+      if (token.isCancelled) return;
 
       await writable.close().toDart;
       token.complete();
