@@ -64,14 +64,6 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
   }
 
   @override
-  void dispose() {
-    if (_saverInstance.address != 0) {
-      _bindings.file_saver_dispose(_saverInstance);
-      _finalizer.detach(this);
-    }
-  }
-
-  @override
   Stream<SaveProgress> saveBytes({
     required Uint8List fileBytes,
     required String fileName,

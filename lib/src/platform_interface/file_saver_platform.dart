@@ -36,9 +36,6 @@ abstract class FileSaverPlatform {
     _instance = value;
   }
 
-  /// Disposes resources
-  void dispose();
-
   /// Saves file bytes to device storage with progress streaming.
   ///
   /// **Platforms:** Android · iOS · macOS · Windows · Linux · Web

@@ -26,9 +26,6 @@ class FileSaverWeb extends FileSaverPlatform {
     FileSaverPlatform.instance = FileSaverWeb();
   }
 
-  @override
-  void dispose() {}
-
   // ─────────────────────────────────────────────────────────────────────────
   // pickDirectory
   // ─────────────────────────────────────────────────────────────────────────

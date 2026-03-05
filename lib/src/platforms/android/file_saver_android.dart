@@ -27,11 +27,6 @@ class FileSaverAndroid extends FileSaverPlatform {
   }
 
   @override
-  void dispose() {
-    _fileSaver.release();
-  }
-
-  @override
   Stream<SaveProgress> saveBytes({
     required Uint8List fileBytes,
     required String fileName,

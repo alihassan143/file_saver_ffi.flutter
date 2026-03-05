@@ -38,9 +38,6 @@ class _FileSaverStub extends FileSaverPlatform {
   final String className;
 
   @override
-  void dispose() {}
-
-  @override
   Stream<SaveProgress> saveBytes({
     required Uint8List fileBytes,
     required FileType fileType,

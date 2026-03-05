@@ -13,9 +13,6 @@ class FileSaverWeb extends FileSaverPlatform {
       FileSaverPlatform.instance = FileSaverWeb();
 
   @override
-  void dispose() {}
-
-  @override
   Stream<SaveProgress> saveBytes({
     required Uint8List fileBytes,
     required FileType fileType,

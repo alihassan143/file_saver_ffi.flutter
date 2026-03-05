@@ -17,8 +17,7 @@ export 'src/models/file_type.dart';
 export 'src/models/save_input.dart';
 export 'src/models/locations/save_location.dart';
 export 'src/models/save_progress.dart';
-// Required for dartPluginClass / pluginClass: Flutter's dart_plugin_registrant.dart
-// imports this library and calls the platform's registerWith() method.
+
 export 'src/platforms/io_platforms.dart'
     if (dart.library.html) 'src/platforms/io_stub.dart';
 export 'src/platforms/web/file_saver_web.dart'
@@ -32,12 +31,6 @@ class FileSaver {
   // ─────────────────────────────────────────────────────────────────────────
   // Active API
   // ─────────────────────────────────────────────────────────────────────────
-
-  /// Releases native resources. Called automatically on app termination,
-  /// but invoke early for timely cleanup.
-  static void dispose() {
-    _platform.dispose();
-  }
 
   /// Saves a file to device storage with progress streaming.
   ///

@@ -27,15 +27,6 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
   final _activeTokens = <int, _CancellationToken>{};
   final _conflictResolver = ConflictResolver(const IOFileEntity());
 
-  @override
-  void dispose() {
-    for (final token in _activeTokens.values) {
-      token.cancel();
-    }
-    _activeTokens.clear();
-    _httpClient.close();
-  }
-
   // ─────────────────────────────────────────────────────────────────────────
   // Save operations
   // ─────────────────────────────────────────────────────────────────────────
