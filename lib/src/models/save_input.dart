@@ -29,6 +29,7 @@ final class SaveBytesInput extends SaveInput {
 }
 
 /// Input from a file path on disk.
+/// Does not support web, as browsers cannot access arbitrary file paths.
 final class SaveFileInput extends SaveInput {
   const SaveFileInput(this.filePath);
 
@@ -38,10 +39,7 @@ final class SaveFileInput extends SaveInput {
 
 /// Input from a network URL.
 ///
-/// The file will be downloaded at the native level to avoid double storage:
-/// - Android: Streams directly from network to MediaStore OutputStream
-/// - iOS Documents: Downloads directly to the target path
-/// - iOS Photos: Downloads to tmp, saves to Photos Library, then deletes tmp
+/// The file is downloaded natively to avoid double storage.
 final class SaveNetworkInput extends SaveInput {
   const SaveNetworkInput({
     required this.url,
@@ -55,6 +53,11 @@ final class SaveNetworkInput extends SaveInput {
   /// Optional HTTP headers for the request (e.g., Authorization).
   final Map<String, String>? headers;
 
-  /// Timeout for the network request. Defaults to 60 seconds.
+  /// Inactivity timeout — how long to wait without receiving new data before
+  /// aborting. Defaults to 60 seconds.
+  ///
+  /// On Web without custom headers, the browser controls the request and this
+  /// value is ignored. On Web with custom headers, this is applied as a
+  /// connection timeout (time until the server responds).
   final Duration timeout;
 }

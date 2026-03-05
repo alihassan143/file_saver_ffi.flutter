@@ -91,7 +91,7 @@ class _SaveAsScreenState extends State<SaveAsScreen> with DemoSaveScreenMixin {
 
   Future<void> _pickDirectory() async {
     try {
-      final location = await FileSaver.instance.pickDirectory();
+      final location = await FileSaver.pickDirectory();
       if (!mounted) return;
       if (location == null) {
         showAppSnackBar(context, 'Picker cancelled', isSuccess: false);
@@ -147,7 +147,7 @@ class _SaveAsScreenState extends State<SaveAsScreen> with DemoSaveScreenMixin {
     required String fileName,
   }) async {
     try {
-      final uri = await FileSaver.instance.saveAsAsync(
+      final uri = await FileSaver.saveAsAsync(
         input: input,
         fileType: fileType,
         fileName: fileName,
@@ -183,7 +183,7 @@ class _SaveAsScreenState extends State<SaveAsScreen> with DemoSaveScreenMixin {
     required FileType fileType,
     required String fileName,
   }) async {
-    final stream = FileSaver.instance.saveAs(
+    final stream = FileSaver.saveAs(
       input: input,
       fileType: fileType,
       fileName: fileName,

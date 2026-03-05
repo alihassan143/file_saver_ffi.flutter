@@ -1,26 +1,8 @@
-import 'package:file_saver_ffi/file_saver_ffi.dart';
 import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
 
-class AppLifecycleStateObserver extends WidgetsBindingObserver {
-  final void Function()? onDetached;
-
-  AppLifecycleStateObserver({this.onDetached});
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.detached) {
-      onDetached?.call();
-    }
-  }
-}
-
 void main() {
-  final binding = WidgetsFlutterBinding.ensureInitialized();
-  binding.addObserver(
-    AppLifecycleStateObserver(onDetached: FileSaver.instance.dispose),
-  );
   runApp(const MyApp());
 }
 

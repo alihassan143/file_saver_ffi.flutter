@@ -48,7 +48,7 @@ class _SaveMultiNetworkScreenState extends State<SaveMultiNetworkScreen> {
       );
     }
 
-    final stream = FileSaver.instance.save(
+    final stream = FileSaver.save(
       input: SaveInput.network(url: item.config.downloadUrl),
       fileName: _buildFileName(item.config),
       fileType: item.config.fileType,

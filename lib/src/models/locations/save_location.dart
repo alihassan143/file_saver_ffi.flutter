@@ -163,11 +163,11 @@ enum LinuxSaveLocation implements SaveLocation {
 /// Example:
 /// ```dart
 /// // Pick once, save multiple files
-/// final location = await FileSaver.instance.pickDirectory();
+/// final location = await FileSaver.pickDirectory();
 /// if (location == null) return; // User cancelled
 ///
 /// // Save files to the selected location
-/// await FileSaver.instance.saveAsAsync(
+/// await FileSaver.saveAsAsync(
 ///   input: SaveInput.bytes(imageBytes),
 ///   fileType: ImageType.png,
 ///   fileName: 'screenshot',

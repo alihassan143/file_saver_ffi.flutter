@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 
 import 'package:dir_picker/dir_picker.dart' as dp;
 import 'package:flutter/foundation.dart';
+import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
 import 'package:web/web.dart';
 
@@ -20,11 +22,10 @@ import 'web_file_entity.dart';
 import 'web_utils.dart';
 
 class FileSaverWeb extends FileSaverPlatform {
-  static void registerWith(dynamic registrar) =>
-      FileSaverPlatform.instance = FileSaverWeb();
-
-  @override
-  void dispose() {}
+  /// Registers this class as the default instance of [FileSaverPlatform].
+  static void registerWith(Registrar registrar) {
+    FileSaverPlatform.instance = FileSaverWeb();
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // pickDirectory
@@ -132,40 +133,56 @@ class FileSaverWeb extends FileSaverPlatform {
       // Custom headers require fetch() — loads file into memory (browser limitation).
       final fetchController = AbortController();
       token.setController(fetchController);
-      final timer = Timer(
+      final connectionTimer = Timer(
         timeout,
-        () => fetchController.abort("Request timed out".toJS),
+        () => fetchController.abort("Connection timed out".toJS),
       );
 
+      final Response response;
       try {
-        final response = await WebUtils.fetch(
-          url,
-          fetchController,
-          headers: headers,
-        );
-        if (token.isCancelled) return;
-
-        if (!response.ok) {
-          controller.addSync(
-            SaveProgressError(
-              NetworkException(
-                'HTTP ${response.status}: ${response.statusText}',
-              ),
-            ),
-          );
-          return;
-        }
-
-        final blob = await response.blob().toDart;
-        if (token.isCancelled) return;
-
-        WebUtils.triggerBlobDownload(blob, fullName);
-        controller.addSync(
-          SaveProgressComplete(Uri(scheme: 'browser-download', path: fullName)),
-        );
+        response = await WebUtils.fetch(url, fetchController, headers: headers);
       } finally {
-        timer.cancel();
+        connectionTimer.cancel();
       }
+
+      if (token.isCancelled) return;
+
+      if (!response.ok) {
+        controller.addSync(
+          SaveProgressError(
+            NetworkException('HTTP ${response.status}: ${response.statusText}'),
+          ),
+        );
+        return;
+      }
+
+      final total = int.tryParse(response.headers.get('content-length') ?? '');
+      final reader = response.body!.getReader() as ReadableStreamDefaultReader;
+      final jsChunks = <JSUint8Array>[];
+      int received = 0;
+
+      while (true) {
+        if (token.isCancelled) return;
+        final result = await reader.read().toDart;
+        if (result.done) break;
+        final chunk = result.value! as JSUint8Array;
+        jsChunks.add(chunk);
+        received += (chunk.getProperty('length'.toJS) as JSNumber).toDartInt;
+        if (total != null && total > 0) {
+          controller.addSync(SaveProgressUpdate(received / total));
+        }
+      }
+
+      if (token.isCancelled) return;
+
+      final blob = Blob(
+        jsChunks.toJS as JSArray<BlobPart>,
+        BlobPropertyBag(type: fileType.mimeType),
+      );
+      WebUtils.triggerBlobDownload(blob, fullName);
+      controller.addSync(
+        SaveProgressComplete(Uri(scheme: 'browser-download', path: fullName)),
+      );
     });
   }
 
@@ -271,13 +288,14 @@ class FileSaverWeb extends FileSaverPlatform {
 
       if (token.isCancelled) return;
 
+      controller.addSync(const SaveProgressUpdate(0.1));
       final writable = await fileHandle.createWritable().toDart;
       token.setWritable(writable);
       if (token.isCancelled) return;
 
       await writable.write(fileBytes.toJS as FileSystemWriteChunkType).toDart;
-      if (token.isCancelled) return; // FSA discards .crswap automatically
-
+      if (token.isCancelled) return;
+      controller.addSync(const SaveProgressUpdate(1.0));
       await writable.close().toDart;
       token.complete();
       controller.addSync(
@@ -391,7 +409,7 @@ class FileSaverWeb extends FileSaverPlatform {
       }
 
       idleTimer?.cancel();
-      if (token.isCancelled) return; // FSA discards .crswap automatically
+      if (token.isCancelled) return;
 
       await writable.close().toDart;
       token.complete();

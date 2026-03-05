@@ -1,3 +1,28 @@
+## 0.8.0
+
+### Breaking Changes
+
+- **Static API**: `FileSaver` no longer requires an instance. All methods are now static.
+  - Before: `FileSaver.instance.saveBytes(...)` → After: `FileSaver.saveBytes(...)`
+  - Before: `FileSaver.instance.saveFile(...)` → After: `FileSaver.saveFile(...)`
+  - Before: `FileSaver.instance.saveNetwork(...)` → After: `FileSaver.saveNetwork(...)`
+  - Before: `FileSaver.instance.save(...)` → After: `FileSaver.save(...)`
+  - Before: `FileSaver.instance.saveAs(...)` → After: `FileSaver.saveAs(...)`
+  - Before: `FileSaver.instance.pickDirectory(...)` → After: `FileSaver.pickDirectory(...)`
+  - Before: `FileSaver.instance.dispose()` → After: removed (no longer needed)
+
+### Removed
+
+The following methods have been removed. Use `save()` / `saveAsync()` with a `SaveInput` instead:
+
+- `saveBytes()` → `save(input: SaveInput.bytes(...))`
+- `saveBytesAsync()` → `saveAsync(input: SaveInput.bytes(...))`
+- `saveFile()` → `save(input: SaveInput.file(...))`
+- `saveFileAsync()` → `saveAsync(input: SaveInput.file(...))`
+- `saveNetwork()` → `save(input: SaveInput.network(...))`
+- `saveNetworkAsync()` → `saveAsync(input: SaveInput.network(...))`
+- `dispose()` → removed (resources are managed automatically)
+
 ## 0.7.0
 
 ### Added

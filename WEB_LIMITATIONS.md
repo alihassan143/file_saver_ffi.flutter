@@ -88,9 +88,9 @@ The browser must use `fetch()` instead of native anchor download. This means the
 When using `saveAs()` with a directory chosen via `pickDirectory()`, the package uses the **File System Access API (FSA)** to stream data directly to disk — chunk by chunk — without ever loading the full file into memory.
 
 ```dart
-final directory = await FileSaver.instance.pickDirectory();
+final directory = await FileSaver.pickDirectory();
 
-await FileSaver.instance.saveAsAsync(
+await FileSaver.saveAsAsync(
   input: SaveNetworkInput(url: 'https://example.com/large-file.zip'),
   fileName: 'large_file',
   fileType: CustomFileType(ext: 'zip', mimeType: 'application/zip'),

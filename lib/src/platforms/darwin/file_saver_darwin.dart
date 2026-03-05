@@ -58,12 +58,9 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
 
   static final _finalizer = NativeFinalizer(_nativeFinalizerPtr);
 
-  @override
-  void dispose() {
-    if (_saverInstance.address != 0) {
-      _bindings.file_saver_dispose(_saverInstance);
-      _finalizer.detach(this);
-    }
+  /// Registers this class as the default instance of [FileSaverPlatform].
+  static void registerWith() {
+    FileSaverPlatform.instance = FileSaverDarwin();
   }
 
   @override

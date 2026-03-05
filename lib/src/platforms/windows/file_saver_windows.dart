@@ -5,6 +5,7 @@ import 'package:path_provider_windows/path_provider_windows.dart';
 
 import '../../exceptions/file_saver_exceptions.dart';
 import '../../models/locations/save_location.dart';
+import '../../platform_interface/file_saver_platform.dart';
 import '../shared/desktop_file_saver.dart';
 
 // Windows Known Folder GUIDs — mirrors WindowsKnownFolder from path_provider_windows.
@@ -21,11 +22,10 @@ const String _kDocuments = '{FDD39AD0-238F-46AF-ADB4-6C85480369C7}';
 /// Extends [DesktopFileSaver] — only [resolveDirectory] is platform-specific.
 /// Directory resolution uses [PathProviderWindows] (SHGetKnownFolderPath via dart:ffi).
 class FileSaverWindows extends DesktopFileSaver {
-  /// Placeholder required by Flutter's `dartPluginClass` mechanism.
-  ///
-  /// Called by the generated plugin registrant, but initialization is handled
-  /// uniformly via [FileSaver.instance] like all other platforms.
-  static void registerWith() {}
+  /// Registers this class as the default instance of [FileSaverPlatform].
+  static void registerWith() {
+    FileSaverPlatform.instance = FileSaverWindows();
+  }
 
   final _pathProvider = PathProviderWindows();
 

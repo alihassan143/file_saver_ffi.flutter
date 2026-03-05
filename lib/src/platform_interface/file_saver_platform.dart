@@ -17,42 +17,29 @@ import '../models/save_progress.dart';
 /// - iOS/macOS: Uses FFI to call Swift code (shared darwin source)
 /// - Android: Uses JNI to call Kotlin code
 /// - Windows: Dart FFI via path_provider_windows (SHGetKnownFolderPath) + dart:io
+/// - Linux: Dart FFI via xdg-user-dir + dart:io
+/// - Web: Uses browser APIs via dart:web + dart:js_interop
 abstract class FileSaverPlatform {
   static FileSaverPlatform? _instance;
 
   /// The current platform implementation.
   ///
-  /// Set automatically during app startup:
-  /// - **Windows**: via `dartPluginClass` → [FileSaverWindows.registerWith]
-  ///   (called by Flutter's generated plugin registrant before [runApp]).
-  /// - **Android / iOS / macOS**: via [FileSaver] initialization on first
-  ///   access to [FileSaver.instance].
+  /// Set automatically before [runApp] via each platform's [registerWith] method,
+  /// which is invoked by Flutter's generated plugin registrant.
   static FileSaverPlatform get instance {
-    assert(
-      _instance != null,
-      'FileSaverPlatform.instance is not set. '
-      'Access FileSaver.instance first to trigger initialization.',
-    );
+    assert(_instance != null, 'FileSaverPlatform.instance is not set.');
     return _instance!;
   }
 
-  /// Override the platform instance.
-  ///
-  /// Used by platform implementations (e.g. Windows via [dartPluginClass]) to
-  /// register themselves before [instance] is first accessed.
+  /// Used by each platform's [registerWith] to register itself.
   static set instance(FileSaverPlatform value) {
     _instance = value;
   }
 
-  /// Disposes resources
-  void dispose();
-
   /// Saves file bytes to device storage with progress streaming.
   ///
-  /// Parameters:
-  /// - [fileBytes]: The file data to save
-  /// - [fileType]: The type of file being saved
-  /// - [fileName]: The name of the file (without extension)
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux · Web
+  ///
   /// - [saveLocation]: Where to save the file (platform-specific, optional)
   /// - [subDir]: Optional subdirectory within the standard save location
   /// - [conflictResolution]: How to handle filename conflicts
@@ -67,15 +54,14 @@ abstract class FileSaverPlatform {
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   });
 
-  /// Saves a file from source path to device storage with progress streaming.
+  /// Saves a file from [filePath] to device storage with progress streaming.
   ///
-  /// This method reads the source file in chunks without loading it entirely
-  /// into memory, making it suitable for large files.
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux
+  /// (Web: not supported — browsers cannot access arbitrary file paths)
   ///
-  /// Parameters:
-  /// - [filePath]: Source file path (file:// URI or content:// URI on Android)
-  /// - [fileName]: Target file name without extension
-  /// - [fileType]: The type of file being saved (determines extension and MIME type)
+  /// Streams in chunks — suitable for large files.
+  ///
+  /// - [filePath]: Source path (file:// URI or content:// URI on Android)
   /// - [saveLocation]: Where to save the file (platform-specific, optional)
   /// - [subDir]: Optional subdirectory within the standard save location
   /// - [conflictResolution]: How to handle filename conflicts
@@ -93,19 +79,17 @@ abstract class FileSaverPlatform {
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   });
 
-  /// Saves a file from a network URL to device storage with progress streaming.
+  /// Downloads from [url] and saves to device storage with progress streaming.
   ///
-  /// The file is downloaded at the native level to avoid double storage:
-  /// - Android: Streams directly from network to MediaStore OutputStream
-  /// - iOS Documents: Downloads directly to the target path
-  /// - iOS Photos: Downloads to tmp, saves to Photos Library, then deletes tmp
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux · Web
   ///
-  /// Parameters:
-  /// - [url]: The URL to download the file from
-  /// - [fileName]: Target file name without extension
-  /// - [fileType]: The type of file being saved (determines extension and MIME type)
+  /// Downloaded natively to avoid double storage:
+  /// - Android: streams directly to MediaStore (zero temp files)
+  /// - iOS Documents: downloads directly to target path
+  /// - iOS Photos: temp → Photos Library → delete temp
+  ///
   /// - [headers]: Optional HTTP headers for the request
-  /// - [timeout]: Timeout for the network request (defaults to 60 seconds)
+  /// - [timeout]: Network timeout (default 60s)
   /// - [saveLocation]: Where to save the file (platform-specific, optional)
   /// - [subDir]: Optional subdirectory within the standard save location
   /// - [conflictResolution]: How to handle filename conflicts
@@ -125,22 +109,19 @@ abstract class FileSaverPlatform {
   });
 
   // ─────────────────────────────────────────────────────────────────────────
-  // User-Selected Location (SAF / Document Picker)
+  // User-Selected Location
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Pick a directory for saving files.
+  /// Shows the system directory picker.
   ///
-  /// Shows the system directory picker:
-  /// - **Android**: Storage Access Framework (ACTION_OPEN_DOCUMENT_TREE)
-  /// - **iOS**: UIDocumentPickerViewController
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux · Web
   ///
-  /// Returns [UserSelectedLocation] with the selected directory URI,
-  /// or `null` if the user cancelled.
+  /// [shouldPersist] is Android-only: if true, calls takePersistableUriPermission
+  /// so the app can write to the selected directory across restarts without re-picking.
+  /// Ignored on all other platforms.
   ///
-  /// Parameters:
-  /// - [shouldPersist]: (Android only) If `true`, automatically requests
-  ///   persistent permission for the selected directory. Default is `true`.
-  ///   On iOS, this parameter is ignored.
+  /// Returns [UserSelectedLocation], or null if cancelled.
+  /// Throws [UnsupportedError] on browsers that do not support the File System Access API.
   Future<UserSelectedLocation?> pickDirectory({
     bool shouldPersist = true,
   }) async {
@@ -157,12 +138,10 @@ abstract class FileSaverPlatform {
     }
   }
 
-  /// Save to user-selected directory with progress streaming.
+  /// Saves to a user-selected directory with progress streaming.
   ///
-  /// Parameters:
-  /// - [input]: The save input (bytes, file path, or network URL)
-  /// - [fileType]: The type of file being saved
-  /// - [fileName]: The file name without extension
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux · Web
+  ///
   /// - [saveLocation]: User-selected directory from [pickDirectory]
   /// - [conflictResolution]: How to handle filename conflicts
   ///
