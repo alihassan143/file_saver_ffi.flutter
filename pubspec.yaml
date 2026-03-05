@@ -1,6 +1,6 @@
 name: file_saver_ffi
 description: "A high-performance file saver for Flutter using FFI and JNI. Effortlessly save to gallery (images/videos) or device storage with original quality and custom album support."
-version: 0.7.0
+version: 0.8.0
 homepage: https://github.com/vanvixi/file_saver_ffi.flutter
 repository: https://github.com/vanvixi/file_saver_ffi.flutter
 issue_tracker: https://github.com/vanvixi/file_saver_ffi.flutter
@@ -21,6 +21,8 @@ environment:
 
 dependencies:
   flutter:
+    sdk: flutter
+  flutter_web_plugins:
     sdk: flutter
   ffi: ^2.2.0
   jni: ^0.15.2
@@ -44,12 +46,15 @@ flutter:
         ffiPlugin: true
         package: com.vanvixi.file_saver_ffi
         pluginClass: FileSaverFfiPlugin
+        dartPluginClass: FileSaverAndroid
       ios:
         ffiPlugin: true
         sharedDarwinSource: true
+        dartPluginClass: FileSaverDarwin
       macos:
         ffiPlugin: true
         sharedDarwinSource: true
+        dartPluginClass: FileSaverDarwin
       windows:
         dartPluginClass: FileSaverWindows
       linux:
