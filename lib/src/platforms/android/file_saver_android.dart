@@ -14,12 +14,9 @@ import '../../platform_interface/file_saver_platform.dart';
 import 'bindings.g.dart' as bindings;
 
 class FileSaverAndroid extends FileSaverPlatform {
-  FileSaverAndroid() {
-    _fileSaver = bindings.FileSaver(Jni.androidApplicationContext);
-  }
-
-  /// Native FileSaver instance
-  late final bindings.FileSaver _fileSaver;
+  /// Native FileSaver instance - lazily initialized to avoid JNI calls during
+  /// plugin registration (before JniPlugin has set up the JVM context).
+  late final bindings.FileSaver _fileSaver = bindings.FileSaver();
 
   /// Registers this class as the default instance of [FileSaverPlatform].
   static void registerWith() {
