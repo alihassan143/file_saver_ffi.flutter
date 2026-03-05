@@ -1,3 +1,12 @@
+## 0.8.1
+
+### Fixed
+
+- **Android: Fatal crash on startup** (SIGSEGV in `FindClassUnchecked`)
+    - The native `FileSaver` JNI object was eagerly constructed during plugin registration
+      (`registerWith()`), before `JniPlugin` had a chance to set up the JVM context in
+      `libdartjni.so`. This caused a null-pointer dereference inside `FindClass`.
+
 ## 0.8.0
 
 ### Breaking Changes
