@@ -132,40 +132,36 @@ class FileSaverWeb extends FileSaverPlatform {
       // Custom headers require fetch() — loads file into memory (browser limitation).
       final fetchController = AbortController();
       token.setController(fetchController);
-      final timer = Timer(
+      final connectionTimer = Timer(
         timeout,
-        () => fetchController.abort("Request timed out".toJS),
+        () => fetchController.abort("Connection timed out".toJS),
       );
 
+      final Response response;
       try {
-        final response = await WebUtils.fetch(
-          url,
-          fetchController,
-          headers: headers,
-        );
-        if (token.isCancelled) return;
-
-        if (!response.ok) {
-          controller.addSync(
-            SaveProgressError(
-              NetworkException(
-                'HTTP ${response.status}: ${response.statusText}',
-              ),
-            ),
-          );
-          return;
-        }
-
-        final blob = await response.blob().toDart;
-        if (token.isCancelled) return;
-
-        WebUtils.triggerBlobDownload(blob, fullName);
-        controller.addSync(
-          SaveProgressComplete(Uri(scheme: 'browser-download', path: fullName)),
-        );
+        response = await WebUtils.fetch(url, fetchController, headers: headers);
       } finally {
-        timer.cancel();
+        connectionTimer.cancel();
       }
+
+      if (token.isCancelled) return;
+
+      if (!response.ok) {
+        controller.addSync(
+          SaveProgressError(
+            NetworkException('HTTP ${response.status}: ${response.statusText}'),
+          ),
+        );
+        return;
+      }
+
+      final blob = await response.blob().toDart;
+      if (token.isCancelled) return;
+
+      WebUtils.triggerBlobDownload(blob, fullName);
+      controller.addSync(
+        SaveProgressComplete(Uri(scheme: 'browser-download', path: fullName)),
+      );
     });
   }
 
