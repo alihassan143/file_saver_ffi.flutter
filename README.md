@@ -35,7 +35,7 @@ practices.
 Ask anything like:
 
 - "How do I save a video to the gallery with progress tracking?"
-- "What's the difference between saveBytes and saveFile?"
+- "What's the difference between save and saveAs?"
 - "How to handle permission errors on Android 10+?"
 - "Show me examples of custom file types"
 
@@ -188,9 +188,8 @@ See **[Web – Limitations](WEB_LIMITATIONS.md)** for CORS, memory usage, and br
 import 'package:file_saver_ffi/file_saver_ffi.dart';
 
 try {
-  // Save image bytes
   final uri = await FileSaver.saveAsync(
-    fileBytes: SaveBytesInput(imageBytes),
+    input: SaveInput.bytes(imageBytes),
     fileName: 'my_image',
     fileType: ImageType.jpg,
   );
@@ -294,7 +293,7 @@ final uri = await FileSaver.saveAsync(
   input: SaveNetworkInput(
     url: 'https://example.com/video.mp4',
     headers: {'Authorization': 'Bearer token'}, // Optional headers
-    timeout: Duration(minutes: 5), // Custom timeout
+    timeout: Duration(minutes: 1), // Custom timeout
   ),
   fileName: 'downloaded_video',
   fileType: VideoType.mp4,
@@ -435,14 +434,6 @@ Future<UserSelectedLocation?> pickDirectory({bool shouldPersist = true})
 - `url`: `String` (Required)
 - `headers`: `Map<String, String>?` (Optional)
 - `timeout`: `Duration` (Default: 60s) — enforced on Web via `AbortController` when custom `headers` are used; ignored for header-less requests (anchor element)
-
-### Direct API
-
-Specific methods are still available but `save/saveAsync` is recommended.
-
-- `saveBytes` / `saveBytesAsync`
-- `saveFile` / `saveFileAsync`
-- `saveNetwork` / `saveNetworkAsync`
 
 ### SaveProgress Events
 
