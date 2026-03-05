@@ -49,9 +49,13 @@ class FileSaverFfiPlugin : FlutterPlugin, ActivityAware, RequestPermissionsResul
     // FlutterPlugin
     // ─────────────────────────────────────────────────────────────────────────
 
-    override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {}
+    override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        FileSaver.appContext = binding.applicationContext
+    }
 
-    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {}
+    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        FileSaver.appContext = null
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // ActivityAware

@@ -36,6 +36,200 @@ import 'dart:core' show Object, String, bool, double, int;
 import 'package:jni/_internal.dart' as jni$_;
 import 'package:jni/jni.dart' as jni$_;
 
+/// from: `com.vanvixi.file_saver_ffi.FileSaver$Companion`
+class FileSaver$Companion extends jni$_.JObject {
+  @jni$_.internal
+  @core$_.override
+  final jni$_.JType<FileSaver$Companion> $type;
+
+  @jni$_.internal
+  FileSaver$Companion.fromReference(jni$_.JReference reference)
+    : $type = type,
+      super.fromReference(reference);
+
+  static final _class = jni$_.JClass.forName(
+    r'com/vanvixi/file_saver_ffi/FileSaver$Companion',
+  );
+
+  /// The type which includes information such as the signature of this class.
+  static const jni$_.JType<FileSaver$Companion?> nullableType =
+      $FileSaver$Companion$NullableType$();
+
+  /// The type which includes information such as the signature of this class.
+  static const jni$_.JType<FileSaver$Companion> type =
+      $FileSaver$Companion$Type$();
+  static final _id_getStoragePermissionHandler = _class.instanceMethodId(
+    r'getStoragePermissionHandler',
+    r'()Lcom/vanvixi/file_saver_ffi/utils/StoragePermissionHandler;',
+  );
+
+  static final _getStoragePermissionHandler =
+      jni$_.ProtectedJniExtensions.lookup<
+            jni$_.NativeFunction<
+              jni$_.JniResult Function(
+                jni$_.Pointer<jni$_.Void>,
+                jni$_.JMethodIDPtr,
+              )
+            >
+          >('globalEnv_CallObjectMethod')
+          .asFunction<
+            jni$_.JniResult Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+            )
+          >();
+
+  /// from: `public final com.vanvixi.file_saver_ffi.utils.StoragePermissionHandler getStoragePermissionHandler()`
+  /// The returned object must be released after use, by calling the [release] method.
+  jni$_.JObject? getStoragePermissionHandler() {
+    return _getStoragePermissionHandler(
+      reference.pointer,
+      _id_getStoragePermissionHandler as jni$_.JMethodIDPtr,
+    ).object<jni$_.JObject?>(const jni$_.$JObject$NullableType$());
+  }
+
+  static final _id_setStoragePermissionHandler = _class.instanceMethodId(
+    r'setStoragePermissionHandler',
+    r'(Lcom/vanvixi/file_saver_ffi/utils/StoragePermissionHandler;)V',
+  );
+
+  static final _setStoragePermissionHandler =
+      jni$_.ProtectedJniExtensions.lookup<
+            jni$_.NativeFunction<
+              jni$_.JThrowablePtr Function(
+                jni$_.Pointer<jni$_.Void>,
+                jni$_.JMethodIDPtr,
+                jni$_.VarArgs<(jni$_.Pointer<jni$_.Void>,)>,
+              )
+            >
+          >('globalEnv_CallVoidMethod')
+          .asFunction<
+            jni$_.JThrowablePtr Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+              jni$_.Pointer<jni$_.Void>,
+            )
+          >();
+
+  /// from: `public final void setStoragePermissionHandler(com.vanvixi.file_saver_ffi.utils.StoragePermissionHandler storagePermissionHandler)`
+  void setStoragePermissionHandler(jni$_.JObject? storagePermissionHandler) {
+    final _$storagePermissionHandler =
+        storagePermissionHandler?.reference ?? jni$_.jNullReference;
+    _setStoragePermissionHandler(
+      reference.pointer,
+      _id_setStoragePermissionHandler as jni$_.JMethodIDPtr,
+      _$storagePermissionHandler.pointer,
+    ).check();
+  }
+
+  static final _id_new$ = _class.constructorId(
+    r'(Lkotlin/jvm/internal/DefaultConstructorMarker;)V',
+  );
+
+  static final _new$ =
+      jni$_.ProtectedJniExtensions.lookup<
+            jni$_.NativeFunction<
+              jni$_.JniResult Function(
+                jni$_.Pointer<jni$_.Void>,
+                jni$_.JMethodIDPtr,
+                jni$_.VarArgs<(jni$_.Pointer<jni$_.Void>,)>,
+              )
+            >
+          >('globalEnv_NewObject')
+          .asFunction<
+            jni$_.JniResult Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+              jni$_.Pointer<jni$_.Void>,
+            )
+          >();
+
+  /// from: `synthetic public void <init>(kotlin.jvm.internal.DefaultConstructorMarker defaultConstructorMarker)`
+  /// The returned object must be released after use, by calling the [release] method.
+  factory FileSaver$Companion(jni$_.JObject? defaultConstructorMarker) {
+    final _$defaultConstructorMarker =
+        defaultConstructorMarker?.reference ?? jni$_.jNullReference;
+    return FileSaver$Companion.fromReference(
+      _new$(
+        _class.reference.pointer,
+        _id_new$ as jni$_.JMethodIDPtr,
+        _$defaultConstructorMarker.pointer,
+      ).reference,
+    );
+  }
+}
+
+final class $FileSaver$Companion$NullableType$
+    extends jni$_.JType<FileSaver$Companion?> {
+  @jni$_.internal
+  const $FileSaver$Companion$NullableType$();
+
+  @jni$_.internal
+  @core$_.override
+  String get signature => r'Lcom/vanvixi/file_saver_ffi/FileSaver$Companion;';
+
+  @jni$_.internal
+  @core$_.override
+  FileSaver$Companion? fromReference(jni$_.JReference reference) =>
+      reference.isNull ? null : FileSaver$Companion.fromReference(reference);
+  @jni$_.internal
+  @core$_.override
+  jni$_.JType get superType => const jni$_.$JObject$Type$();
+
+  @jni$_.internal
+  @core$_.override
+  jni$_.JType<FileSaver$Companion?> get nullableType => this;
+
+  @jni$_.internal
+  @core$_.override
+  final superCount = 1;
+
+  @core$_.override
+  int get hashCode => ($FileSaver$Companion$NullableType$).hashCode;
+
+  @core$_.override
+  bool operator ==(Object other) {
+    return other.runtimeType == ($FileSaver$Companion$NullableType$) &&
+        other is $FileSaver$Companion$NullableType$;
+  }
+}
+
+final class $FileSaver$Companion$Type$
+    extends jni$_.JType<FileSaver$Companion> {
+  @jni$_.internal
+  const $FileSaver$Companion$Type$();
+
+  @jni$_.internal
+  @core$_.override
+  String get signature => r'Lcom/vanvixi/file_saver_ffi/FileSaver$Companion;';
+
+  @jni$_.internal
+  @core$_.override
+  FileSaver$Companion fromReference(jni$_.JReference reference) =>
+      FileSaver$Companion.fromReference(reference);
+  @jni$_.internal
+  @core$_.override
+  jni$_.JType get superType => const jni$_.$JObject$Type$();
+
+  @jni$_.internal
+  @core$_.override
+  jni$_.JType<FileSaver$Companion?> get nullableType =>
+      const $FileSaver$Companion$NullableType$();
+
+  @jni$_.internal
+  @core$_.override
+  final superCount = 1;
+
+  @core$_.override
+  int get hashCode => ($FileSaver$Companion$Type$).hashCode;
+
+  @core$_.override
+  bool operator ==(Object other) {
+    return other.runtimeType == ($FileSaver$Companion$Type$) &&
+        other is $FileSaver$Companion$Type$;
+  }
+}
+
 /// from: `com.vanvixi.file_saver_ffi.FileSaver`
 class FileSaver extends jni$_.JObject {
   @jni$_.internal
@@ -57,7 +251,17 @@ class FileSaver extends jni$_.JObject {
 
   /// The type which includes information such as the signature of this class.
   static const jni$_.JType<FileSaver> type = $FileSaver$Type$();
-  static final _id_new$ = _class.constructorId(r'(Landroid/content/Context;)V');
+  static final _id_Companion = _class.staticFieldId(
+    r'Companion',
+    r'Lcom/vanvixi/file_saver_ffi/FileSaver$Companion;',
+  );
+
+  /// from: `static public final com.vanvixi.file_saver_ffi.FileSaver$Companion Companion`
+  /// The returned object must be released after use, by calling the [release] method.
+  static FileSaver$Companion get Companion =>
+      _id_Companion.get(_class, const $FileSaver$Companion$Type$());
+
+  static final _id_new$ = _class.constructorId(r'()V');
 
   static final _new$ =
       jni$_.ProtectedJniExtensions.lookup<
@@ -65,7 +269,6 @@ class FileSaver extends jni$_.JObject {
               jni$_.JniResult Function(
                 jni$_.Pointer<jni$_.Void>,
                 jni$_.JMethodIDPtr,
-                jni$_.VarArgs<(jni$_.Pointer<jni$_.Void>,)>,
               )
             >
           >('globalEnv_NewObject')
@@ -73,20 +276,14 @@ class FileSaver extends jni$_.JObject {
             jni$_.JniResult Function(
               jni$_.Pointer<jni$_.Void>,
               jni$_.JMethodIDPtr,
-              jni$_.Pointer<jni$_.Void>,
             )
           >();
 
-  /// from: `public void <init>(android.content.Context context)`
+  /// from: `public void <init>()`
   /// The returned object must be released after use, by calling the [release] method.
-  factory FileSaver(jni$_.JObject context) {
-    final _$context = context.reference;
+  factory FileSaver() {
     return FileSaver.fromReference(
-      _new$(
-        _class.reference.pointer,
-        _id_new$ as jni$_.JMethodIDPtr,
-        _$context.pointer,
-      ).reference,
+      _new$(_class.reference.pointer, _id_new$ as jni$_.JMethodIDPtr).reference,
     );
   }
 

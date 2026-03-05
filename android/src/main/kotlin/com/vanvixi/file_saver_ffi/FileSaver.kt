@@ -26,12 +26,13 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
-class FileSaver(context: Context) {
-    private val context = context.applicationContext
-    private val imageSaver = ImageSaver(context)
-    private val videoSaver = VideoSaver(context)
-    private val audioSaver = AudioSaver(context)
-    private val customFileSaver = CustomFileSaver(context)
+class FileSaver() {
+    private val context: Context
+        get() = appContext ?: error("FileSaver not initialized. FileSaverFfiPlugin must be attached first.")
+    private val imageSaver get() = ImageSaver(context)
+    private val videoSaver get() = VideoSaver(context)
+    private val audioSaver get() = AudioSaver(context)
+    private val customFileSaver get() = CustomFileSaver(context)
 
     // Job tracking for cancellation support
     private val activeJobs = ConcurrentHashMap<Long, Job>()
@@ -39,9 +40,16 @@ class FileSaver(context: Context) {
 
     companion object {
         /**
+         * Application context stored by [FileSaverFfiPlugin.onAttachedToEngine].
+         * Must be set before any [FileSaver] instance is used.
+         */
+        @Volatile
+        internal var appContext: Context? = null
+
+        /**
          * Static permission handler set by [FileSaverFfiPlugin] when Activity is available.
          *
-         * Bridges [FileSaver] (created via JNI with only Context) to the plugin layer
+         * Bridges [FileSaver] (created via JNI without Context) to the plugin layer
          * (which has Activity access for showing permission dialogs).
          */
         @Volatile
