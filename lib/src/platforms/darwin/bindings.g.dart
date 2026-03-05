@@ -8,21 +8,17 @@
 // ignore_for_file: type=lint, unused_import
 import 'dart:ffi' as ffi;
 
-/// Bindings for Darwin (iOS/macOS) `file_saver_ffi.h`.
-///
-/// Regenerate bindings with `fvm dart run ffigen --config ffigen.yaml`.
-///
-class FileSaverFfiBindings {
+class FileSaverFFI {
   /// Holds the symbol lookup function.
   final ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName)
   _lookup;
 
   /// The symbols are looked up in [dynamicLibrary].
-  FileSaverFfiBindings(ffi.DynamicLibrary dynamicLibrary)
+  FileSaverFFI(ffi.DynamicLibrary dynamicLibrary)
     : _lookup = dynamicLibrary.lookup;
 
   /// The symbols are looked up with [lookup].
-  FileSaverFfiBindings.fromLookup(
+  FileSaverFFI.fromLookup(
     ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName) lookup,
   ) : _lookup = lookup;
 
