@@ -15,12 +15,12 @@ void main() {
     output: Output(
       dartFile: packageRoot.resolve('lib/src/platforms/darwin/bindings.g.dart'),
       style: DynamicLibraryBindings(wrapperName: 'FileSaverFFI'),
-      preamble: '''
-                // ignore_for_file: always_specify_types
-                // ignore_for_file: camel_case_types
-                // ignore_for_file: non_constant_identifier_names
+      // preamble: '''
+      //           // ignore_for_file: always_specify_types
+      //           // ignore_for_file: camel_case_types
+      //           // ignore_for_file: non_constant_identifier_names
 
-                ''',
+      //           ''',
       commentType: CommentType(CommentStyle.any, CommentLength.full),
     ),
     headers: Headers(
@@ -41,6 +41,13 @@ void main() {
         'file_saver_cancel',
         'file_saver_dispose',
       }),
+      rename: (decl) {
+        final stripped = decl.originalName.replaceFirst('file_saver_', '');
+        return stripped.replaceAllMapped(
+          RegExp(r'_([a-z])'),
+          (m) => m.group(1)!.toUpperCase(),
+        );
+      },
     ),
   ).generate();
 }

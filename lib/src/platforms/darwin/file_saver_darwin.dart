@@ -15,6 +15,8 @@ import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
 import 'bindings.g.dart';
 
+typedef NativeVoidFun = NativeFunction<Void Function(Pointer<Void>)>;
+
 /// FileSaver implementation for Apple platforms (iOS and macOS).
 ///
 /// Uses shared darwin code with platform-specific behaviors:
@@ -26,9 +28,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
     _fileSaver = FileSaverFFI(dylib);
 
     // Initialize Dart API DL for NativePort communication
-    final initResult = _fileSaver.file_saver_init_dart_api_dl(
-      NativeApi.initializeApiDLData,
-    );
+    final initResult = _fileSaver.initDartApiDl(NativeApi.initializeApiDLData);
     if (initResult != 0) {
       throw const PlatformException(
         'Failed to initialize Dart API DL',
@@ -36,7 +36,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
       );
     }
 
-    _saverInstance = _fileSaver.file_saver_init();
+    _saverInstance = _fileSaver.init();
 
     if (_saverInstance.address != 0) {
       _finalizer.attach(this, _saverInstance.cast());
@@ -48,9 +48,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
 
   static final int _disposeAddress =
       DynamicLibrary.process()
-          .lookup<NativeFunction<Void Function(Pointer<Void>)>>(
-            'file_saver_dispose',
-          )
+          .lookup<NativeVoidFun>('file_saver_dispose')
           .address;
 
   static final Pointer<NativeFinalizerFunction> _nativeFinalizerPtr =
@@ -109,7 +107,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
       });
 
       // Call native function - returns tokenId for cancellation
-      final tokenId = _fileSaver.file_saver_save_bytes(
+      final tokenId = _fileSaver.saveBytes(
         _saverInstance,
         dataPointer,
         fileBytes.length,
@@ -123,7 +121,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
       );
 
       controller.onCancel = () {
-        _fileSaver.file_saver_cancel(tokenId);
+        _fileSaver.cancel(tokenId);
         // Fallback cleanup if native doesn't respond with Cancelled event
         Future.delayed(const Duration(milliseconds: 500), cleanup);
       };
@@ -174,7 +172,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
       });
 
       // Call native function - returns tokenId for cancellation
-      final tokenId = _fileSaver.file_saver_save_file(
+      final tokenId = _fileSaver.saveFile(
         _saverInstance,
         filePathCStr.cast(),
         fileNameCStr.cast(),
@@ -187,7 +185,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
       );
 
       controller.onCancel = () {
-        _fileSaver.file_saver_cancel(tokenId);
+        _fileSaver.cancel(tokenId);
         // Fallback cleanup if native doesn't respond with Cancelled event
         Future.delayed(const Duration(milliseconds: 500), cleanup);
       };
@@ -244,7 +242,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
       });
 
       // Call native function - returns tokenId for cancellation
-      final tokenId = _fileSaver.file_saver_save_network(
+      final tokenId = _fileSaver.saveNetwork(
         _saverInstance,
         urlCStr.cast(),
         headersJsonCStr?.cast() ?? nullptr,
@@ -259,7 +257,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
       );
 
       controller.onCancel = () {
-        _fileSaver.file_saver_cancel(tokenId);
+        _fileSaver.cancel(tokenId);
         // Fallback cleanup if native doesn't respond with Cancelled event
         Future.delayed(const Duration(milliseconds: 500), cleanup);
       };
@@ -336,7 +334,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
         if (isTerminal(event)) cleanup();
       });
 
-      final tokenId = _fileSaver.file_saver_save_bytes_as(
+      final tokenId = _fileSaver.saveBytesAs(
         _saverInstance,
         dataPointer,
         fileBytes.length,
@@ -348,7 +346,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
       );
 
       controller.onCancel = () {
-        _fileSaver.file_saver_cancel(tokenId);
+        _fileSaver.cancel(tokenId);
         Future.delayed(const Duration(milliseconds: 500), cleanup);
       };
     });
@@ -387,7 +385,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
         if (isTerminal(event)) cleanup();
       });
 
-      final tokenId = _fileSaver.file_saver_save_file_as(
+      final tokenId = _fileSaver.saveFileAs(
         _saverInstance,
         filePathCStr.cast(),
         dirUriCStr.cast(),
@@ -398,7 +396,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
       );
 
       controller.onCancel = () {
-        _fileSaver.file_saver_cancel(tokenId);
+        _fileSaver.cancel(tokenId);
         Future.delayed(const Duration(milliseconds: 500), cleanup);
       };
     });
@@ -443,7 +441,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
         if (isTerminal(event)) cleanup();
       });
 
-      final tokenId = _fileSaver.file_saver_save_network_as(
+      final tokenId = _fileSaver.saveNetworkAs(
         _saverInstance,
         urlCStr.cast(),
         headersJsonCStr?.cast() ?? nullptr,
@@ -456,7 +454,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
       );
 
       controller.onCancel = () {
-        _fileSaver.file_saver_cancel(tokenId);
+        _fileSaver.cancel(tokenId);
         Future.delayed(const Duration(milliseconds: 500), cleanup);
       };
     });
