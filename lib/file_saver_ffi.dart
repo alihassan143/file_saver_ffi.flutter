@@ -135,6 +135,20 @@ class FileSaver {
     return result;
   }
 
+  /// Opens a saved file with the appropriate system app.
+  ///
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux
+  /// **Web:** throws [UnsupportedError] — files are already browser-downloaded.
+  ///
+  /// [uri] should be the [Uri] returned from [saveAsync] or [SaveProgressComplete.uri].
+  /// [mimeType] is optional. On Android, it is queried from ContentResolver automatically
+  /// if not provided.
+  ///
+  /// **Note (iOS):** `ph://` URIs (Photos Library assets) will open the Photos app
+  /// at its root level — deep-linking to a specific asset is not supported by iOS.
+  static Future<void> openFile(Uri uri, {String? mimeType}) =>
+      _platform.openFile(uri, mimeType: mimeType);
+
   /// Shows the system directory picker.
   ///
   /// **Platforms:** Android · iOS · macOS · Windows · Linux · Web
