@@ -1,3 +1,11 @@
+## 0.8.3
+
+### Added
+
+- **`FileSaver.canOpenFile(Uri)`** — Checks whether the file at [uri] is accessible for reading.
+  - Supported on Android, iOS, macOS, Windows, and Linux.
+  - Not supported on Web.
+
 ## 0.8.2
 
 ### Added
