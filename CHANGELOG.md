@@ -3,8 +3,8 @@
 ### Added
 
 - **`FileSaver.openFile(Uri)`** — opens a saved file with the system viewer.
-  Supported on Android, iOS, macOS, Windows, and Linux.
-  Not supported on Web (files are already handled by the browser download mechanism).
+  - Supported on Android, iOS, macOS, Windows, and Linux.
+  - Not supported on Web (files are already handled by the browser download mechanism).
 
 ## 0.8.1
 
