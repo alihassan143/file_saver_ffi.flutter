@@ -287,6 +287,44 @@ class FileSaver extends jni$_.JObject {
     );
   }
 
+  static final _id_openFile = _class.instanceMethodId(
+    r'openFile',
+    r'(Ljava/lang/String;Ljava/lang/String;)V',
+  );
+
+  static final _openFile =
+      jni$_.ProtectedJniExtensions.lookup<
+            jni$_.NativeFunction<
+              jni$_.JThrowablePtr Function(
+                jni$_.Pointer<jni$_.Void>,
+                jni$_.JMethodIDPtr,
+                jni$_.VarArgs<
+                  (jni$_.Pointer<jni$_.Void>, jni$_.Pointer<jni$_.Void>)
+                >,
+              )
+            >
+          >('globalEnv_CallVoidMethod')
+          .asFunction<
+            jni$_.JThrowablePtr Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+            )
+          >();
+
+  /// from: `public fun openFile(uri: kotlin.String, mimeType: kotlin.String?): kotlin.Unit`
+  void openFile(jni$_.JString string, jni$_.JString? string1) {
+    final _$string = string.reference;
+    final _$string1 = string1?.reference ?? jni$_.jNullReference;
+    _openFile(
+      reference.pointer,
+      _id_openFile as jni$_.JMethodIDPtr,
+      _$string.pointer,
+      _$string1.pointer,
+    ).check();
+  }
+
   static final _id_cancelOperation = _class.instanceMethodId(
     r'cancelOperation',
     r'(J)V',

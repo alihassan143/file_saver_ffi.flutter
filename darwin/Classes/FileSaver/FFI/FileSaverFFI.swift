@@ -3,6 +3,7 @@ import Foundation
 
 #if os(iOS)
 import UIKit
+import Photos
 #elseif os(macOS)
 import AppKit
 #endif
@@ -343,6 +344,148 @@ public func fileSaverSaveNetwork(
     }
 
     return tokenId
+}
+
+// MARK: - Open File helpers
+
+#if os(iOS)
+/// Returns the topmost presented view controller, used as the presenter for previews and share sheets.
+private func fileSaverTopViewController() -> UIViewController? {
+    guard let scene = UIApplication.shared.connectedScenes
+        .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+          let window = scene.windows.first(where: { $0.isKeyWindow })
+    else { return nil }
+
+    var topVC = window.rootViewController
+    while let presented = topVC?.presentedViewController {
+        topVC = presented
+    }
+    return topVC
+}
+
+/// Delegate for UIDocumentInteractionController — retains the controller and supplies the presenter.
+private final class FileSaverDocumentDelegate: NSObject, UIDocumentInteractionControllerDelegate {
+    // Retained until preview is dismissed.
+    var docController: UIDocumentInteractionController?
+
+    func documentInteractionControllerViewControllerForPreview(
+        _ controller: UIDocumentInteractionController
+    ) -> UIViewController {
+        return fileSaverTopViewController() ?? UIViewController()
+    }
+
+    func documentInteractionControllerDidEndPreview(
+        _ controller: UIDocumentInteractionController
+    ) {
+        docController = nil // release
+    }
+}
+
+// Held strongly so the delegate isn't deallocated while the preview is open.
+private var _fileSaverDocDelegate: FileSaverDocumentDelegate?
+
+/// Presents a QuickLook/system preview via UIDocumentInteractionController.
+/// Falls back to UIActivityViewController if the preview cannot be shown.
+private func fileSaverPresentPreview(url: URL, from viewController: UIViewController) {
+    let delegate = FileSaverDocumentDelegate()
+    let doc = UIDocumentInteractionController(url: url)
+    delegate.docController = doc
+    doc.delegate = delegate
+    _fileSaverDocDelegate = delegate
+
+    if !doc.presentPreview(animated: true) {
+        _fileSaverDocDelegate = nil
+        // Fallback: share sheet (e.g. for file types without a QuickLook preview)
+        let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        if let popover = activityVC.popoverPresentationController {
+            popover.sourceView = viewController.view
+            popover.sourceRect = CGRect(
+                x: viewController.view.bounds.midX,
+                y: viewController.view.bounds.midY,
+                width: 0,
+                height: 0
+            )
+            popover.permittedArrowDirections = []
+        }
+        viewController.present(activityVC, animated: true)
+    }
+}
+
+/// Fetches the underlying file URL from a ph:// Photos Library asset and opens a preview.
+///
+/// - Images: resolved via PHContentEditingInput.fullSizeImageURL
+/// - Videos/audio: resolved via PHImageManager.requestAVAsset → AVURLAsset.url
+private func fileSaverOpenPhAsset(_ localId: String, from viewController: UIViewController) {
+    // Dart's Uri.parse() lowercases the host portion of URIs (ph://UUID/...).
+    // iOS localIdentifiers use uppercase UUIDs, so we restore the original case.
+    let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: [localId.uppercased()], options: nil)
+    guard let asset = fetchResult.firstObject else { return }
+
+    switch asset.mediaType {
+    case .image:
+        let options = PHContentEditingInputRequestOptions()
+        options.isNetworkAccessAllowed = true
+        asset.requestContentEditingInput(with: options) { input, _ in
+            guard let fileURL = input?.fullSizeImageURL else { return }
+            DispatchQueue.main.async {
+                fileSaverPresentPreview(url: fileURL, from: viewController)
+            }
+        }
+
+    case .video, .audio:
+        PHImageManager.default().requestAVAsset(forVideo: asset, options: nil) { avAsset, _, _ in
+            guard let urlAsset = avAsset as? AVURLAsset else { return }
+            DispatchQueue.main.async {
+                fileSaverPresentPreview(url: urlAsset.url, from: viewController)
+            }
+        }
+
+    default:
+        break
+    }
+}
+
+/// Presents UIActivityViewController (share/open-with sheet) as a fallback when QuickLook preview is unavailable.
+private func fileSaverPresentActivityVC(_ items: [Any], from viewController: UIViewController) {
+    let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
+    if let popover = activityVC.popoverPresentationController {
+        popover.sourceView = viewController.view
+        popover.sourceRect = CGRect(
+            x: viewController.view.bounds.midX,
+            y: viewController.view.bounds.midY,
+            width: 0,
+            height: 0
+        )
+        popover.permittedArrowDirections = []
+    }
+    viewController.present(activityVC, animated: true)
+}
+#endif
+
+@_cdecl("file_saver_open_file")
+public func fileSaverOpenFile(_ uriString: UnsafePointer<CChar>) {
+    let uri = String(cString: uriString)
+    DispatchQueue.main.async {
+#if os(iOS)
+        guard let viewController = fileSaverTopViewController() else { return }
+
+        if uri.hasPrefix("ph://") {
+            // ph:// is an internal Photos framework scheme — UIApplication.shared.open()
+            // does not work with it. Resolve the underlying file URL via PHAsset and
+            // show a QuickLook/system preview instead.
+            let localId = String(uri.dropFirst("ph://".count))
+            fileSaverOpenPhAsset(localId, from: viewController)
+        } else if let url = URL(string: uri) {
+            // Use UIDocumentInteractionController (QuickLook preview) for file:// URIs.
+            // Falls back to UIActivityViewController for unsupported file types.
+            fileSaverPresentPreview(url: url, from: viewController)
+        }
+#elseif os(macOS)
+        if let url = URL(string: uri) {
+            NSWorkspace.shared.open(url)
+        }
+#endif
+    }
 }
 
 @_cdecl("file_saver_save_bytes_as")

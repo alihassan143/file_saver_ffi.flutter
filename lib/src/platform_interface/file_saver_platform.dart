@@ -197,6 +197,18 @@ abstract class FileSaverPlatform {
     }
   }
 
+  /// Opens a saved file with the appropriate system app.
+  ///
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux
+  /// **Web:** throws [UnsupportedError] — files are already browser-downloaded.
+  ///
+  /// [uri] should be the [Uri] returned from [saveAsync] or [SaveProgressComplete.uri].
+  /// [mimeType] is optional. On Android, it is queried from ContentResolver automatically
+  /// if not provided.
+  Future<void> openFile(Uri uri, {String? mimeType}) {
+    throw UnimplementedError('openFile is not implemented on this platform');
+  }
+
   /// Checks if [SaveProgress] event is terminal.
   @protected
   bool isTerminal(SaveProgress e) =>

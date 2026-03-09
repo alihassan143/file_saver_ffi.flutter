@@ -40,6 +40,7 @@ void main() {
         'file_saver_save_network_as',
         'file_saver_cancel',
         'file_saver_dispose',
+        'file_saver_open_file',
       }),
       rename: (decl) {
         final stripped = decl.originalName.replaceFirst('file_saver_', '');

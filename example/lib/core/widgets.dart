@@ -1,3 +1,4 @@
+import 'package:file_saver_ffi/file_saver_ffi.dart';
 import 'package:flutter/material.dart';
 
 import 'types.dart';
@@ -261,6 +262,29 @@ class ApiModeSelector extends StatelessWidget {
         onSelectionChanged: enabled ? (s) => onChanged(s.first) : null,
         showSelectedIcon: false,
       ),
+    );
+  }
+}
+
+/// Button to open the saved file with the system's default app
+class OpenFileButton extends StatelessWidget {
+  const OpenFileButton({super.key, required this.uri, required this.onError});
+
+  final Uri uri;
+  final void Function(Object error) onError;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: () async {
+        try {
+          await FileSaver.openFile(uri);
+        } catch (e) {
+          onError(e);
+        }
+      },
+      icon: const Icon(Icons.open_in_new),
+      label: const Text('Open File'),
     );
   }
 }

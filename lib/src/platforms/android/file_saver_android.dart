@@ -454,6 +454,13 @@ class FileSaverAndroid extends FileSaverPlatform {
     });
   }
 
+  @override
+  Future<void> openFile(Uri uri, {String? mimeType}) async {
+    final jUri = uri.toString().toJString();
+    final jMimeType = mimeType?.toJString();
+    _fileSaver.openFile(jUri, jMimeType);
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // Private Methods
   // ─────────────────────────────────────────────────────────────────────────

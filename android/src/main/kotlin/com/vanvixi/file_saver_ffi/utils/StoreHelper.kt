@@ -89,7 +89,7 @@ object StoreHelper {
             }
 
             SaveLocation.DOWNLOADS -> {
-                val uri = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                val uri = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
                 uri to buildDir(Environment.DIRECTORY_DOWNLOADS, subDir)
             }
 

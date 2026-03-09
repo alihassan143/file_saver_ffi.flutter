@@ -247,7 +247,14 @@ class _SaveScreenState extends State<SaveScreen> with DemoSaveScreenMixin {
             ],
             if (isLoading && progress > 0) ProgressSection(progress: progress),
             if (mediaSize > 0) FileSizeCard(sizeInBytes: mediaSize),
-            if (savedFilePath != null) SuccessCard(savedPath: savedFilePath!),
+            if (savedFilePath != null) ...[
+              SuccessCard(savedPath: savedFilePath!),
+              const SizedBox(height: 8),
+              OpenFileButton(
+                uri: Uri.parse(savedFilePath!),
+                onError: showError,
+              ),
+            ],
           ],
         ),
       ),
