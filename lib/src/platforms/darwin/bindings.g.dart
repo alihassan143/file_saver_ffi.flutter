@@ -530,4 +530,28 @@ class FileSaverFFI {
               int,
             )
           >();
+
+  /// Opens the saved file with the appropriate system viewer.
+  ///
+  /// - iOS `file://`: Opens a QuickLook inline preview via UIDocumentInteractionController.
+  /// Falls back to UIActivityViewController (share/open-with sheet) for
+  /// file types without a QuickLook provider.
+  /// - iOS `ph://`:   Resolves the PHAsset's underlying file URL (image via
+  /// PHContentEditingInput, video/audio via AVURLAsset), then presents
+  /// a QuickLook preview with the same fallback as above.
+  /// ph:// is an internal Photos framework scheme — UIApplication.shared.open()
+  /// does not work with it.
+  /// - macOS: Opens the file with NSWorkspace.shared.open().
+  ///
+  /// @param uri URI string returned from save operations (file://, ph://)
+  void openFile(ffi.Pointer<ffi.Char> uri) {
+    return _openFile(uri);
+  }
+
+  late final _openFilePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Char>)>>(
+        'file_saver_open_file',
+      );
+  late final _openFile =
+      _openFilePtr.asFunction<void Function(ffi.Pointer<ffi.Char>)>();
 }
