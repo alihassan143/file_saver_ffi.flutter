@@ -241,4 +241,14 @@ uint64_t file_saver_save_network_as(
 /// @param uri URI string returned from save operations (file://, ph://)
 void file_saver_open_file(const char* uri);
 
+/// Checks whether the file at the given URI is accessible for reading.
+///
+/// - iOS `file://`: FileManager.isReadableFile(atPath:)
+/// - iOS `ph://`: PHAsset.fetchAssets — check if asset exists in Photos Library
+/// - macOS `file://`: FileManager.isReadableFile(atPath:)
+///
+/// @param uri URI string returned from save operations (file://, ph://)
+/// @return true if the file is accessible, false otherwise
+bool file_saver_can_open_file(const char* uri);
+
 #endif

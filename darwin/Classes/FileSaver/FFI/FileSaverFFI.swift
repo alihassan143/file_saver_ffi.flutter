@@ -488,6 +488,22 @@ public func fileSaverOpenFile(_ uriString: UnsafePointer<CChar>) {
     }
 }
 
+@_cdecl("file_saver_can_open_file")
+public func fileSaverCanOpenFile(_ uriString: UnsafePointer<CChar>) -> Bool {
+    let uri = String(cString: uriString)
+#if os(iOS)
+    if uri.hasPrefix("ph://") {
+        let localId = String(uri.dropFirst("ph://".count))
+        let fetchResult = PHAsset.fetchAssets(
+            withLocalIdentifiers: [localId.uppercased()], options: nil
+        )
+        return fetchResult.firstObject != nil
+    }
+#endif
+    guard let url = URL(string: uri), url.isFileURL else { return false }
+    return FileManager.default.isReadableFile(atPath: url.path)
+}
+
 @_cdecl("file_saver_save_bytes_as")
 public func fileSaverSaveBytesAs(
     _ instanceId: UInt,

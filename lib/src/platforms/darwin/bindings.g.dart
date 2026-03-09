@@ -554,4 +554,23 @@ class FileSaverFFI {
       );
   late final _openFile =
       _openFilePtr.asFunction<void Function(ffi.Pointer<ffi.Char>)>();
+
+  /// Checks whether the file at the given URI is accessible for reading.
+  ///
+  /// - iOS `file://`: FileManager.isReadableFile(atPath:)
+  /// - iOS `ph://`: PHAsset.fetchAssets — check if asset exists in Photos Library
+  /// - macOS `file://`: FileManager.isReadableFile(atPath:)
+  ///
+  /// @param uri URI string returned from save operations (file://, ph://)
+  /// @return true if the file is accessible, false otherwise
+  bool canOpenFile(ffi.Pointer<ffi.Char> uri) {
+    return _canOpenFile(uri);
+  }
+
+  late final _canOpenFilePtr =
+      _lookup<ffi.NativeFunction<ffi.Bool Function(ffi.Pointer<ffi.Char>)>>(
+        'file_saver_can_open_file',
+      );
+  late final _canOpenFile =
+      _canOpenFilePtr.asFunction<bool Function(ffi.Pointer<ffi.Char>)>();
 }

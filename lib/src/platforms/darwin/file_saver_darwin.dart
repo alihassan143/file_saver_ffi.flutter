@@ -461,6 +461,14 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
   }
 
   @override
+  Future<bool> canOpenFile(Uri uri) {
+    return using((arena) {
+      final uriCStr = uri.toString().toNativeUtf8(allocator: arena);
+      return Future.value(_fileSaver.canOpenFile(uriCStr.cast()));
+    });
+  }
+
+  @override
   Future<void> openFile(Uri uri, {String? mimeType}) async {
     using((arena) {
       final uriCStr = uri.toString().toNativeUtf8(allocator: arena);
