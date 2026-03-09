@@ -86,6 +86,11 @@ class FileSaverWeb extends FileSaverPlatform {
 
   // ─────────────────────────────────────────────────────────────────────────
   @override
+  Future<bool> canOpenFile(Uri uri) {
+    throw UnsupportedError('canOpenFile is not supported on Web.');
+  }
+
+  @override
   Future<void> openFile(Uri uri, {String? mimeType}) {
     throw UnsupportedError(
       'openFile is not supported on Web — the file was already downloaded by the browser.',
