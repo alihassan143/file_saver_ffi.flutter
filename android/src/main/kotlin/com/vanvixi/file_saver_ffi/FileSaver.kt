@@ -58,15 +58,6 @@ class FileSaver() {
     }
 
     /**
-     * Opens a saved file with the appropriate system app.
-     *
-     * Uses Intent.ACTION_VIEW with FLAG_GRANT_READ_URI_PERMISSION, so no additional
-     * permissions are required — the app already owns the content URI it created.
-     *
-     * @param uri Content URI or file URI string returned from save operations
-     * @param mimeType Optional MIME type. If null, queried from ContentResolver automatically.
-     */
-    /**
      * Checks whether the file at the given content URI is accessible for reading.
      *
      * Tries opening a read-only FileDescriptor via ContentResolver.
@@ -84,6 +75,15 @@ class FileSaver() {
         }
     }
 
+    /**
+     * Opens a saved file with the appropriate system app.
+     *
+     * Uses Intent.ACTION_VIEW with FLAG_GRANT_READ_URI_PERMISSION, so no additional
+     * permissions are required — the app already owns the content URI it created.
+     *
+     * @param uri Content URI or file URI string returned from save operations
+     * @param mimeType Optional MIME type. If null, queried from ContentResolver automatically.
+     */
     fun openFile(uri: String, mimeType: String?) {
         val parsedUri = uri.toUri()
         val resolvedMime = mimeType
