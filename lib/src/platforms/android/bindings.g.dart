@@ -287,6 +287,39 @@ class FileSaver extends jni$_.JObject {
     );
   }
 
+  static final _id_canOpenFile = _class.instanceMethodId(
+    r'canOpenFile',
+    r'(Ljava/lang/String;)Z',
+  );
+
+  static final _canOpenFile =
+      jni$_.ProtectedJniExtensions.lookup<
+            jni$_.NativeFunction<
+              jni$_.JniResult Function(
+                jni$_.Pointer<jni$_.Void>,
+                jni$_.JMethodIDPtr,
+                jni$_.VarArgs<(jni$_.Pointer<jni$_.Void>,)>,
+              )
+            >
+          >('globalEnv_CallBooleanMethod')
+          .asFunction<
+            jni$_.JniResult Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+              jni$_.Pointer<jni$_.Void>,
+            )
+          >();
+
+  /// from: `public fun canOpenFile(uri: kotlin.String): kotlin.Boolean`
+  bool canOpenFile(jni$_.JString string) {
+    final _$string = string.reference;
+    return _canOpenFile(
+      reference.pointer,
+      _id_canOpenFile as jni$_.JMethodIDPtr,
+      _$string.pointer,
+    ).boolean;
+  }
+
   static final _id_openFile = _class.instanceMethodId(
     r'openFile',
     r'(Ljava/lang/String;Ljava/lang/String;)V',

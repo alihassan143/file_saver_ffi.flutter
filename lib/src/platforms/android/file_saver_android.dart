@@ -455,6 +455,12 @@ class FileSaverAndroid extends FileSaverPlatform {
   }
 
   @override
+  Future<bool> canOpenFile(Uri uri) async {
+    final jUri = uri.toString().toJString();
+    return _fileSaver.canOpenFile(jUri);
+  }
+
+  @override
   Future<void> openFile(Uri uri, {String? mimeType}) async {
     final jUri = uri.toString().toJString();
     final jMimeType = mimeType?.toJString();

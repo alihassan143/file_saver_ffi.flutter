@@ -66,6 +66,24 @@ class FileSaver() {
      * @param uri Content URI or file URI string returned from save operations
      * @param mimeType Optional MIME type. If null, queried from ContentResolver automatically.
      */
+    /**
+     * Checks whether the file at the given content URI is accessible for reading.
+     *
+     * Tries opening a read-only FileDescriptor via ContentResolver.
+     * Works for both MediaStore URIs and SAF URIs.
+     *
+     * @param uri Content URI string (content://)
+     * @return true if the file is readable, false otherwise
+     */
+    fun canOpenFile(uri: String): Boolean {
+        return try {
+            val parsedUri = uri.toUri()
+            context.contentResolver.openFileDescriptor(parsedUri, "r")?.use { true } ?: false
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun openFile(uri: String, mimeType: String?) {
         val parsedUri = uri.toUri()
         val resolvedMime = mimeType
