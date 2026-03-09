@@ -2,6 +2,7 @@ package com.vanvixi.file_saver_ffi
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.content.ContextCompat
@@ -54,6 +55,27 @@ class FileSaver() {
          */
         @Volatile
         var storagePermissionHandler: StoragePermissionHandler? = null
+    }
+
+    /**
+     * Opens a saved file with the appropriate system app.
+     *
+     * Uses Intent.ACTION_VIEW with FLAG_GRANT_READ_URI_PERMISSION, so no additional
+     * permissions are required — the app already owns the content URI it created.
+     *
+     * @param uri Content URI or file URI string returned from save operations
+     * @param mimeType Optional MIME type. If null, queried from ContentResolver automatically.
+     */
+    fun openFile(uri: String, mimeType: String?) {
+        val parsedUri = uri.toUri()
+        val resolvedMime = mimeType
+            ?: context.contentResolver.getType(parsedUri)
+            ?: "*/*"
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(parsedUri, resolvedMime)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(intent)
     }
 
     /**
