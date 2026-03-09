@@ -197,6 +197,16 @@ abstract class FileSaverPlatform {
     }
   }
 
+  /// Checks whether the file at [uri] is accessible for reading.
+  ///
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux
+  /// **Web:** throws [UnsupportedError]
+  ///
+  /// Returns `false` if the file has been deleted or is no longer accessible.
+  Future<bool> canOpenFile(Uri uri) {
+    throw UnimplementedError('canOpenFile is not implemented on this platform');
+  }
+
   /// Opens a saved file with the appropriate system app.
   ///
   /// **Platforms:** Android · iOS · macOS · Windows · Linux

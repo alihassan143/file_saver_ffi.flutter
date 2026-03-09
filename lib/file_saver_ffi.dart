@@ -135,6 +135,17 @@ class FileSaver {
     return result;
   }
 
+  /// Checks whether the file at [uri] is accessible for reading.
+  ///
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux
+  /// **Web:** throws [UnsupportedError]
+  ///
+  /// Use this before calling [openFile] or passing the URI to third-party
+  /// libraries to confirm the file has not been deleted.
+  ///
+  /// Returns `false` if the file has been deleted or is no longer accessible.
+  static Future<bool> canOpenFile(Uri uri) => _platform.canOpenFile(uri);
+
   /// Opens a saved file with the appropriate system app.
   ///
   /// **Platforms:** Android · iOS · macOS · Windows · Linux
