@@ -166,6 +166,16 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
     };
   }
 
+  @override
+  Future<void> openFile(Uri uri, {String? mimeType}) async {
+    final path = uri.toFilePath();
+    if (Platform.isWindows) {
+      await Process.run('cmd', ['/c', 'start', '', path]);
+    } else {
+      await Process.run('xdg-open', [path]);
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // Platform-specific directory resolution
   // ─────────────────────────────────────────────────────────────────────────
