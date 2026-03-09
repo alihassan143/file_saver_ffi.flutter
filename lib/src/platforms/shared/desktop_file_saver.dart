@@ -167,6 +167,12 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
   }
 
   @override
+  Future<bool> canOpenFile(Uri uri) async {
+    if (!uri.isScheme('file')) return false;
+    return File.fromUri(uri).exists();
+  }
+
+  @override
   Future<void> openFile(Uri uri, {String? mimeType}) async {
     final path = uri.toFilePath();
     if (Platform.isWindows) {
