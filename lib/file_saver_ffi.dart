@@ -135,47 +135,6 @@ class FileSaver {
     return result;
   }
 
-  /// Checks whether the file at [uri] is accessible for reading.
-  ///
-  /// **Platforms:** Android · iOS · macOS · Windows · Linux
-  /// **Web:** throws [UnsupportedError]
-  ///
-  /// Use this before calling [openFile] or passing the URI to third-party
-  /// libraries to confirm the file has not been deleted.
-  ///
-  /// Returns `false` if the file has been deleted or is no longer accessible.
-  static Future<bool> canOpenFile(Uri uri) => _platform.canOpenFile(uri);
-
-  /// Opens a saved file with the appropriate system app.
-  ///
-  /// **Platforms:** Android · iOS · macOS · Windows · Linux
-  /// **Web:** throws [UnsupportedError] — files are already browser-downloaded.
-  ///
-  /// [uri] should be the [Uri] returned from [saveAsync] or [SaveProgressComplete.uri].
-  /// [mimeType] is optional. On Android, it is queried from ContentResolver automatically
-  /// if not provided.
-  ///
-  /// **Note (iOS):** `ph://` URIs (Photos Library assets) will open the Photos app
-  /// at its root level — deep-linking to a specific asset is not supported by iOS.
-  static Future<void> openFile(Uri uri, {String? mimeType}) =>
-      _platform.openFile(uri, mimeType: mimeType);
-
-  /// Shows the system directory picker.
-  ///
-  /// **Platforms:** Android · iOS · macOS · Windows · Linux · Web
-  ///
-  /// [shouldPersist] is Android-only: if true, calls takePersistableUriPermission
-  /// so the app can write to the selected directory across restarts without re-picking.
-  /// Ignored on all other platforms.
-  ///
-  /// Returns [UserSelectedLocation], or null if cancelled.
-  /// Throws [UnsupportedError] on browsers that do not support the File System Access API.
-  static Future<UserSelectedLocation?> pickDirectory({
-    bool shouldPersist = true,
-  }) {
-    return _platform.pickDirectory(shouldPersist: shouldPersist);
-  }
-
   /// Saves to a user-selected directory with progress streaming.
   ///
   /// **Platforms:** Android · iOS · macOS · Windows · Linux · Web
@@ -261,4 +220,49 @@ class FileSaver {
 
     return result;
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Directory picker, file access, and open-in-app functionality
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Shows the system directory picker.
+  ///
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux · Web
+  ///
+  /// [shouldPersist] is Android-only: if true, calls takePersistableUriPermission
+  /// so the app can write to the selected directory across restarts without re-picking.
+  /// Ignored on all other platforms.
+  ///
+  /// Returns [UserSelectedLocation], or null if cancelled.
+  /// Throws [UnsupportedError] on browsers that do not support the File System Access API.
+  static Future<UserSelectedLocation?> pickDirectory({
+    bool shouldPersist = true,
+  }) {
+    return _platform.pickDirectory(shouldPersist: shouldPersist);
+  }
+
+  /// Checks whether the file at [uri] is accessible for reading.
+  ///
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux
+  /// **Web:** throws [UnsupportedError]
+  ///
+  /// Use this before calling [openFile] or passing the URI to third-party
+  /// libraries to confirm the file has not been deleted.
+  ///
+  /// Returns `false` if the file has been deleted or is no longer accessible.
+  static Future<bool> canOpenFile(Uri uri) => _platform.canOpenFile(uri);
+
+  /// Opens a saved file with the appropriate system app.
+  ///
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux
+  /// **Web:** throws [UnsupportedError] — files are already browser-downloaded.
+  ///
+  /// [uri] should be the [Uri] returned from [saveAsync] or [SaveProgressComplete.uri].
+  /// [mimeType] is optional. On Android, it is queried from ContentResolver automatically
+  /// if not provided.
+  ///
+  /// **Note (iOS):** `ph://` URIs (Photos Library assets) will open the Photos app
+  /// at its root level — deep-linking to a specific asset is not supported by iOS.
+  static Future<void> openFile(Uri uri, {String? mimeType}) =>
+      _platform.openFile(uri, mimeType: mimeType);
 }
