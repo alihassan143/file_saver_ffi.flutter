@@ -12,6 +12,7 @@ import 'package:web/web.dart';
 import '../../exceptions/file_saver_exceptions.dart';
 import '../../models/conflict_resolution.dart';
 import '../shared/conflict_resolver.dart';
+import '../../models/file_saver_sink.dart';
 import '../../models/file_type.dart';
 import '../../models/locations/save_location.dart';
 import '../../models/locations/web_save_location.dart';
@@ -19,6 +20,7 @@ import '../../models/save_input.dart';
 import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
 import 'web_file_entity.dart';
+import 'web_file_saver_sink.dart';
 import 'web_utils.dart';
 
 class FileSaverWeb extends FileSaverPlatform {
@@ -258,6 +260,75 @@ class FileSaverWeb extends FileSaverPlatform {
       SaveFileInput() =>
         throw const InvalidInputException('saveFile is not supported on web.'),
     };
+  }
+
+  // ─────────────────────────────────────────────
+  // openWrite / openWriteAs
+  // ─────────────────────────────────────────────
+
+  /// Buffer fallback — bytes are accumulated in memory and downloaded on [close].
+  ///
+  /// ⚠ Web: `openWrite` without FSA always buffers to RAM.
+  /// For zero-RAM streaming use [openWriteAs] with a [WebSelectedLocation].
+  @override
+  Future<FileSaverSink> openWrite({
+    required String fileName,
+    required FileType fileType,
+    SaveLocation? saveLocation,
+    String? subDir,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) async {
+    if (fileName.isEmpty) {
+      throw const InvalidInputException('File name cannot be empty');
+    }
+    return WebFileSaverSink.buffer(
+      resolvedName: '$fileName.${fileType.ext}',
+      mimeType: fileType.mimeType,
+      totalSize: totalSize,
+    );
+  }
+
+  /// FSA mode when [saveLocation] is [WebSelectedLocation] — zero-RAM streaming.
+  /// Falls back to buffer mode for browsers without FSA support.
+  @override
+  Future<FileSaverSink> openWriteAs({
+    required String fileName,
+    required FileType fileType,
+    required UserSelectedLocation saveLocation,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) async {
+    if (fileName.isEmpty) {
+      throw const InvalidInputException('File name cannot be empty');
+    }
+    final fullName = '$fileName.${fileType.ext}';
+
+    if (saveLocation is WebSelectedLocation) {
+      final handle = saveLocation.directoryHandle;
+      final fileEntity = WebFileEntity(handle);
+      final resolvedName =
+          await ConflictResolver(fileEntity).resolve(fullName, conflictResolution) ??
+          fullName;
+
+      final fileHandle = await handle
+          .getFileHandle(resolvedName, FileSystemGetFileOptions(create: true))
+          .toDart;
+      final writable = await fileHandle.createWritable().toDart;
+
+      return WebFileSaverSink.fsa(
+        writable: writable,
+        resolvedName: resolvedName,
+        totalSize: totalSize,
+      );
+    }
+
+    // Fallback for browsers without FSA.
+    return WebFileSaverSink.buffer(
+      resolvedName: fullName,
+      mimeType: fileType.mimeType,
+      totalSize: totalSize,
+    );
   }
 
   // ─────────────────────────────────────────────
