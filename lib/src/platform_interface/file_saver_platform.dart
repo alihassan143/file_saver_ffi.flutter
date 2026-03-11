@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart';
 import '../exceptions/file_saver_exceptions.dart';
 import '../models/conflict_resolution.dart';
 import '../models/file_type.dart';
-import '../models/save_input.dart';
 import '../models/locations/save_location.dart';
+import '../models/save_input.dart';
 import '../models/save_progress.dart';
 
 /// Platform interface for file saver implementations.
@@ -108,8 +108,24 @@ abstract class FileSaverPlatform {
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   });
 
+  /// Saves to a user-selected directory with progress streaming.
+  ///
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux · Web
+  ///
+  /// - [saveLocation]: User-selected directory from [pickDirectory]
+  /// - [conflictResolution]: How to handle filename conflicts
+  ///
+  /// Yields [SaveProgress] events during save operation.
+  Stream<SaveProgress> saveAs({
+    required SaveInput input,
+    required FileType fileType,
+    required String fileName,
+    required UserSelectedLocation saveLocation,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  });
+
   // ─────────────────────────────────────────────────────────────────────────
-  // User-Selected Location
+  // MARK:Directory picker and file opener
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Shows the system directory picker.
@@ -138,24 +154,30 @@ abstract class FileSaverPlatform {
     }
   }
 
-  /// Saves to a user-selected directory with progress streaming.
+  /// Checks whether the file at [uri] is accessible for reading.
   ///
-  /// **Platforms:** Android · iOS · macOS · Windows · Linux · Web
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux
+  /// **Web:** throws [UnsupportedError]
   ///
-  /// - [saveLocation]: User-selected directory from [pickDirectory]
-  /// - [conflictResolution]: How to handle filename conflicts
+  /// Returns `false` if the file has been deleted or is no longer accessible.
+  Future<bool> canOpenFile(Uri uri) {
+    throw UnimplementedError('canOpenFile is not implemented on this platform');
+  }
+
+  /// Opens a saved file with the appropriate system app.
   ///
-  /// Yields [SaveProgress] events during save operation.
-  Stream<SaveProgress> saveAs({
-    required SaveInput input,
-    required FileType fileType,
-    required String fileName,
-    required UserSelectedLocation saveLocation,
-    ConflictResolution conflictResolution = ConflictResolution.autoRename,
-  });
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux
+  /// **Web:** throws [UnsupportedError] — files are already browser-downloaded.
+  ///
+  /// [uri] should be the [Uri] returned from [saveAsync] or [SaveProgressComplete.uri].
+  /// [mimeType] is optional. On Android, it is queried from ContentResolver automatically
+  /// if not provided.
+  Future<void> openFile(Uri uri, {String? mimeType}) {
+    throw UnimplementedError('openFile is not implemented on this platform');
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Protected helpers for subclasses
+  // MARK: Protected helpers for subclasses
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Validates input for [saveBytes] and [saveBytesAsync].
@@ -195,28 +217,6 @@ abstract class FileSaverPlatform {
     if (fileName.isEmpty) {
       throw const InvalidInputException('File name cannot be empty');
     }
-  }
-
-  /// Checks whether the file at [uri] is accessible for reading.
-  ///
-  /// **Platforms:** Android · iOS · macOS · Windows · Linux
-  /// **Web:** throws [UnsupportedError]
-  ///
-  /// Returns `false` if the file has been deleted or is no longer accessible.
-  Future<bool> canOpenFile(Uri uri) {
-    throw UnimplementedError('canOpenFile is not implemented on this platform');
-  }
-
-  /// Opens a saved file with the appropriate system app.
-  ///
-  /// **Platforms:** Android · iOS · macOS · Windows · Linux
-  /// **Web:** throws [UnsupportedError] — files are already browser-downloaded.
-  ///
-  /// [uri] should be the [Uri] returned from [saveAsync] or [SaveProgressComplete.uri].
-  /// [mimeType] is optional. On Android, it is queried from ContentResolver automatically
-  /// if not provided.
-  Future<void> openFile(Uri uri, {String? mimeType}) {
-    throw UnimplementedError('openFile is not implemented on this platform');
   }
 
   /// Checks if [SaveProgress] event is terminal.
