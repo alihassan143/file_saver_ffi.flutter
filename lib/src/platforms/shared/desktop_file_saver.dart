@@ -6,12 +6,14 @@ import 'package:path/path.dart' as p;
 
 import '../../exceptions/file_saver_exceptions.dart';
 import '../../models/conflict_resolution.dart';
+import '../../models/file_saver_sink.dart';
 import '../../models/file_type.dart';
 import '../../models/save_input.dart';
 import '../../models/locations/save_location.dart';
 import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
 import 'conflict_resolver.dart';
+import 'desktop_file_saver_sink.dart';
 import 'file_entity.dart';
 
 /// 1MB chunk size for progress reporting.
@@ -164,6 +166,47 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
           conflictResolution: conflictResolution,
         ),
     };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Session-based streaming write
+  // ─────────────────────────────────────────────────────────────────────────
+
+  @override
+  Future<FileSaverSink> openWrite({
+    required String fileName,
+    required FileType fileType,
+    SaveLocation? saveLocation,
+    String? subDir,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) async {
+    if (fileName.isEmpty) {
+      throw const InvalidInputException('File name cannot be empty');
+    }
+    final dir = await resolveDirectory(saveLocation, subDir);
+    final filePath = p.join(dir, '$fileName.${fileType.ext}');
+    final resolved = await _conflictResolver.resolve(filePath, conflictResolution);
+    final file = File(resolved ?? filePath);
+    return DesktopFileSaverSink(sink: file.openWrite(), file: file, totalSize: totalSize);
+  }
+
+  @override
+  Future<FileSaverSink> openWriteAs({
+    required String fileName,
+    required FileType fileType,
+    required UserSelectedLocation saveLocation,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) async {
+    if (fileName.isEmpty) {
+      throw const InvalidInputException('File name cannot be empty');
+    }
+    final dirPath = saveLocation.uri.toFilePath();
+    final filePath = p.join(dirPath, '$fileName.${fileType.ext}');
+    final resolved = await _conflictResolver.resolve(filePath, conflictResolution);
+    final file = File(resolved ?? filePath);
+    return DesktopFileSaverSink(sink: file.openWrite(), file: file, totalSize: totalSize);
   }
 
   @override
