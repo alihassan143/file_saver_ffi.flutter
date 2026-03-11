@@ -91,22 +91,31 @@ class _OpenWriteScreenState extends State<OpenWriteScreen> {
       }
 
       // ── Step 3: Open write session ────────────────────────────────────────
-      final sink = await FileSaver.openWrite(
-        fileName: fileName,
-        fileType: config.fileType,
-        saveLocation: saveLocation,
-        subDir: subDir,
-        totalSize: totalSize,
-        conflictResolution: ConflictResolution.autoRename,
-      );
-      _sink = sink;
+      if (saveLocation is UserSelectedLocation) {
+        _sink = await FileSaver.openWriteAs(
+          fileName: fileName,
+          fileType: config.fileType,
+          saveLocation: saveLocation,
+          totalSize: totalSize,
+          conflictResolution: ConflictResolution.autoRename,
+        );
+      } else {
+        _sink = await FileSaver.openWrite(
+          fileName: fileName,
+          fileType: config.fileType,
+          saveLocation: saveLocation,
+          subDir: subDir,
+          totalSize: totalSize,
+          conflictResolution: ConflictResolution.autoRename,
+        );
+      }
 
       // ── Step 4: Wire progress streams ─────────────────────────────────────
-      _bytesSub = sink.bytesWritten.listen((b) {
+      _bytesSub = _sink?.bytesWritten.listen((b) {
         if (mounted) setState(() => _bytesWritten = b);
       });
       if (totalSize != null) {
-        _progressSub = sink.progress.listen((p) {
+        _progressSub = _sink?.progress.listen((p) {
           if (mounted) setState(() => _progress = p);
         });
       }
@@ -119,11 +128,11 @@ class _OpenWriteScreenState extends State<OpenWriteScreen> {
       }
 
       // ── Step 6: Pipe stream → sink (back-pressure via addStream) ──────────
-      await sink.addStream(response.stream.cast<List<int>>());
+      await _sink?.addStream(response.stream.cast<List<int>>());
 
       // ── Step 7: Finalize ──────────────────────────────────────────────────
-      await sink.close();
-      final savedUri = await sink.result;
+      await _sink?.close();
+      final savedUri = await _sink?.result;
       _sink = null;
 
       if (mounted) {
