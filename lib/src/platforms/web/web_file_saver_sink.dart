@@ -118,6 +118,7 @@ class WebFileSaverSink implements FileSaverSink {
     _isAddingStream = true;
     try {
       await for (final chunk in stream) {
+        if (_isClosed) break;
         add(chunk);
       }
       // Wait for any queued FSA writes to finish.
@@ -134,12 +135,15 @@ class WebFileSaverSink implements FileSaverSink {
   }
 
   @override
-  Future close() {
-    if (!_isClosed) {
-      _isClosed = true;
-      _doClose();
+  Future<void> close() async {
+    if (_isClosed) return;
+    _isClosed = true;
+
+    while (_isAddingStream) {
+      await Future.microtask(() {});
     }
-    return done;
+
+    await _doClose();
   }
 
   Future<void> _doClose() async {
