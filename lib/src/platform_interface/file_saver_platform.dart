@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import '../exceptions/file_saver_exceptions.dart';
 import '../models/conflict_resolution.dart';
+import '../models/file_saver_sink.dart';
 import '../models/file_type.dart';
 import '../models/locations/save_location.dart';
 import '../models/save_input.dart';
@@ -123,6 +124,45 @@ abstract class FileSaverPlatform {
     required UserSelectedLocation saveLocation,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // MARK: Session-based streaming write
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Opens a streaming write session to an auto-resolved location.
+  ///
+  /// **Platforms:** Windows · Linux · Web (buffer fallback) · Android · iOS · macOS
+  ///
+  /// Returns a [FileSaverSink] that accepts incremental chunks via [add].
+  /// Call [FileSaverSink.close] to finalize and obtain the saved file [Uri].
+  ///
+  /// [totalSize] is optional. When provided, [FileSaverSink.progress] emits
+  /// per-chunk progress (0.0–1.0). [FileSaverSink.bytesWritten] always emits.
+  Future<FileSaverSink> openWrite({
+    required String fileName,
+    required FileType fileType,
+    SaveLocation? saveLocation,
+    String? subDir,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) {
+    throw UnimplementedError('openWrite is not implemented on this platform');
+  }
+
+  /// Opens a streaming write session to a user-selected directory.
+  ///
+  /// **Platforms:** Windows · Linux · Web (FSA) · Android · iOS · macOS
+  ///
+  /// [saveLocation] must be a [UserSelectedLocation] obtained via [pickDirectory].
+  Future<FileSaverSink> openWriteAs({
+    required String fileName,
+    required FileType fileType,
+    required UserSelectedLocation saveLocation,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) {
+    throw UnimplementedError('openWriteAs is not implemented on this platform');
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // MARK:Directory picker and file opener

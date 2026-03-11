@@ -4,20 +4,21 @@ import 'package:flutter/foundation.dart';
 
 import 'src/exceptions/file_saver_exceptions.dart';
 import 'src/models/conflict_resolution.dart';
+import 'src/models/file_saver_sink.dart';
 import 'src/models/file_type.dart';
-import 'src/models/save_input.dart';
 import 'src/models/locations/save_location.dart';
+import 'src/models/save_input.dart';
 import 'src/models/save_progress.dart';
 import 'src/platform_interface/file_saver_platform.dart';
 
 // Public API
 export 'src/exceptions/file_saver_exceptions.dart';
 export 'src/models/conflict_resolution.dart';
+export 'src/models/file_saver_sink.dart';
 export 'src/models/file_type.dart';
-export 'src/models/save_input.dart';
 export 'src/models/locations/save_location.dart';
+export 'src/models/save_input.dart';
 export 'src/models/save_progress.dart';
-
 export 'src/platforms/io_platforms.dart'
     if (dart.library.html) 'src/platforms/io_stub.dart';
 export 'src/platforms/web/file_saver_web.dart'
@@ -219,6 +220,92 @@ class FileSaver {
     }
 
     return result;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Session-based streaming write
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Opens a streaming write session to an auto-resolved location.
+  ///
+  /// **Platforms:** Windows · Linux · Web (buffer fallback) · Android · iOS · macOS
+  ///
+  /// Returns a [FileSaverSink] that accepts incremental chunks via [FileSaverSink.add].
+  /// Call [FileSaverSink.close] to finalize and obtain the saved file [Uri].
+  /// Call [FileSaverSink.cancel] to abort and delete the partial file.
+  ///
+  /// [totalSize] is optional. When provided, [FileSaverSink.progress] emits
+  /// per-chunk progress (0.0–1.0). [FileSaverSink.bytesWritten] always emits.
+  ///
+  /// Example:
+  /// ```dart
+  /// final sink = await FileSaver.openWrite(
+  ///   fileName: 'recording',
+  ///   fileType: CustomFileType('mp4', 'video/mp4'),
+  ///   totalSize: expectedBytes,
+  /// );
+  ///
+  /// sink.progress.listen((p) => setState(() => _progress = p));
+  /// sink.add(chunk);           // non-blocking
+  /// await sink.addStream(src); // back-pressure friendly
+  /// final uri = await sink.close();
+  /// ```
+  static Future<FileSaverSink> openWrite({
+    required String fileName,
+    required FileType fileType,
+    SaveLocation? saveLocation,
+    String? subDir,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) {
+    return _platform.openWrite(
+      fileName: fileName,
+      fileType: fileType,
+      saveLocation: saveLocation,
+      subDir: subDir,
+      totalSize: totalSize,
+      conflictResolution: conflictResolution,
+    );
+  }
+
+  /// Opens a streaming write session to a user-selected directory.
+  ///
+  /// **Platforms:** Windows · Linux · Web (FSA) · Android · iOS · macOS
+  ///
+  /// If [saveLocation] is null, shows the directory picker first.
+  /// Returns null if the picker is cancelled.
+  ///
+  /// Web: uses [FileSystemWritableFileStream] (FSA) when the browser supports it,
+  /// falls back to in-memory buffering otherwise.
+  static Future<FileSaverSink?> openWriteAs({
+    required String fileName,
+    required FileType fileType,
+    UserSelectedLocation? saveLocation,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) async {
+    UserSelectedLocation? resolvedLocation = saveLocation;
+    if (resolvedLocation == null) {
+      try {
+        final picked = await pickDirectory();
+        if (picked == null) return null;
+        resolvedLocation = picked;
+      } catch (e) {
+        if (kIsWeb) {
+          // Browser doesn't support FSA — fall through to buffer mode.
+          resolvedLocation = UserSelectedLocation(uri: Uri());
+        } else {
+          rethrow;
+        }
+      }
+    }
+    return _platform.openWriteAs(
+      fileName: fileName,
+      fileType: fileType,
+      saveLocation: resolvedLocation,
+      totalSize: totalSize,
+      conflictResolution: conflictResolution,
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
