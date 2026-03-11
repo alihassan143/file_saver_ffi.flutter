@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'open_write_screen.dart';
 import 'save_as_screen.dart';
 import 'save_screen.dart';
 
@@ -19,33 +20,46 @@ class HomeScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const SaveScreen()),
-                    );
-                  },
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 14),
-                    child: Text('Save API'),
-                  ),
+                _SaveApiButton(
+                  label: 'Save API',
+                  screenWidget: const SaveScreen(),
                 ),
                 const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const SaveAsScreen()),
-                    );
-                  },
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 14),
-                    child: Text('Save As API'),
-                  ),
+                _SaveApiButton(
+                  label: 'Save As API',
+                  screenWidget: const SaveAsScreen(),
+                ),
+                const SizedBox(height: 12),
+                _SaveApiButton(
+                  label: 'Open Write API (Session)',
+                  screenWidget: const OpenWriteScreen(),
                 ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SaveApiButton extends StatelessWidget {
+  const _SaveApiButton({required this.label, required this.screenWidget});
+
+  final String label;
+  final Widget screenWidget;
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: () {
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => screenWidget));
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        child: Text(label),
       ),
     );
   }
