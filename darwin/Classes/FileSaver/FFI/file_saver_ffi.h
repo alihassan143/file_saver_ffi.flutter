@@ -257,7 +257,8 @@ bool file_saver_can_open_file(const char* uri);
 
 /// Opens a streaming write session to a platform save location.
 ///
-/// iOS photos location is not supported (sends error).
+/// iOS photos location: supported for images and videos only (chunks written to a temp file,
+/// committed to the Photos Library on close). Audio and custom types send an error.
 ///
 /// Messages sent to native_port:
 /// - Session opened:  [3, sessionId]   (sessionId as string)
