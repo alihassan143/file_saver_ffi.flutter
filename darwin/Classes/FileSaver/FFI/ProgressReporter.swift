@@ -1,5 +1,5 @@
-import Foundation
 import DartApiDl
+import Foundation
 
 /// Reports async operation results to Dart via NativePort (`Dart_PostCObject_DL`).
 ///
