@@ -8,12 +8,14 @@ import 'package:ffi/ffi.dart';
 
 import '../../exceptions/file_saver_exceptions.dart';
 import '../../models/conflict_resolution.dart';
+import '../../models/file_saver_sink.dart';
 import '../../models/file_type.dart';
 import '../../models/save_input.dart';
 import '../../models/locations/save_location.dart';
 import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
 import 'bindings.g.dart';
+import 'darwin_file_saver_sink.dart';
 
 typedef NativeVoidFun = NativeFunction<Void Function(Pointer<Void>)>;
 
@@ -474,6 +476,113 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
       final uriCStr = uri.toString().toNativeUtf8(allocator: arena);
       _fileSaver.openFile(uriCStr.cast());
     });
+  }
+
+  @override
+  Future<FileSaverSink> openWrite({
+    required String fileName,
+    required FileType fileType,
+    SaveLocation? saveLocation,
+    String? subDir,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) async {
+    final receivePort = ReceivePort();
+    final completer = Completer<int>();
+    receivePort.listen((message) {
+      receivePort.close();
+      final msg = message as List;
+      switch (msg[0] as int) {
+        case 3:
+          if (!completer.isCompleted) {
+            completer.complete(int.parse(msg[1] as String));
+          }
+        case 2:
+          if (!completer.isCompleted) {
+            completer.completeError(
+              FileSaverException.fromErrorResult(
+                msg[1] as String,
+                msg[2] as String,
+              ),
+            );
+          }
+      }
+    });
+    using((arena) {
+      final fileNameCStr = fileName.toNativeUtf8(allocator: arena);
+      final extCStr = fileType.ext.toNativeUtf8(allocator: arena);
+      final mimeCStr = fileType.mimeType.toNativeUtf8(allocator: arena);
+      final subDirCStr = subDir?.toNativeUtf8(allocator: arena);
+      _fileSaver.openWrite(
+        _saverInstance,
+        fileNameCStr.cast(),
+        extCStr.cast(),
+        mimeCStr.cast(),
+        _saveLocationToIndex(saveLocation),
+        subDirCStr?.cast() ?? nullptr,
+        conflictResolution.index,
+        totalSize ?? -1,
+        receivePort.sendPort.nativePort,
+      );
+    });
+    final sessionId = await completer.future;
+    return DarwinFileSaverSink(
+      fileSaver: _fileSaver,
+      sessionId: sessionId,
+      totalSize: totalSize,
+    );
+  }
+
+  @override
+  Future<FileSaverSink> openWriteAs({
+    required String fileName,
+    required FileType fileType,
+    required UserSelectedLocation saveLocation,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) async {
+    final receivePort = ReceivePort();
+    final completer = Completer<int>();
+    receivePort.listen((message) {
+      receivePort.close();
+      final msg = message as List;
+      switch (msg[0] as int) {
+        case 3:
+          if (!completer.isCompleted) {
+            completer.complete(int.parse(msg[1] as String));
+          }
+        case 2:
+          if (!completer.isCompleted) {
+            completer.completeError(
+              FileSaverException.fromErrorResult(
+                msg[1] as String,
+                msg[2] as String,
+              ),
+            );
+          }
+      }
+    });
+    using((arena) {
+      final dirUriCStr =
+          saveLocation.uri.toString().toNativeUtf8(allocator: arena);
+      final fileNameCStr = fileName.toNativeUtf8(allocator: arena);
+      final extCStr = fileType.ext.toNativeUtf8(allocator: arena);
+      _fileSaver.openWriteAs(
+        _saverInstance,
+        dirUriCStr.cast(),
+        fileNameCStr.cast(),
+        extCStr.cast(),
+        conflictResolution.index,
+        totalSize ?? -1,
+        receivePort.sendPort.nativePort,
+      );
+    });
+    final sessionId = await completer.future;
+    return DarwinFileSaverSink(
+      fileSaver: _fileSaver,
+      sessionId: sessionId,
+      totalSize: totalSize,
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
