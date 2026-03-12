@@ -6,11 +6,13 @@ import 'package:jni/jni.dart';
 
 import '../../exceptions/file_saver_exceptions.dart';
 import '../../models/conflict_resolution.dart';
+import '../../models/file_saver_sink.dart';
 import '../../models/file_type.dart';
 import '../../models/save_input.dart';
 import '../../models/locations/save_location.dart';
 import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
+import 'android_file_saver_sink.dart';
 import 'bindings.g.dart' as bindings;
 
 class FileSaverAndroid extends FileSaverPlatform {
@@ -465,6 +467,108 @@ class FileSaverAndroid extends FileSaverPlatform {
     final jUri = uri.toString().toJString();
     final jMimeType = mimeType?.toJString();
     _fileSaver.openFile(jUri, jMimeType);
+  }
+
+  @override
+  Future<FileSaverSink> openWrite({
+    required String fileName,
+    required FileType fileType,
+    SaveLocation? saveLocation,
+    String? subDir,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) async {
+    final completer = Completer<int>();
+    bindings.ProgressCallback? callback;
+    callback = bindings.ProgressCallback.implement(
+      bindings.$ProgressCallback(
+        onEvent: (eventType, progress, jStr1, jStr2) {
+          switch (eventType) {
+            case 3:
+              final sessionIdStr = jStr1?.toDartString(releaseOriginal: true) ?? '0';
+              jStr2?.release();
+              if (!completer.isCompleted) completer.complete(int.parse(sessionIdStr));
+            case 2:
+              final code = jStr1?.toDartString(releaseOriginal: true) ?? 'UNKNOWN';
+              final msg = jStr2?.toDartString(releaseOriginal: true) ?? '';
+              if (!completer.isCompleted) {
+                completer.completeError(FileSaverException.fromErrorResult(code, msg));
+              }
+            default:
+              jStr1?.release();
+              jStr2?.release();
+          }
+          Future.microtask(() => callback?.release());
+        },
+        onEvent$async: true,
+      ),
+    );
+    _fileSaver.openWriteSession(
+      fileName.toJString(),
+      fileType.ext.toJString(),
+      fileType.mimeType.toJString(),
+      _saveLocationToIndex(saveLocation),
+      subDir?.toJString(),
+      conflictResolution.index,
+      totalSize ?? -1,
+      callback,
+    );
+    final sessionId = await completer.future;
+    return AndroidFileSaverSink(
+      fileSaver: _fileSaver,
+      sessionId: sessionId,
+      totalSize: totalSize,
+    );
+  }
+
+  @override
+  Future<FileSaverSink> openWriteAs({
+    required String fileName,
+    required FileType fileType,
+    required UserSelectedLocation saveLocation,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) async {
+    final completer = Completer<int>();
+    bindings.ProgressCallback? callback;
+    callback = bindings.ProgressCallback.implement(
+      bindings.$ProgressCallback(
+        onEvent: (eventType, progress, jStr1, jStr2) {
+          switch (eventType) {
+            case 3:
+              final sessionIdStr = jStr1?.toDartString(releaseOriginal: true) ?? '0';
+              jStr2?.release();
+              if (!completer.isCompleted) completer.complete(int.parse(sessionIdStr));
+            case 2:
+              final code = jStr1?.toDartString(releaseOriginal: true) ?? 'UNKNOWN';
+              final msg = jStr2?.toDartString(releaseOriginal: true) ?? '';
+              if (!completer.isCompleted) {
+                completer.completeError(FileSaverException.fromErrorResult(code, msg));
+              }
+            default:
+              jStr1?.release();
+              jStr2?.release();
+          }
+          Future.microtask(() => callback?.release());
+        },
+        onEvent$async: true,
+      ),
+    );
+    _fileSaver.openWriteSessionAs(
+      saveLocation.uri.toString().toJString(),
+      fileName.toJString(),
+      fileType.ext.toJString(),
+      fileType.mimeType.toJString(),
+      conflictResolution.index,
+      totalSize ?? -1,
+      callback,
+    );
+    final sessionId = await completer.future;
+    return AndroidFileSaverSink(
+      fileSaver: _fileSaver,
+      sessionId: sessionId,
+      totalSize: totalSize,
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
