@@ -108,21 +108,30 @@ private func unregisterDownload(_ id: UInt) {
 private final class WriteSession {
     let fileHandle: FileHandle
     let fileURL: URL
-    let totalSize: Int64        // -1 if unknown
+    let totalSize: Int64  // -1 if unknown
     let serialQueue: DispatchQueue
-    let securityScopedURL: URL? // non-nil for openWriteAs
+    let securityScopedURL: URL?  // non-nil for openWriteAs
     var bytesWritten: Int64 = 0
+    #if os(iOS)
+    /// Non-nil when writing to Photos Library (iOS only).
+    /// Invoked on closeWrite to commit the temp file and return `ph://` URI.
+    let photosCommit: (() throws -> String)?
+    #endif
 
     init(
         fileHandle: FileHandle,
         fileURL: URL,
         totalSize: Int64,
-        securityScopedURL: URL?
+        securityScopedURL: URL?,
+        photosCommit: (() throws -> String)? = nil
     ) {
         self.fileHandle = fileHandle
         self.fileURL = fileURL
         self.totalSize = totalSize
         self.securityScopedURL = securityScopedURL
+        #if os(iOS)
+        self.photosCommit = photosCommit
+        #endif
         self.serialQueue = DispatchQueue(
             label: "com.vanvixi.file_saver.ws.\(fileURL.lastPathComponent)",
             qos: .userInitiated
@@ -407,9 +416,10 @@ public func fileSaverSaveNetwork(
 #if os(iOS)
 /// Returns the topmost presented view controller, used as the presenter for previews and share sheets.
 private func fileSaverTopViewController() -> UIViewController? {
-    guard let scene = UIApplication.shared.connectedScenes
-        .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
-          let window = scene.windows.first(where: { $0.isKeyWindow })
+    guard
+        let scene = UIApplication.shared.connectedScenes
+            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+        let window = scene.windows.first(where: { $0.isKeyWindow })
     else { return nil }
 
     var topVC = window.rootViewController
@@ -433,7 +443,7 @@ private final class FileSaverDocumentDelegate: NSObject, UIDocumentInteractionCo
     func documentInteractionControllerDidEndPreview(
         _ controller: UIDocumentInteractionController
     ) {
-        docController = nil // release
+        docController = nil  // release
     }
 }
 
@@ -522,7 +532,7 @@ private func fileSaverPresentActivityVC(_ items: [Any], from viewController: UIV
 public func fileSaverOpenFile(_ uriString: UnsafePointer<CChar>) {
     let uri = String(cString: uriString)
     DispatchQueue.main.async {
-#if os(iOS)
+        #if os(iOS)
         guard let viewController = fileSaverTopViewController() else { return }
 
         if uri.hasPrefix("ph://") {
@@ -536,18 +546,18 @@ public func fileSaverOpenFile(_ uriString: UnsafePointer<CChar>) {
             // Falls back to UIActivityViewController for unsupported file types.
             fileSaverPresentPreview(url: url, from: viewController)
         }
-#elseif os(macOS)
+        #elseif os(macOS)
         if let url = URL(string: uri) {
             NSWorkspace.shared.open(url)
         }
-#endif
+        #endif
     }
 }
 
 @_cdecl("file_saver_can_open_file")
 public func fileSaverCanOpenFile(_ uriString: UnsafePointer<CChar>) -> Bool {
     let uri = String(cString: uriString)
-#if os(iOS)
+    #if os(iOS)
     if uri.hasPrefix("ph://") {
         let localId = String(uri.dropFirst("ph://".count))
         let fetchResult = PHAsset.fetchAssets(
@@ -555,7 +565,7 @@ public func fileSaverCanOpenFile(_ uriString: UnsafePointer<CChar>) -> Bool {
         )
         return fetchResult.firstObject != nil
     }
-#endif
+    #endif
     guard let url = URL(string: uri), url.isFileURL else { return false }
     return FileManager.default.isReadableFile(atPath: url.path)
 }
@@ -738,4 +748,216 @@ public func fileSaverSaveNetworkAs(
     }
 
     return tokenId
+}
+
+// MARK: - Streaming Write Session Functions
+
+@_cdecl("file_saver_open_write")
+public func fileSaverOpenWrite(
+    _ instanceId: UInt,
+    _ baseFileName: UnsafePointer<CChar>,
+    _ ext: UnsafePointer<CChar>,
+    _ mimeType: UnsafePointer<CChar>,
+    _ saveLocation: Int32,
+    _ subDir: UnsafePointer<CChar>?,
+    _ conflictMode: Int32,
+    _ totalSize: Int64,
+    _ nativePort: Int64
+) {
+    let reporter = ProgressReporter(port: nativePort)
+    // Copy strings synchronously before async block
+    let fileName = String(cString: baseFileName)
+    let extStr = String(cString: ext)
+    let mimeStr = String(cString: mimeType)
+    let directory = subDir.map { String(cString: $0) }
+
+    DispatchQueue.global(qos: .userInitiated).async {
+        instanceLock.lock()
+        guard let saver = instances[instanceId] else {
+            instanceLock.unlock()
+            reporter.sendError(code: Constants.errorPlatform, message: "FileSaver instance not found")
+            return
+        }
+        instanceLock.unlock()
+
+        do {
+            let result = try saver.openWriteSession(
+                baseFileName: fileName,
+                extension: extStr,
+                mimeType: mimeStr,
+                subDir: directory,
+                saveLocationValue: Int(saveLocation),
+                conflictMode: Int(conflictMode)
+            )
+            let sessionId = generateWriteSessionId()
+            registerWriteSession(
+                sessionId,
+                WriteSession(
+                    fileHandle: result.fileHandle,
+                    fileURL: result.fileURL,
+                    totalSize: totalSize,
+                    securityScopedURL: nil,
+                    photosCommit: result.photosCommit
+                ))
+            reporter.sendSuccess(uri: String(sessionId))
+        } catch let fsError as FileSaverError {
+            reporter.sendError(code: fsError.code, message: fsError.message)
+        } catch {
+            reporter.sendError(code: Constants.errorPlatform, message: error.localizedDescription)
+        }
+    }
+}
+
+@_cdecl("file_saver_open_write_as")
+public func fileSaverOpenWriteAs(
+    _ instanceId: UInt,
+    _ directoryUri: UnsafePointer<CChar>,
+    _ baseFileName: UnsafePointer<CChar>,
+    _ ext: UnsafePointer<CChar>,
+    _ conflictMode: Int32,
+    _ totalSize: Int64,
+    _ nativePort: Int64
+) {
+    let reporter = ProgressReporter(port: nativePort)
+    let dirUri = String(cString: directoryUri)
+    let fileName = String(cString: baseFileName)
+    let extStr = String(cString: ext)
+
+    DispatchQueue.global(qos: .userInitiated).async {
+        guard let dirURL = URL(string: dirUri) else {
+            reporter.sendError(code: Constants.errorInvalidInput, message: "Invalid directory URI: \(dirUri)")
+            return
+        }
+        let isScoped = dirURL.startAccessingSecurityScopedResource()
+
+        instanceLock.lock()
+        guard let saver = instances[instanceId] else {
+            instanceLock.unlock()
+            if isScoped { dirURL.stopAccessingSecurityScopedResource() }
+            reporter.sendError(code: Constants.errorPlatform, message: "FileSaver instance not found")
+            return
+        }
+        instanceLock.unlock()
+
+        do {
+            let (fileURL, fileHandle) = try saver.openWriteSessionAs(
+                directoryUri: dirUri,
+                baseFileName: fileName,
+                extension: extStr,
+                conflictMode: Int(conflictMode)
+            )
+            let sessionId = generateWriteSessionId()
+            registerWriteSession(
+                sessionId,
+                WriteSession(
+                    fileHandle: fileHandle,
+                    fileURL: fileURL,
+                    totalSize: totalSize,
+                    securityScopedURL: isScoped ? dirURL : nil
+                ))
+            reporter.sendSuccess(uri: String(sessionId))
+        } catch let fsError as FileSaverError {
+            if isScoped { dirURL.stopAccessingSecurityScopedResource() }
+            reporter.sendError(code: fsError.code, message: fsError.message)
+        } catch {
+            if isScoped { dirURL.stopAccessingSecurityScopedResource() }
+            reporter.sendError(code: Constants.errorPlatform, message: error.localizedDescription)
+        }
+    }
+}
+
+@_cdecl("file_saver_write_chunk")
+public func fileSaverWriteChunk(
+    _ sessionId: UInt,
+    _ data: UnsafePointer<UInt8>,
+    _ dataLength: Int64,
+    _ nativePort: Int64
+) {
+    let reporter = ProgressReporter(port: nativePort)
+    // Copy data synchronously before returning — Dart arena freed after call
+    let chunk = Data(bytes: data, count: Int(dataLength))
+
+    guard let session = getWriteSession(sessionId) else {
+        reporter.sendError(code: Constants.errorInvalidInput, message: "Session not found: \(sessionId)")
+        return
+    }
+    session.serialQueue.async {
+        do {
+            if #available(macOS 10.15.4, iOS 13.4, *) {
+                try session.fileHandle.write(contentsOf: chunk)
+            } else {
+                session.fileHandle.write(chunk)
+            }
+            session.bytesWritten += Int64(chunk.count)
+            reporter.sendBytes(session.bytesWritten)
+        } catch {
+            reporter.sendError(code: Constants.errorFileIO, message: error.localizedDescription)
+        }
+    }
+}
+
+@_cdecl("file_saver_flush_write")
+public func fileSaverFlushWrite(_ sessionId: UInt, _ nativePort: Int64) {
+    let reporter = ProgressReporter(port: nativePort)
+    guard let session = getWriteSession(sessionId) else {
+        reporter.sendError(code: Constants.errorInvalidInput, message: "Session not found: \(sessionId)")
+        return
+    }
+    session.serialQueue.async {
+        if #available(macOS 10.15.4, iOS 13.4, *) {
+            try? session.fileHandle.synchronize()
+        } else {
+            session.fileHandle.synchronizeFile()
+        }
+        reporter.sendBytes(session.bytesWritten)
+    }
+}
+
+@_cdecl("file_saver_close_write")
+public func fileSaverCloseWrite(_ sessionId: UInt, _ nativePort: Int64) {
+    let reporter = ProgressReporter(port: nativePort)
+    guard let session = removeWriteSession(sessionId) else {
+        reporter.sendError(code: Constants.errorInvalidInput, message: "Session not found: \(sessionId)")
+        return
+    }
+    session.serialQueue.async {
+        if #available(macOS 10.15.4, iOS 13.4, *) {
+            try? session.fileHandle.synchronize()
+            try? session.fileHandle.close()
+        } else {
+            session.fileHandle.synchronizeFile()
+            session.fileHandle.closeFile()
+        }
+        session.securityScopedURL?.stopAccessingSecurityScopedResource()
+
+        #if os(iOS)
+        if let commit = session.photosCommit {
+            do {
+                let uri = try commit()
+                reporter.sendSuccess(uri: uri)
+            } catch let fsError as FileSaverError {
+                reporter.sendError(code: fsError.code, message: fsError.message)
+            } catch {
+                reporter.sendError(code: Constants.errorFileIO, message: error.localizedDescription)
+            }
+            return
+        }
+        #endif
+
+        reporter.sendSuccess(uri: session.fileURL.absoluteString)
+    }
+}
+
+@_cdecl("file_saver_cancel_write")
+public func fileSaverCancelWrite(_ sessionId: UInt) {
+    guard let session = removeWriteSession(sessionId) else { return }
+    session.serialQueue.async {
+        if #available(macOS 10.15.4, iOS 13.4, *) {
+            try? session.fileHandle.close()
+        } else {
+            session.fileHandle.closeFile()
+        }
+        session.securityScopedURL?.stopAccessingSecurityScopedResource()
+        try? FileManager.default.removeItem(at: session.fileURL)
+    }
 }

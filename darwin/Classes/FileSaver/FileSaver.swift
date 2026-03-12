@@ -211,6 +211,145 @@ class FileSaver {
         )
     }
 
+    // MARK: - Streaming Write Session
+
+    /// Opens a FileHandle for incremental writing.
+    ///
+    /// - On iOS + photos: writes to a temp file and returns a `photosCommit` closure.
+    ///   The caller must invoke `photosCommit()` on close to add the file to the Photos
+    ///   Library and delete the temp file. The closure captures all needed context.
+    /// - On iOS + documents / macOS: writes directly to the resolved path; `photosCommit` is nil.
+    ///
+    /// Returns `(tempOrFinalURL, fileHandle, photosCommit)`.
+    func openWriteSession(
+        baseFileName: String,
+        extension ext: String,
+        mimeType: String,
+        subDir: String?,
+        saveLocationValue: Int,
+        conflictMode: Int
+    ) throws -> (fileURL: URL, fileHandle: FileHandle, photosCommit: (() throws -> String)?) {
+        let saveLocation = SaveLocation.fromInt(saveLocationValue)
+
+        #if os(iOS)
+        if saveLocation == .photos {
+            return try openWriteSessionForPhotos(
+                baseFileName: baseFileName,
+                extension: ext,
+                mimeType: mimeType,
+                subDir: subDir,
+                conflictMode: conflictMode
+            )
+        }
+        var targetDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        #elseif os(macOS)
+        var targetDir = saveLocation.directoryURL
+        #endif
+
+        if let sub = subDir, !sub.isEmpty {
+            targetDir = targetDir.appendingPathComponent(sub)
+        }
+        try FileHelper.ensureDirectoryExists(at: targetDir)
+
+        let fullFileName = FileHelper.buildFileName(fileName: baseFileName, extension: ext)
+        let conflictResolution = ConflictResolution.fromInt(conflictMode)
+        let fileURL = try FileManagerConflictResolver.resolveConflict(
+            directory: targetDir,
+            fileName: fullFileName,
+            conflictResolution: conflictResolution
+        )
+
+        FileManager.default.createFile(atPath: fileURL.path, contents: nil)
+        let fileHandle = try FileHandle(forWritingTo: fileURL)
+        return (fileURL, fileHandle, nil)
+    }
+
+    #if os(iOS)
+    /// Opens a write session targeting the Photos Library.
+    /// Chunks are written to a temp file. Returns a `photosCommit` closure that the caller
+    /// must invoke on `closeWrite` — the closure commits the temp file to the Photos Library
+    /// and deletes it, returning the `ph://` asset URI.
+    private func openWriteSessionForPhotos(
+        baseFileName: String,
+        extension ext: String,
+        mimeType: String,
+        subDir: String?,
+        conflictMode: Int
+    ) throws -> (fileURL: URL, fileHandle: FileHandle, photosCommit: (() throws -> String)?) {
+        let fileType = FileHelper.getFileType(ext: ext, mimeType: mimeType)
+        let saver = getSaver(for: fileType)
+
+        guard saver.supportsPhotosLibrary else {
+            throw FileSaverError.unsupportedFormat(
+                ext.uppercased(),
+                details: "Only images and videos can be saved to the Photos Library."
+            )
+        }
+
+        let fullFileName = FileHelper.buildFileName(fileName: baseFileName, extension: ext)
+        let conflictResolution = ConflictResolution.fromInt(conflictMode)
+
+        let hasReadAccess = try PhotosHelper.requestPermission(needAlbum: subDir != nil)
+        let existingUri = try PhotosHelper.handleConflictResolution(
+            fileName: fullFileName,
+            subDir: subDir,
+            conflictResolution: conflictResolution,
+            hasReadAccess: hasReadAccess
+        )
+
+        // For streaming sessions, "skip" (return existing URI without writing) makes no sense —
+        // the caller is opening a write session expecting to write new data.
+        if existingUri != nil {
+            throw FileSaverError.fileExists(fullFileName)
+        }
+
+        let albumName: String? = hasReadAccess ? subDir : nil
+
+        // Write chunks to a temp file; commit to Photos Library on close.
+        let tmpURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension(ext)
+        FileManager.default.createFile(atPath: tmpURL.path, contents: nil)
+        let fileHandle = try FileHandle(forWritingTo: tmpURL)
+
+        // Closure captures everything needed for commit; caller invokes on closeWrite.
+        let photosCommit: () throws -> String = {
+            defer { try? FileManager.default.removeItem(at: tmpURL) }
+            return try saver.saveFileToPhotos(
+                sourceURL: tmpURL,
+                fileName: fullFileName,
+                albumName: albumName,
+                onProgress: nil
+            )
+        }
+
+        return (tmpURL, fileHandle, photosCommit)
+    }
+    #endif
+
+    /// Opens a FileHandle for incremental writing to a user-selected directory.
+    func openWriteSessionAs(
+        directoryUri: String,
+        baseFileName: String,
+        extension ext: String,
+        conflictMode: Int
+    ) throws -> (URL, FileHandle) {
+        guard let dirURL = URL(string: directoryUri) else {
+            throw FileSaverError.fileIO("Invalid directory URI: \(directoryUri)")
+        }
+        let fullFileName = FileHelper.buildFileName(fileName: baseFileName, extension: ext)
+        let conflictResolution = ConflictResolution.fromInt(conflictMode)
+        let fileURL = try FileManagerConflictResolver.resolveConflict(
+            directory: dirURL,
+            fileName: fullFileName,
+            conflictResolution: conflictResolution
+        )
+
+        FileManager.default.createFile(atPath: fileURL.path, contents: nil)
+        let fileHandle = try FileHandle(forWritingTo: fileURL)
+        return (fileURL, fileHandle)
+    }
+
     // MARK: - Private Helpers
 
     private func parseConflictResolution(
