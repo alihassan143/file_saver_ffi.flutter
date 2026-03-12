@@ -42,6 +42,12 @@ void main() {
         'file_saver_dispose',
         'file_saver_open_file',
         'file_saver_can_open_file',
+        'file_saver_open_write',
+        'file_saver_open_write_as',
+        'file_saver_write_chunk',
+        'file_saver_flush_write',
+        'file_saver_close_write',
+        'file_saver_cancel_write',
       }),
       rename: (decl) {
         final stripped = decl.originalName.replaceFirst('file_saver_', '');

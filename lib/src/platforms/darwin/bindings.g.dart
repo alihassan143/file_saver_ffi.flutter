@@ -573,4 +573,222 @@ class FileSaverFFI {
       );
   late final _canOpenFile =
       _canOpenFilePtr.asFunction<bool Function(ffi.Pointer<ffi.Char>)>();
+
+  /// Opens a streaming write session to a platform save location.
+  ///
+  /// iOS photos location: supported for images and videos only (chunks written to a temp file,
+  /// committed to the Photos Library on close). Audio and custom types send an error.
+  ///
+  /// Messages sent to native_port:
+  /// - Session opened:  [3, sessionId]   (sessionId as string)
+  /// - Error:           [2, errorCode, errorMessage]
+  ///
+  /// @param instance    FileSaver instance from file_saver_init
+  /// @param baseFileName File name without extension
+  /// @param ext         File extension without dot
+  /// @param mimeType    MIME type string
+  /// @param saveLocation Save location index
+  /// @param subDir      Optional subdirectory (can be NULL)
+  /// @param conflictMode Conflict resolution mode (0-3)
+  /// @param totalSize   Total expected bytes (-1 if unknown)
+  /// @param native_port Dart NativePort for result delivery
+  void openWrite(
+    ffi.Pointer<ffi.Void> instance,
+    ffi.Pointer<ffi.Char> baseFileName,
+    ffi.Pointer<ffi.Char> ext,
+    ffi.Pointer<ffi.Char> mimeType,
+    int saveLocation,
+    ffi.Pointer<ffi.Char> subDir,
+    int conflictMode,
+    int totalSize,
+    int native_port,
+  ) {
+    return _openWrite(
+      instance,
+      baseFileName,
+      ext,
+      mimeType,
+      saveLocation,
+      subDir,
+      conflictMode,
+      totalSize,
+      native_port,
+    );
+  }
+
+  late final _openWritePtr = _lookup<
+    ffi.NativeFunction<
+      ffi.Void Function(
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Int32,
+        ffi.Pointer<ffi.Char>,
+        ffi.Int32,
+        ffi.Int64,
+        ffi.Int64,
+      )
+    >
+  >('file_saver_open_write');
+  late final _openWrite =
+      _openWritePtr
+          .asFunction<
+            void Function(
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              int,
+              ffi.Pointer<ffi.Char>,
+              int,
+              int,
+              int,
+            )
+          >();
+
+  /// Opens a streaming write session to a user-selected directory.
+  ///
+  /// Messages sent to native_port:
+  /// - Session opened:  [3, sessionId]   (sessionId as string)
+  /// - Error:           [2, errorCode, errorMessage]
+  ///
+  /// @param instance    FileSaver instance from file_saver_init
+  /// @param directoryUri Directory URI from DirPicker.pick()
+  /// @param baseFileName File name without extension
+  /// @param ext         File extension without dot
+  /// @param conflictMode Conflict resolution mode (0-3)
+  /// @param totalSize   Total expected bytes (-1 if unknown)
+  /// @param native_port Dart NativePort for result delivery
+  void openWriteAs(
+    ffi.Pointer<ffi.Void> instance,
+    ffi.Pointer<ffi.Char> directoryUri,
+    ffi.Pointer<ffi.Char> baseFileName,
+    ffi.Pointer<ffi.Char> ext,
+    int conflictMode,
+    int totalSize,
+    int native_port,
+  ) {
+    return _openWriteAs(
+      instance,
+      directoryUri,
+      baseFileName,
+      ext,
+      conflictMode,
+      totalSize,
+      native_port,
+    );
+  }
+
+  late final _openWriteAsPtr = _lookup<
+    ffi.NativeFunction<
+      ffi.Void Function(
+        ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Pointer<ffi.Char>,
+        ffi.Int32,
+        ffi.Int64,
+        ffi.Int64,
+      )
+    >
+  >('file_saver_open_write_as');
+  late final _openWriteAs =
+      _openWriteAsPtr
+          .asFunction<
+            void Function(
+              ffi.Pointer<ffi.Void>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              int,
+              int,
+              int,
+            )
+          >();
+
+  /// Writes a chunk of data to an open write session.
+  ///
+  /// Messages sent to native_port:
+  /// - Chunk ACK:  [1, bytesWritten]
+  /// - Error:      [2, errorCode, errorMessage]
+  ///
+  /// @param sessionId  Session ID from file_saver_open_write[_as]
+  /// @param data       Byte array to write
+  /// @param dataLength Length of data in bytes
+  /// @param native_port Dart NativePort for result delivery
+  void writeChunk(
+    int sessionId,
+    ffi.Pointer<ffi.Uint8> data,
+    int dataLength,
+    int native_port,
+  ) {
+    return _writeChunk(sessionId, data, dataLength, native_port);
+  }
+
+  late final _writeChunkPtr = _lookup<
+    ffi.NativeFunction<
+      ffi.Void Function(
+        ffi.Uint64,
+        ffi.Pointer<ffi.Uint8>,
+        ffi.Int64,
+        ffi.Int64,
+      )
+    >
+  >('file_saver_write_chunk');
+  late final _writeChunk =
+      _writeChunkPtr
+          .asFunction<void Function(int, ffi.Pointer<ffi.Uint8>, int, int)>();
+
+  /// Flushes write buffers for an open write session.
+  ///
+  /// Messages sent to native_port:
+  /// - Flush ACK:  [1, bytesWritten]
+  /// - Error:      [2, errorCode, errorMessage]
+  ///
+  /// @param sessionId  Session ID from file_saver_open_write[_as]
+  /// @param native_port Dart NativePort for result delivery
+  void flushWrite(int sessionId, int native_port) {
+    return _flushWrite(sessionId, native_port);
+  }
+
+  late final _flushWritePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Uint64, ffi.Int64)>>(
+        'file_saver_flush_write',
+      );
+  late final _flushWrite = _flushWritePtr.asFunction<void Function(int, int)>();
+
+  /// Closes and finalizes an open write session.
+  ///
+  /// Messages sent to native_port:
+  /// - Success:  [3, fileUri]
+  /// - Error:    [2, errorCode, errorMessage]
+  ///
+  /// @param sessionId  Session ID from file_saver_open_write[_as]
+  /// @param native_port Dart NativePort for result delivery
+  void closeWrite(int sessionId, int native_port) {
+    return _closeWrite(sessionId, native_port);
+  }
+
+  late final _closeWritePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Uint64, ffi.Int64)>>(
+        'file_saver_close_write',
+      );
+  late final _closeWrite = _closeWritePtr.asFunction<void Function(int, int)>();
+
+  /// Cancels and discards an open write session (fire-and-forget).
+  ///
+  /// Closes the FileHandle and deletes the partial file.
+  /// No callback — caller should complete with CancelledException.
+  ///
+  /// @param sessionId  Session ID from file_saver_open_write[_as]
+  void cancelWrite(int sessionId) {
+    return _cancelWrite(sessionId);
+  }
+
+  late final _cancelWritePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Uint64)>>(
+        'file_saver_cancel_write',
+      );
+  late final _cancelWrite = _cancelWritePtr.asFunction<void Function(int)>();
 }
