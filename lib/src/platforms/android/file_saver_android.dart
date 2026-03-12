@@ -244,7 +244,7 @@ class FileSaverAndroid extends FileSaverPlatform {
     required SaveInput input,
     required FileType fileType,
     required String fileName,
-    required UserSelectedLocation saveLocation,
+    required PickedDirectoryLocation saveLocation,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
     return switch (input) {
@@ -530,7 +530,7 @@ class FileSaverAndroid extends FileSaverPlatform {
   Future<FileSaverSink> openWriteAs({
     required String fileName,
     required FileType fileType,
-    required UserSelectedLocation saveLocation,
+    required PickedDirectoryLocation saveLocation,
     int? totalSize,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) async {

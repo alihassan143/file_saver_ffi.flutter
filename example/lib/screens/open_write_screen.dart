@@ -91,7 +91,7 @@ class _OpenWriteScreenState extends State<OpenWriteScreen> {
       }
 
       // ── Step 3: Open write session ────────────────────────────────────────
-      if (saveLocation is UserSelectedLocation) {
+      if (saveLocation is PickedDirectoryLocation) {
         _sink = await FileSaver.openWriteAs(
           fileName: fileName,
           fileType: config.fileType,

@@ -148,10 +148,10 @@ class FileSaver {
     required SaveInput input,
     required FileType fileType,
     required String fileName,
-    UserSelectedLocation? saveLocation,
+    PickedDirectoryLocation? saveLocation,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) async* {
-    UserSelectedLocation? resolvedLocation = saveLocation;
+    PickedDirectoryLocation? resolvedLocation = saveLocation;
     if (resolvedLocation == null) {
       try {
         final picked = await pickDirectory();
@@ -163,9 +163,9 @@ class FileSaver {
       } catch (e) {
         if (kIsWeb) {
           // Browser doesn't support FSA (Firefox / Safari).
-          // Pass a plain UserSelectedLocation so FileSaverWeb.saveAs()
+          // Pass a plain PickedDirectoryLocation so FileSaverWeb.saveAs()
           // falls through to its anchor-download fallback.
-          resolvedLocation = UserSelectedLocation(uri: Uri());
+          resolvedLocation = PickedDirectoryLocation(uri: Uri());
         } else {
           yield SaveProgressError(NativePlatformException(e.toString()));
           return;
@@ -192,7 +192,7 @@ class FileSaver {
     required SaveInput input,
     required FileType fileType,
     required String fileName,
-    UserSelectedLocation? saveLocation,
+    PickedDirectoryLocation? saveLocation,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
     void Function(double progress)? onProgress,
   }) async {
@@ -280,11 +280,11 @@ class FileSaver {
   static Future<FileSaverSink?> openWriteAs({
     required String fileName,
     required FileType fileType,
-    UserSelectedLocation? saveLocation,
+    PickedDirectoryLocation? saveLocation,
     int? totalSize,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) async {
-    UserSelectedLocation? resolvedLocation = saveLocation;
+    PickedDirectoryLocation? resolvedLocation = saveLocation;
     if (resolvedLocation == null) {
       try {
         final picked = await pickDirectory();
@@ -293,7 +293,7 @@ class FileSaver {
       } catch (e) {
         if (kIsWeb) {
           // Browser doesn't support FSA — fall through to buffer mode.
-          resolvedLocation = UserSelectedLocation(uri: Uri());
+          resolvedLocation = PickedDirectoryLocation(uri: Uri());
         } else {
           rethrow;
         }
@@ -320,9 +320,9 @@ class FileSaver {
   /// so the app can write to the selected directory across restarts without re-picking.
   /// Ignored on all other platforms.
   ///
-  /// Returns [UserSelectedLocation], or null if cancelled.
+  /// Returns [PickedDirectoryLocation], or null if cancelled.
   /// Throws [UnsupportedError] on browsers that do not support the File System Access API.
-  static Future<UserSelectedLocation?> pickDirectory({
+  static Future<PickedDirectoryLocation?> pickDirectory({
     bool shouldPersist = true,
   }) {
     return _platform.pickDirectory(shouldPersist: shouldPersist);

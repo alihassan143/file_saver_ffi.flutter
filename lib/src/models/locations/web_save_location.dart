@@ -2,7 +2,7 @@ import 'package:web/web.dart';
 
 import 'save_location.dart';
 
-/// Web-only subtype of [UserSelectedLocation] carrying a
+/// Web-only subtype of [PickedDirectoryLocation] carrying a
 /// [FileSystemDirectoryHandle] from the File System Access API.
 ///
 /// Returned by [FileSaverWeb.pickDirectory] on Chrome/Edge 86+.
@@ -18,11 +18,11 @@ import 'save_location.dart';
 ///   input: SaveInput.bytes(imageBytes),
 ///   fileType: ImageType.png,
 ///   fileName: 'screenshot',
-///   saveLocation: location, // WebSelectedLocation on web
+///   saveLocation: location, // WebPickedDirectoryLocation on web
 /// );
 /// ```
-final class WebSelectedLocation extends UserSelectedLocation {
-  WebSelectedLocation(this.directoryHandle)
+final class WebPickedDirectoryLocation extends PickedDirectoryLocation {
+  WebPickedDirectoryLocation(this.directoryHandle)
     : super(uri: Uri(scheme: 'web-directory', path: directoryHandle.name));
 
   /// The [FileSystemDirectoryHandle] obtained from `window.showDirectoryPicker()`.

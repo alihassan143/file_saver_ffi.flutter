@@ -121,7 +121,7 @@ abstract class FileSaverPlatform {
     required SaveInput input,
     required FileType fileType,
     required String fileName,
-    required UserSelectedLocation saveLocation,
+    required PickedDirectoryLocation saveLocation,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   });
 
@@ -153,11 +153,11 @@ abstract class FileSaverPlatform {
   ///
   /// **Platforms:** Windows · Linux · Web (FSA) · Android · iOS · macOS
   ///
-  /// [saveLocation] must be a [UserSelectedLocation] obtained via [pickDirectory].
+  /// [saveLocation] must be a [PickedDirectoryLocation] obtained via [pickDirectory].
   Future<FileSaverSink> openWriteAs({
     required String fileName,
     required FileType fileType,
-    required UserSelectedLocation saveLocation,
+    required PickedDirectoryLocation saveLocation,
     int? totalSize,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
@@ -176,9 +176,9 @@ abstract class FileSaverPlatform {
   /// so the app can write to the selected directory across restarts without re-picking.
   /// Ignored on all other platforms.
   ///
-  /// Returns [UserSelectedLocation], or null if cancelled.
+  /// Returns [PickedDirectoryLocation], or null if cancelled.
   /// Throws [UnsupportedError] on browsers that do not support the File System Access API.
-  Future<UserSelectedLocation?> pickDirectory({
+  Future<PickedDirectoryLocation?> pickDirectory({
     bool shouldPersist = true,
   }) async {
     try {
@@ -186,7 +186,7 @@ abstract class FileSaverPlatform {
         androidOptions: AndroidOptions(shouldPersist: shouldPersist),
       );
       if (location == null) return null;
-      return UserSelectedLocation(uri: location.uri!);
+      return PickedDirectoryLocation(uri: location.uri!);
     } on FileSaverException {
       rethrow;
     } catch (e) {

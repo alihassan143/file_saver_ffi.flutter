@@ -18,7 +18,7 @@ class _SaveAsScreenState extends State<SaveAsScreen> with DemoSaveScreenMixin {
   bool _isSaving = false;
   DemoInputSource _inputSource = DemoInputSource.network;
 
-  UserSelectedLocation? _pickedDirectory;
+  PickedDirectoryLocation? _pickedDirectory;
 
   String? _pickedFilePath;
 

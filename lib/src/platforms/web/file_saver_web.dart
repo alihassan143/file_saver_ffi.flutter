@@ -33,13 +33,13 @@ class FileSaverWeb extends FileSaverPlatform {
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Shows `window.showDirectoryPicker()` via `dir_picker` and returns a
-  /// [WebSelectedLocation] wrapping the chosen [FileSystemDirectoryHandle].
+  /// [WebPickedDirectoryLocation] wrapping the chosen [FileSystemDirectoryHandle].
   ///
   /// Returns `null` if the user cancels.
   /// Throws [NativePlatformException] if the browser does not support the
   /// File System Access API (Firefox / Safari).
   @override
-  Future<UserSelectedLocation?> pickDirectory({
+  Future<PickedDirectoryLocation?> pickDirectory({
     bool shouldPersist = true,
   }) async {
     try {
@@ -49,7 +49,7 @@ class FileSaverWeb extends FileSaverPlatform {
         throw const NativePlatformException('Unexpected picker result on web.');
       }
 
-      return WebSelectedLocation(location.handle);
+      return WebPickedDirectoryLocation(location.handle);
     } catch (e) {
       // dir_picker is an external package and will not throw FileSaverException.
       // Any error here means the browser doesn't support showDirectoryPicker.
@@ -207,11 +207,11 @@ class FileSaverWeb extends FileSaverPlatform {
     required SaveInput input,
     required FileType fileType,
     required String fileName,
-    required UserSelectedLocation saveLocation,
+    required PickedDirectoryLocation saveLocation,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
-    // If FSA is supported and we have a valid WebSelectedLocation
-    if (saveLocation is WebSelectedLocation) {
+    // If FSA is supported and we have a valid WebPickedDirectoryLocation
+    if (saveLocation is WebPickedDirectoryLocation) {
       return switch (input) {
         SaveBytesInput(:final fileBytes) => _saveToDirectory(
           handle: saveLocation.directoryHandle,
@@ -268,7 +268,7 @@ class FileSaverWeb extends FileSaverPlatform {
   /// Buffer fallback — bytes are accumulated in memory and downloaded on [close].
   ///
   /// ⚠ Web: `openWrite` without FSA always buffers to RAM.
-  /// For zero-RAM streaming use [openWriteAs] with a [WebSelectedLocation].
+  /// For zero-RAM streaming use [openWriteAs] with a [WebPickedDirectoryLocation].
   @override
   Future<FileSaverSink> openWrite({
     required String fileName,
@@ -288,13 +288,13 @@ class FileSaverWeb extends FileSaverPlatform {
     );
   }
 
-  /// FSA mode when [saveLocation] is [WebSelectedLocation] — zero-RAM streaming.
+  /// FSA mode when [saveLocation] is [WebPickedDirectoryLocation] — zero-RAM streaming.
   /// Falls back to buffer mode for browsers without FSA support.
   @override
   Future<FileSaverSink> openWriteAs({
     required String fileName,
     required FileType fileType,
-    required UserSelectedLocation saveLocation,
+    required PickedDirectoryLocation saveLocation,
     int? totalSize,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) async {
@@ -303,7 +303,7 @@ class FileSaverWeb extends FileSaverPlatform {
     }
     final fullName = '$fileName.${fileType.ext}';
 
-    if (saveLocation is WebSelectedLocation) {
+    if (saveLocation is WebPickedDirectoryLocation) {
       final handle = saveLocation.directoryHandle;
       final fileEntity = WebFileEntity(handle);
       final resolvedName =

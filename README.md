@@ -396,20 +396,20 @@ Stream<SaveProgress> saveAs({
   required SaveInput input,
   required String fileName,
   required FileType fileType,
-  UserSelectedLocation? saveLocation,
+  PickedDirectoryLocation? saveLocation,
   ConflictResolution conflictResolution,
 })
 ```
 
 #### `saveAsAsync`
-Interactive save (shows picker) or save to specific `UserSelectedLocation`.
+Interactive save (shows picker) or save to specific `PickedDirectoryLocation`.
 
 ```dart
 Future<Uri?> saveAsAsync({
   required SaveInput input,
   required String fileName,
   required FileType fileType,
-  UserSelectedLocation? saveLocation, // Null = Show Picker
+  PickedDirectoryLocation? saveLocation, // Null = Show Picker
   ConflictResolution conflictResolution,
   Function(double)? onProgress,
 })
@@ -419,7 +419,7 @@ Future<Uri?> saveAsAsync({
 Open system picker to let user choose a folder.
 
 ```dart
-Future<UserSelectedLocation?> pickDirectory({bool shouldPersist = true})
+Future<PickedDirectoryLocation?> pickDirectory({bool shouldPersist = true})
 ```
 
 ### Input Models

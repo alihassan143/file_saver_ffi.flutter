@@ -271,7 +271,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
     required SaveInput input,
     required FileType fileType,
     required String fileName,
-    required UserSelectedLocation saveLocation,
+    required PickedDirectoryLocation saveLocation,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
     return switch (input) {
@@ -537,7 +537,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
   Future<FileSaverSink> openWriteAs({
     required String fileName,
     required FileType fileType,
-    required UserSelectedLocation saveLocation,
+    required PickedDirectoryLocation saveLocation,
     int? totalSize,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) async {
