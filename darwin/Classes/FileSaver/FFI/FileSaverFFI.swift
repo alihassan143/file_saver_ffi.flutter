@@ -103,6 +103,62 @@ private func unregisterDownload(_ id: UInt) {
     activeDownloads.removeValue(forKey: id)
 }
 
+// MARK: - Write Session Registry
+
+private final class WriteSession {
+    let fileHandle: FileHandle
+    let fileURL: URL
+    let totalSize: Int64        // -1 if unknown
+    let serialQueue: DispatchQueue
+    let securityScopedURL: URL? // non-nil for openWriteAs
+    var bytesWritten: Int64 = 0
+
+    init(
+        fileHandle: FileHandle,
+        fileURL: URL,
+        totalSize: Int64,
+        securityScopedURL: URL?
+    ) {
+        self.fileHandle = fileHandle
+        self.fileURL = fileURL
+        self.totalSize = totalSize
+        self.securityScopedURL = securityScopedURL
+        self.serialQueue = DispatchQueue(
+            label: "com.vanvixi.file_saver.ws.\(fileURL.lastPathComponent)",
+            qos: .userInitiated
+        )
+    }
+}
+
+private var writeSessionRegistry: [UInt: WriteSession] = [:]
+private let writeSessionLock = NSLock()
+private var writeSessionIdCounter: UInt = 0
+
+private func generateWriteSessionId() -> UInt {
+    writeSessionLock.lock()
+    defer { writeSessionLock.unlock() }
+    writeSessionIdCounter += 1
+    return writeSessionIdCounter
+}
+
+private func registerWriteSession(_ id: UInt, _ session: WriteSession) {
+    writeSessionLock.lock()
+    defer { writeSessionLock.unlock() }
+    writeSessionRegistry[id] = session
+}
+
+private func removeWriteSession(_ id: UInt) -> WriteSession? {
+    writeSessionLock.lock()
+    defer { writeSessionLock.unlock() }
+    return writeSessionRegistry.removeValue(forKey: id)
+}
+
+private func getWriteSession(_ id: UInt) -> WriteSession? {
+    writeSessionLock.lock()
+    defer { writeSessionLock.unlock() }
+    return writeSessionRegistry[id]
+}
+
 @_cdecl("file_saver_init_dart_api_dl")
 public func fileSaverInitDartApiDL(_ data: UnsafeMutableRawPointer?) -> Int {
     guard let data = data else { return -1 }
