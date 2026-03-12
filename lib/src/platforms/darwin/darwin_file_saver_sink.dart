@@ -136,8 +136,11 @@ class DarwinFileSaverSink implements FileSaverSink {
     _progressController.close().ignore();
     _bytesController.close().ignore();
     const error = CancelledException();
-    if (!_resultCompleter.isCompleted) _resultCompleter.completeError(error);
-    if (!_doneCompleter.isCompleted) _doneCompleter.completeError(error);
+    if (!_resultCompleter.isCompleted) {
+      _resultCompleter.completeError(error);
+      _resultCompleter.future.ignore();
+    }
+    if (!_doneCompleter.isCompleted) _doneCompleter.complete();
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -150,6 +153,7 @@ class DarwinFileSaverSink implements FileSaverSink {
     final receivePort = ReceivePort();
     receivePort.listen((message) {
       receivePort.close();
+      if (_isClosed) return;
       final msg = message as List;
       switch (msg[0] as int) {
         case 1:
@@ -192,11 +196,13 @@ class DarwinFileSaverSink implements FileSaverSink {
       final msg = message as List;
       switch (msg[0] as int) {
         case 1:
-          _bytesWritten = (msg[1] as num).toInt();
-          _bytesController.add(_bytesWritten);
-          final total = _totalSize;
-          if (total != null && total > 0) {
-            _progressController.add(_bytesWritten / total);
+          if (!_isClosed) {
+            _bytesWritten = (msg[1] as num).toInt();
+            _bytesController.add(_bytesWritten);
+            final total = _totalSize;
+            if (total != null && total > 0) {
+              _progressController.add(_bytesWritten / total);
+            }
           }
           if (!completer.isCompleted) completer.complete();
         case 2:

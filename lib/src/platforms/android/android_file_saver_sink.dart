@@ -138,8 +138,11 @@ class AndroidFileSaverSink implements FileSaverSink {
     _progressController.close().ignore();
     _bytesController.close().ignore();
     const error = CancelledException();
-    if (!_resultCompleter.isCompleted) _resultCompleter.completeError(error);
-    if (!_doneCompleter.isCompleted) _doneCompleter.completeError(error);
+    if (!_resultCompleter.isCompleted) {
+      _resultCompleter.completeError(error);
+      _resultCompleter.future.ignore();
+    }
+    if (!_doneCompleter.isCompleted) _doneCompleter.complete();
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -157,11 +160,13 @@ class AndroidFileSaverSink implements FileSaverSink {
           jStr2?.release();
           switch (eventType) {
             case 1:
-              _lastBytesWritten = progress.toInt();
-              _bytesController.add(_lastBytesWritten);
-              final total = _totalSize;
-              if (total != null && total > 0) {
-                _progressController.add(_lastBytesWritten / total);
+              if (!_isClosed) {
+                _lastBytesWritten = progress.toInt();
+                _bytesController.add(_lastBytesWritten);
+                final total = _totalSize;
+                if (total != null && total > 0) {
+                  _progressController.add(_lastBytesWritten / total);
+                }
               }
             case 2:
               if (!_doneCompleter.isCompleted) {
@@ -194,11 +199,13 @@ class AndroidFileSaverSink implements FileSaverSink {
           jStr2?.release();
           switch (eventType) {
             case 1:
-              _lastBytesWritten = progress.toInt();
-              _bytesController.add(_lastBytesWritten);
-              final total = _totalSize;
-              if (total != null && total > 0) {
-                _progressController.add(_lastBytesWritten / total);
+              if (!_isClosed) {
+                _lastBytesWritten = progress.toInt();
+                _bytesController.add(_lastBytesWritten);
+                final total = _totalSize;
+                if (total != null && total > 0) {
+                  _progressController.add(_lastBytesWritten / total);
+                }
               }
               if (!completer.isCompleted) completer.complete();
             case 2:

@@ -190,7 +190,10 @@ class WebFileSaverSink implements FileSaverSink {
     _progressController.close().ignore();
     _bytesController.close().ignore();
     const error = CancelledException();
-    if (!_resultCompleter.isCompleted) _resultCompleter.completeError(error);
-    if (!_doneCompleter.isCompleted) _doneCompleter.completeError(error);
+    if (!_resultCompleter.isCompleted) {
+      _resultCompleter.completeError(error);
+      _resultCompleter.future.ignore();
+    }
+    if (!_doneCompleter.isCompleted) _doneCompleter.complete();
   }
 }
