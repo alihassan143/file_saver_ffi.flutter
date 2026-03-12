@@ -10,8 +10,8 @@ import '../../exceptions/file_saver_exceptions.dart';
 import '../../models/conflict_resolution.dart';
 import '../../models/file_saver_sink.dart';
 import '../../models/file_type.dart';
-import '../../models/save_input.dart';
 import '../../models/locations/save_location.dart';
+import '../../models/save_input.dart';
 import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
 import 'bindings.g.dart';
@@ -32,7 +32,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
     // Initialize Dart API DL for NativePort communication
     final initResult = _fileSaver.initDartApiDl(NativeApi.initializeApiDLData);
     if (initResult != 0) {
-      throw const PlatformException(
+      throw const NativePlatformException(
         'Failed to initialize Dart API DL',
         'INIT_FAILED',
       );
@@ -563,8 +563,9 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
       }
     });
     using((arena) {
-      final dirUriCStr =
-          saveLocation.uri.toString().toNativeUtf8(allocator: arena);
+      final dirUriCStr = saveLocation.uri.toString().toNativeUtf8(
+        allocator: arena,
+      );
       final fileNameCStr = fileName.toNativeUtf8(allocator: arena);
       final extCStr = fileType.ext.toNativeUtf8(allocator: arena);
       _fileSaver.openWriteAs(
@@ -611,7 +612,10 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
   SaveProgress _parseMessage(dynamic message) {
     if (message is! List || message.isEmpty) {
       return SaveProgressError(
-        const PlatformException('Invalid message format', 'INVALID_MESSAGE'),
+        const NativePlatformException(
+          'Invalid message format',
+          'INVALID_MESSAGE',
+        ),
       );
     }
 
@@ -641,7 +645,10 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
 
       default:
         return SaveProgressError(
-          PlatformException('Unknown message type: $type', 'UNKNOWN_TYPE'),
+          NativePlatformException(
+            'Unknown message type: $type',
+            'UNKNOWN_TYPE',
+          ),
         );
     }
   }

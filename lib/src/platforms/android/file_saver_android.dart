@@ -8,8 +8,8 @@ import '../../exceptions/file_saver_exceptions.dart';
 import '../../models/conflict_resolution.dart';
 import '../../models/file_saver_sink.dart';
 import '../../models/file_type.dart';
-import '../../models/save_input.dart';
 import '../../models/locations/save_location.dart';
+import '../../models/save_input.dart';
 import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
 import 'android_file_saver_sink.dart';
@@ -485,14 +485,19 @@ class FileSaverAndroid extends FileSaverPlatform {
         onEvent: (eventType, progress, jStr1, jStr2) {
           switch (eventType) {
             case 3:
-              final sessionIdStr = jStr1?.toDartString(releaseOriginal: true) ?? '0';
+              final sessionIdStr =
+                  jStr1?.toDartString(releaseOriginal: true) ?? '0';
               jStr2?.release();
-              if (!completer.isCompleted) completer.complete(int.parse(sessionIdStr));
+              if (!completer.isCompleted)
+                completer.complete(int.parse(sessionIdStr));
             case 2:
-              final code = jStr1?.toDartString(releaseOriginal: true) ?? 'UNKNOWN';
+              final code =
+                  jStr1?.toDartString(releaseOriginal: true) ?? 'UNKNOWN';
               final msg = jStr2?.toDartString(releaseOriginal: true) ?? '';
               if (!completer.isCompleted) {
-                completer.completeError(FileSaverException.fromErrorResult(code, msg));
+                completer.completeError(
+                  FileSaverException.fromErrorResult(code, msg),
+                );
               }
             default:
               jStr1?.release();
@@ -536,14 +541,19 @@ class FileSaverAndroid extends FileSaverPlatform {
         onEvent: (eventType, progress, jStr1, jStr2) {
           switch (eventType) {
             case 3:
-              final sessionIdStr = jStr1?.toDartString(releaseOriginal: true) ?? '0';
+              final sessionIdStr =
+                  jStr1?.toDartString(releaseOriginal: true) ?? '0';
               jStr2?.release();
-              if (!completer.isCompleted) completer.complete(int.parse(sessionIdStr));
+              if (!completer.isCompleted)
+                completer.complete(int.parse(sessionIdStr));
             case 2:
-              final code = jStr1?.toDartString(releaseOriginal: true) ?? 'UNKNOWN';
+              final code =
+                  jStr1?.toDartString(releaseOriginal: true) ?? 'UNKNOWN';
               final msg = jStr2?.toDartString(releaseOriginal: true) ?? '';
               if (!completer.isCompleted) {
-                completer.completeError(FileSaverException.fromErrorResult(code, msg));
+                completer.completeError(
+                  FileSaverException.fromErrorResult(code, msg),
+                );
               }
             default:
               jStr1?.release();
@@ -623,7 +633,10 @@ class FileSaverAndroid extends FileSaverPlatform {
 
       default:
         return SaveProgressError(
-          PlatformException('Unknown event type: $eventType', 'UNKNOWN_TYPE'),
+          NativePlatformException(
+            'Unknown event type: $eventType',
+            'UNKNOWN_TYPE',
+          ),
         );
     }
   }

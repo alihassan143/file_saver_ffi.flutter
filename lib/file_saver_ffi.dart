@@ -128,7 +128,7 @@ class FileSaver {
     }
 
     if (result == null) {
-      throw const PlatformException(
+      throw const NativePlatformException(
         'Save operation did not complete',
         'INCOMPLETE',
       );
@@ -167,7 +167,7 @@ class FileSaver {
           // falls through to its anchor-download fallback.
           resolvedLocation = UserSelectedLocation(uri: Uri());
         } else {
-          yield SaveProgressError(PlatformException(e.toString()));
+          yield SaveProgressError(NativePlatformException(e.toString()));
           return;
         }
       }

@@ -190,7 +190,7 @@ abstract class FileSaverPlatform {
     } on FileSaverException {
       rethrow;
     } catch (e) {
-      throw PlatformException('Pick directory failed: $e');
+      throw NativePlatformException('Pick directory failed: $e');
     }
   }
 

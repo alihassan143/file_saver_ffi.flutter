@@ -461,7 +461,7 @@ Stream API emits these sealed class events:
 | `ICloudDownloadException`     | iCloud download failed (iOS)            | `ICLOUD_DOWNLOAD_FAILED` |
 | `NetworkException`            | Network error occurred during download. | `NETWORK_ERROR`          |
 | `CancelledException`          | Operation cancelled by user             | `CANCELLED`              |
-| `PlatformException`           | Generic platform error                  | `PLATFORM_ERROR`         |
+| `NativePlatformException`           | Generic platform error                  | `PLATFORM_ERROR`         |
 
 ## Contributing
 
