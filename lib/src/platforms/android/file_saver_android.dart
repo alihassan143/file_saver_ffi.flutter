@@ -12,6 +12,7 @@ import '../../models/locations/save_location.dart';
 import '../../models/save_input.dart';
 import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
+import '../shared/path_location_writer.dart';
 import 'android_file_saver_sink.dart';
 import 'bindings.g.dart' as bindings;
 
@@ -35,6 +36,17 @@ class FileSaverAndroid extends FileSaverPlatform {
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
     validateBytesInput(fileBytes, fileName);
+
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.saveBytes(
+        fileBytes: fileBytes,
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+      );
+    }
 
     return Stream.multi((controller) {
       bool cleanedUp = false;
@@ -104,6 +116,17 @@ class FileSaverAndroid extends FileSaverPlatform {
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
     validateFilePathInput(filePath, fileName);
+
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.saveFile(
+        filePath: filePath,
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+      );
+    }
 
     return Stream.multi((controller) {
       bool cleanedUp = false;
@@ -175,6 +198,19 @@ class FileSaverAndroid extends FileSaverPlatform {
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
     validateNetworkInput(url, fileName);
+
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.saveNetwork(
+        url: url,
+        headers: headers,
+        timeout: timeout,
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+      );
+    }
 
     return Stream.multi((controller) {
       bool cleanedUp = false;
@@ -478,6 +514,17 @@ class FileSaverAndroid extends FileSaverPlatform {
     int? totalSize,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) async {
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.openWrite(
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+        totalSize: totalSize,
+      );
+    }
+
     final completer = Completer<int>();
     bindings.ProgressCallback? callback;
     callback = bindings.ProgressCallback.implement(

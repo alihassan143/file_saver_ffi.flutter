@@ -188,3 +188,33 @@ class PickedDirectoryLocation implements SaveLocation {
   ///   Use [WebPickedDirectoryLocation] to access the [FileSystemDirectoryHandle].
   final Uri uri;
 }
+
+/// Save to a specific filesystem directory path.
+///
+/// The plugin writes the file directly using `dart:io`. The caller is
+/// responsible for providing a valid, accessible path — the plugin only
+/// creates the directory (if absent) and writes the file.
+///
+/// **Getting a path:**
+/// ```dart
+/// // App Documents directory (all platforms)
+/// final docs = await getApplicationDocumentsDirectory();
+/// PathLocation(p.join(docs.path, 'my_recordings'))
+///
+/// // User-picked directory (macOS / Desktop / Android)
+/// final picked = await FilePicker.platform.getDirectoryPath();
+/// if (picked != null) PathLocation(picked)
+/// ```
+///
+/// **Platform notes:**
+/// - **iOS**: Only paths within the app sandbox are writable.
+/// - **macOS (sandboxed)**: Only paths inside the app container or picked via
+///   system picker are accessible. Opening via picker grants access.
+/// - **Android 11+**: Paths outside app storage (e.g., `/storage/emulated/0/`)
+///   require `MANAGE_EXTERNAL_STORAGE` permission.
+class PathLocation implements SaveLocation {
+  const PathLocation(this.path);
+
+  /// The filesystem directory path to save the file into.
+  final String path;
+}
