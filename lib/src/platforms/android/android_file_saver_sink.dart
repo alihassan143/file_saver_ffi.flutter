@@ -56,8 +56,9 @@ class AndroidFileSaverSink implements FileSaverSink {
   @override
   void add(List<int> data) {
     if (_isClosed) throw StateError('Cannot add to a closed FileSaverSink');
-    if (_isAddingStream)
+    if (_isAddingStream) {
       throw StateError('Cannot add while addStream is active');
+    }
     _dispatchChunk(data);
   }
 
