@@ -8,14 +8,14 @@ import '../../models/file_saver_sink.dart';
 ///
 /// Wraps [dart:io]'s [IOSink] with progress/bytesWritten tracking.
 /// Deletes the partial file on [cancel].
-class DesktopFileSaverSink implements FileSaverSink {
-  DesktopFileSaverSink({
+class IoFileSaverSink implements FileSaverSink {
+  IoFileSaverSink({
     required IOSink sink,
     required File file,
     required int? totalSize,
-  })  : _sink = sink,
-        _file = file,
-        _totalSize = totalSize;
+  }) : _sink = sink,
+       _file = file,
+       _totalSize = totalSize;
 
   final IOSink _sink;
   final File _file;
