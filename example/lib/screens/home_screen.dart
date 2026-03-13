@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'open_write_screen.dart';
+import 'path_location_screen.dart';
 import 'save_as_screen.dart';
 import 'save_screen.dart';
 
@@ -33,6 +34,11 @@ class HomeScreen extends StatelessWidget {
                 _SaveApiButton(
                   label: 'Open Write API (Session)',
                   screenWidget: const OpenWriteScreen(),
+                ),
+                const SizedBox(height: 12),
+                _SaveApiButton(
+                  label: 'PathLocation (Custom Path)',
+                  screenWidget: const PathLocationScreen(),
                 ),
               ],
             ),
