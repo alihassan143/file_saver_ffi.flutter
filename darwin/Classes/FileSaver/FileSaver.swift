@@ -253,6 +253,14 @@ class FileSaver {
 
         let fullFileName = FileHelper.buildFileName(fileName: baseFileName, extension: ext)
         let conflictResolution = ConflictResolution.fromInt(conflictMode)
+
+        if conflictResolution == .skip {
+            let targetURL = targetDir.appendingPathComponent(fullFileName)
+            if FileManager.default.fileExists(atPath: targetURL.path) {
+                throw FileSaverError.writeSessionSkipped
+            }
+        }
+
         let fileURL = try FileManagerConflictResolver.resolveConflict(
             directory: targetDir,
             fileName: fullFileName,
@@ -297,9 +305,10 @@ class FileSaver {
             hasReadAccess: hasReadAccess
         )
 
-        // For streaming sessions, "skip" (return existing URI without writing) makes no sense —
-        // the caller is opening a write session expecting to write new data.
         if existingUri != nil {
+            if conflictResolution == .skip {
+                throw FileSaverError.writeSessionSkipped
+            }
             throw FileSaverError.fileExists(fullFileName)
         }
 
@@ -339,6 +348,14 @@ class FileSaver {
         }
         let fullFileName = FileHelper.buildFileName(fileName: baseFileName, extension: ext)
         let conflictResolution = ConflictResolution.fromInt(conflictMode)
+
+        if conflictResolution == .skip {
+            let targetURL = dirURL.appendingPathComponent(fullFileName)
+            if FileManager.default.fileExists(atPath: targetURL.path) {
+                throw FileSaverError.writeSessionSkipped
+            }
+        }
+
         let fileURL = try FileManagerConflictResolver.resolveConflict(
             directory: dirURL,
             fileName: fullFileName,

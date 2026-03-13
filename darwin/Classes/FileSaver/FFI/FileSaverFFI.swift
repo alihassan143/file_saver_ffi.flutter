@@ -801,6 +801,10 @@ public func fileSaverOpenWrite(
                 ))
             reporter.sendSuccess(uri: String(sessionId))
         } catch let fsError as FileSaverError {
+            if case .writeSessionSkipped = fsError {
+                reporter.sendSuccess(uri: "0")
+                return
+            }
             reporter.sendError(code: fsError.code, message: fsError.message)
         } catch {
             reporter.sendError(code: Constants.errorPlatform, message: error.localizedDescription)
@@ -857,6 +861,11 @@ public func fileSaverOpenWriteAs(
                 ))
             reporter.sendSuccess(uri: String(sessionId))
         } catch let fsError as FileSaverError {
+            if case .writeSessionSkipped = fsError {
+                if isScoped { dirURL.stopAccessingSecurityScopedResource() }
+                reporter.sendSuccess(uri: "0")
+                return
+            }
             if isScoped { dirURL.stopAccessingSecurityScopedResource() }
             reporter.sendError(code: fsError.code, message: fsError.message)
         } catch {

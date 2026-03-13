@@ -573,6 +573,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
       );
     });
     final sessionId = await completer.future;
+    if (sessionId == 0) return null;
     return DarwinFileSaverSink(
       fileSaver: _fileSaver,
       sessionId: sessionId,
@@ -626,6 +627,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
       );
     });
     final sessionId = await completer.future;
+    if (sessionId == 0) return null;
     return DarwinFileSaverSink(
       fileSaver: _fileSaver,
       sessionId: sessionId,
