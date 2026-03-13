@@ -13,8 +13,9 @@ import '../../models/save_input.dart';
 import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
 import 'conflict_resolver.dart';
-import 'desktop_file_saver_sink.dart';
-import 'file_entity.dart';
+import 'io_file_entity.dart';
+import 'io_file_saver_sink.dart';
+import 'path_location_writer.dart';
 
 /// 1MB chunk size for progress reporting.
 const int _chunkSize = 1048576;
@@ -548,16 +549,6 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
     }
     return filePath;
   }
-}
-
-class IOFileEntity implements FileEntity {
-  const IOFileEntity();
-
-  @override
-  Future<bool> exists(String path) => File(path).exists();
-
-  @override
-  Future<void> delete(String path) => File(path).delete();
 }
 
 class _CancellationToken {
