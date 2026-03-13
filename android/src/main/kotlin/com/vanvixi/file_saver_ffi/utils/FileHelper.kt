@@ -1,8 +1,14 @@
 package com.vanvixi.file_saver_ffi.utils
 
 import android.content.Context
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
 import android.provider.MediaStore
+import androidx.annotation.RequiresApi
+import androidx.documentfile.provider.DocumentFile
 import androidx.core.net.toUri
+import com.vanvixi.file_saver_ffi.models.SaveLocation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -65,6 +71,107 @@ object FileHelper {
         } else {
             fileName
         }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    fun scopedStoreTargetFor(
+        saveLocation: SaveLocation,
+        subDir: String?,
+    ): Pair<Uri, String> {
+        fun buildDir(defaultDir: String, subDir: String?) =
+            if (subDir.isNullOrBlank()) defaultDir else "$defaultDir/$subDir"
+
+        return when (saveLocation) {
+            SaveLocation.PICTURES -> {
+                val uri = MediaStore.Images.Media.getContentUri(
+                    MediaStore.VOLUME_EXTERNAL_PRIMARY
+                )
+                uri to buildDir(Environment.DIRECTORY_PICTURES, subDir)
+            }
+
+            SaveLocation.MOVIES -> {
+                val uri = MediaStore.Video.Media.getContentUri(
+                    MediaStore.VOLUME_EXTERNAL_PRIMARY
+                )
+                uri to buildDir(Environment.DIRECTORY_MOVIES, subDir)
+            }
+
+            SaveLocation.MUSIC -> {
+                val uri = MediaStore.Audio.Media.getContentUri(
+                    MediaStore.VOLUME_EXTERNAL_PRIMARY
+                )
+                uri to buildDir(Environment.DIRECTORY_MUSIC, subDir)
+            }
+
+            SaveLocation.DOWNLOADS -> {
+                val uri = MediaStore.Downloads.getContentUri(
+                    MediaStore.VOLUME_EXTERNAL_PRIMARY
+                )
+                uri to buildDir(Environment.DIRECTORY_DOWNLOADS, subDir)
+            }
+
+            SaveLocation.DCIM -> {
+                val uri = MediaStore.Images.Media.getContentUri(
+                    MediaStore.VOLUME_EXTERNAL_PRIMARY
+                )
+                uri to buildDir(Environment.DIRECTORY_DCIM, subDir)
+            }
+        }
+    }
+
+    fun legacyStoreDirectoryFor(
+        saveLocation: SaveLocation,
+        subDir: String?,
+    ): File {
+        val baseDir = when (saveLocation) {
+            SaveLocation.PICTURES -> Environment.DIRECTORY_PICTURES
+            SaveLocation.MOVIES -> Environment.DIRECTORY_MOVIES
+            SaveLocation.MUSIC -> Environment.DIRECTORY_MUSIC
+            SaveLocation.DOWNLOADS -> Environment.DIRECTORY_DOWNLOADS
+            SaveLocation.DCIM -> Environment.DIRECTORY_DCIM
+        }
+
+        val publicDir = Environment.getExternalStoragePublicDirectory(baseDir)
+        return File(publicDir, subDir ?: "")
+    }
+
+    fun findExistingWriteTargetUriOrNull(
+        context: Context,
+        saveLocation: SaveLocation,
+        subDir: String?,
+        baseFileName: String,
+        extension: String,
+    ): Uri? {
+        val fullName = buildFileName(baseFileName, extension)
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val (contentUri, relativePath) = scopedStoreTargetFor(saveLocation, subDir)
+            ScopedStoreConflictResolver.findExistingFileUri(
+                context = context,
+                contentUri = contentUri,
+                dirPath = relativePath,
+                displayName = fullName,
+            )
+        } else {
+            val directory = legacyStoreDirectoryFor(saveLocation, subDir)
+            val existing = LegacyStoreConflictResolver.findExistingFile(
+                directory = directory,
+                baseFileName = baseFileName,
+                extension = extension,
+            )
+            if (existing != null) Uri.fromFile(existing) else null
+        }
+    }
+
+    fun findExistingSafFileUriOrNull(
+        context: Context,
+        directoryUri: String,
+        baseFileName: String,
+        extension: String,
+    ): Uri? {
+        val fullName = buildFileName(baseFileName, extension)
+        val docDir = DocumentFile.fromTreeUri(context, directoryUri.toUri())
+        val existing = docDir?.findFile(fullName)
+        return if (existing != null && existing.exists()) existing.uri else null
     }
 
     /**

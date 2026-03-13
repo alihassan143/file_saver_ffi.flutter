@@ -51,6 +51,17 @@ object LegacyStoreConflictResolver {
         }
     }
 
+    fun findExistingFile(
+        directory: File,
+        baseFileName: String,
+        extension: String,
+    ): File? {
+        val original = File(
+            directory,
+            FileHelper.buildFileName(baseFileName, extension)
+        )
+        return if (original.exists()) original else null
+    }
 
     private fun autoRename(
         directory: File,

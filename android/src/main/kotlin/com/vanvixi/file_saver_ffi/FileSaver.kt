@@ -18,6 +18,7 @@ import com.vanvixi.file_saver_ffi.core.base.SaveEntryFactory
 import com.vanvixi.file_saver_ffi.exception.FileExistsException
 import com.vanvixi.file_saver_ffi.models.*
 import com.vanvixi.file_saver_ffi.utils.Constants
+import com.vanvixi.file_saver_ffi.utils.FileHelper
 import com.vanvixi.file_saver_ffi.utils.StoreHelper
 import com.vanvixi.file_saver_ffi.utils.StoragePermissionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
+import java.io.File
 import java.io.IOException
 import java.io.OutputStream
 import java.util.concurrent.ConcurrentHashMap
@@ -465,14 +467,30 @@ class FileSaver() {
             try {
                 ensureStoragePermission()
                 val fileType = FileType(extension, mimeType)
+                val conflictResolution = ConflictResolution.fromInt(conflictMode)
+                val saveLocation = SaveLocation.fromInt(saveLocationIndex)
+
+                if (conflictResolution == ConflictResolution.SKIP) {
+                    val existingUri = FileHelper.findExistingWriteTargetUriOrNull(
+                        context = context,
+                        saveLocation = saveLocation,
+                        subDir = subDir,
+                        baseFileName = baseFileName,
+                        extension = extension,
+                    )
+                    if (existingUri != null) {
+                        callback.onEvent(3, 0.0, "0", existingUri.toString())
+                        return@launch
+                    }
+                }
                 val entryFactory = SaveEntryFactory.MediaStore(
                     fileType = fileType,
                     baseFileName = baseFileName,
-                    saveLocation = SaveLocation.fromInt(saveLocationIndex),
+                    saveLocation = saveLocation,
                     subDir = subDir,
                 )
                 val (uri, outputStream) = entryFactory.createEntryDirect(
-                    context, ConflictResolution.fromInt(conflictMode)
+                    context, conflictResolution
                 )
                 val sessionId = sessionIdCounter.incrementAndGet()
                 val scope = CoroutineScope(Dispatchers.IO.limitedParallelism(1))
@@ -506,13 +524,27 @@ class FileSaver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val fileType = FileType(extension, mimeType)
+                val conflictResolution = ConflictResolution.fromInt(conflictMode)
+
+                if (conflictResolution == ConflictResolution.SKIP) {
+                    val existingUri = FileHelper.findExistingSafFileUriOrNull(
+                        context = context,
+                        directoryUri = directoryUri,
+                        baseFileName = baseFileName,
+                        extension = extension,
+                    )
+                    if (existingUri != null) {
+                        callback.onEvent(3, 0.0, "0", existingUri.toString())
+                        return@launch
+                    }
+                }
                 val entryFactory = SaveEntryFactory.SAF(
                     treeUri = directoryUri.toUri(),
                     fileType = fileType,
                     baseFileName = baseFileName,
                 )
                 val (uri, outputStream) = entryFactory.createEntryDirect(
-                    context, ConflictResolution.fromInt(conflictMode)
+                    context, conflictResolution
                 )
                 val sessionId = sessionIdCounter.incrementAndGet()
                 val scope = CoroutineScope(Dispatchers.IO.limitedParallelism(1))
@@ -598,7 +630,10 @@ class FileSaver() {
     fun cancelSession(sessionId: Long) {
         val session = writeSessions.remove(sessionId) ?: return
         session.sessionScope.launch {
-            try { session.outputStream.close() } catch (_: Exception) {}
+            try {
+                session.outputStream.close()
+            } catch (_: Exception) {
+            }
             session.entryFactory.deleteEntry(context, session.uri)
         }
     }
@@ -717,4 +752,5 @@ class FileSaver() {
 
         return operationId
     }
+
 }

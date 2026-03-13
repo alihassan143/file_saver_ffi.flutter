@@ -4,7 +4,6 @@ import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
 import android.os.Build
-import android.os.Environment
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
 import com.vanvixi.file_saver_ffi.exception.FileExistsException
@@ -69,35 +68,7 @@ object StoreHelper {
         subDir: String? = null,
         conflictResolution: ConflictResolution,
     ): Pair<Uri, OutputStream> = withContext(Dispatchers.IO) {
-        fun buildDir(defaultDir: String, subDir: String?) =
-            if (subDir.isNullOrBlank()) defaultDir else "$defaultDir/$subDir"
-
-        val (contentUri, dirPath) = when (saveLocation) {
-            SaveLocation.PICTURES -> {
-                val uri = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-                uri to buildDir(Environment.DIRECTORY_PICTURES, subDir)
-            }
-
-            SaveLocation.MOVIES -> {
-                val uri = MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-                uri to buildDir(Environment.DIRECTORY_MOVIES, subDir)
-            }
-
-            SaveLocation.MUSIC -> {
-                val uri = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-                uri to buildDir(Environment.DIRECTORY_MUSIC, subDir)
-            }
-
-            SaveLocation.DOWNLOADS -> {
-                val uri = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-                uri to buildDir(Environment.DIRECTORY_DOWNLOADS, subDir)
-            }
-
-            SaveLocation.DCIM -> {
-                val uri = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-                uri to buildDir(Environment.DIRECTORY_DCIM, subDir)
-            }
-        }
+        val (contentUri, dirPath) = FileHelper.scopedStoreTargetFor(saveLocation, subDir)
 
         val fileName = ScopedStoreConflictResolver.resolve(
             context,
@@ -133,20 +104,7 @@ object StoreHelper {
         subDir: String? = null,
         conflictResolution: ConflictResolution,
     ): Pair<Uri, OutputStream> = withContext(Dispatchers.IO) {
-        val baseDir = when (saveLocation) {
-            SaveLocation.PICTURES -> Environment.DIRECTORY_PICTURES
-
-            SaveLocation.MOVIES -> Environment.DIRECTORY_MOVIES
-
-            SaveLocation.MUSIC -> Environment.DIRECTORY_MUSIC
-
-            SaveLocation.DOWNLOADS -> Environment.DIRECTORY_DOWNLOADS
-
-            SaveLocation.DCIM -> Environment.DIRECTORY_DCIM
-        }
-
-        val publicDir = Environment.getExternalStoragePublicDirectory(baseDir)
-        val directory = File(publicDir, subDir ?: "")
+        val directory = FileHelper.legacyStoreDirectoryFor(saveLocation, subDir)
         FileHelper.ensureDirectoryExists(directory).getOrElse { error ->
             throw IOException("Failed to create directory: ${error.message}")
         }

@@ -535,8 +535,9 @@ class FileSaverAndroid extends FileSaverPlatform {
               final sessionIdStr =
                   jStr1?.toDartString(releaseOriginal: true) ?? '0';
               jStr2?.release();
-              if (!completer.isCompleted)
+              if (!completer.isCompleted) {
                 completer.complete(int.parse(sessionIdStr));
+              }
             case 2:
               final code =
                   jStr1?.toDartString(releaseOriginal: true) ?? 'UNKNOWN';
@@ -566,6 +567,7 @@ class FileSaverAndroid extends FileSaverPlatform {
       callback,
     );
     final sessionId = await completer.future;
+    if (sessionId == 0) return null;
     return AndroidFileSaverSink(
       fileSaver: _fileSaver,
       sessionId: sessionId,
@@ -591,8 +593,9 @@ class FileSaverAndroid extends FileSaverPlatform {
               final sessionIdStr =
                   jStr1?.toDartString(releaseOriginal: true) ?? '0';
               jStr2?.release();
-              if (!completer.isCompleted)
+              if (!completer.isCompleted) {
                 completer.complete(int.parse(sessionIdStr));
+              }
             case 2:
               final code =
                   jStr1?.toDartString(releaseOriginal: true) ?? 'UNKNOWN';
@@ -621,6 +624,7 @@ class FileSaverAndroid extends FileSaverPlatform {
       callback,
     );
     final sessionId = await completer.future;
+    if (sessionId == 0) return null;
     return AndroidFileSaverSink(
       fileSaver: _fileSaver,
       sessionId: sessionId,

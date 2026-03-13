@@ -59,7 +59,7 @@ object ScopedStoreConflictResolver {
      *
      * @return URI if file exists, null otherwise
      */
-    private fun findExistingFileUri(
+    fun findExistingFileUri(
         context: Context,
         contentUri: Uri,
         dirPath: String,
