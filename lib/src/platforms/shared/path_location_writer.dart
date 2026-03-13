@@ -197,7 +197,7 @@ abstract final class PathLocationWriter {
         ) ??
         p.join(targetDirPath, '$baseName.$ext');
     final file = File(resolved);
-    return IoFileSaverSink(
+    return IOFileSaverSink(
       sink: file.openWrite(),
       file: file,
       totalSize: totalSize,

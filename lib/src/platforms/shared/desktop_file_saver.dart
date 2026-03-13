@@ -237,7 +237,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
       conflictResolution,
     );
     final file = File(resolved ?? filePath);
-    return IoFileSaverSink(
+    return IOFileSaverSink(
       sink: file.openWrite(),
       file: file,
       totalSize: totalSize,
@@ -262,7 +262,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
       conflictResolution,
     );
     final file = File(resolved ?? filePath);
-    return IoFileSaverSink(
+    return IOFileSaverSink(
       sink: file.openWrite(),
       file: file,
       totalSize: totalSize,
