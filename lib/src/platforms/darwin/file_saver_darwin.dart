@@ -14,6 +14,7 @@ import '../../models/locations/save_location.dart';
 import '../../models/save_input.dart';
 import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
+import '../shared/path_location_writer.dart';
 import 'bindings.g.dart';
 import 'darwin_file_saver_sink.dart';
 
@@ -73,6 +74,17 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
     validateBytesInput(fileBytes, fileName);
+
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.saveBytes(
+        fileBytes: fileBytes,
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+      );
+    }
 
     return Stream.multi((controller) {
       final receivePort = ReceivePort();
@@ -141,6 +153,17 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
   }) {
     validateFilePathInput(filePath, fileName);
 
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.saveFile(
+        filePath: filePath,
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+      );
+    }
+
     return Stream.multi((controller) {
       final receivePort = ReceivePort();
       final arena = Arena();
@@ -206,6 +229,19 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
     validateNetworkInput(url, fileName);
+
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.saveNetwork(
+        url: url,
+        headers: headers,
+        timeout: timeout,
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+      );
+    }
 
     return Stream.multi((controller) {
       final receivePort = ReceivePort();
@@ -487,6 +523,17 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
     int? totalSize,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) async {
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.openWrite(
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+        totalSize: totalSize,
+      );
+    }
+
     final receivePort = ReceivePort();
     final completer = Completer<int>();
     receivePort.listen((message) {

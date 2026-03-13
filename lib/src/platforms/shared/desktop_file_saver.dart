@@ -45,6 +45,17 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
   }) {
     validateBytesInput(fileBytes, fileName);
 
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.saveBytes(
+        fileBytes: fileBytes,
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+      );
+    }
+
     return _executeSave((token, controller) async {
       final dir = await resolveDirectory(saveLocation, subDir);
       final filePath = p.join(dir, '$fileName.${fileType.ext}');
@@ -72,6 +83,17 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
     validateFilePathInput(filePath, fileName);
+
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.saveFile(
+        filePath: filePath,
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+      );
+    }
 
     return _executeSave((token, controller) async {
       final sourcePath = _toFilePath(filePath);
@@ -108,6 +130,19 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
     validateNetworkInput(url, fileName);
+
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.saveNetwork(
+        url: url,
+        headers: headers,
+        timeout: timeout,
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+      );
+    }
 
     return _executeSave((token, controller) async {
       final dir = await resolveDirectory(saveLocation, subDir);
@@ -185,6 +220,16 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
     if (fileName.isEmpty) {
       throw const InvalidInputException('File name cannot be empty');
     }
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.openWrite(
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+        totalSize: totalSize,
+      );
+    }
     final dir = await resolveDirectory(saveLocation, subDir);
     final filePath = p.join(dir, '$fileName.${fileType.ext}');
     final resolved = await _conflictResolver.resolve(
@@ -192,7 +237,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
       conflictResolution,
     );
     final file = File(resolved ?? filePath);
-    return DesktopFileSaverSink(
+    return IoFileSaverSink(
       sink: file.openWrite(),
       file: file,
       totalSize: totalSize,
@@ -217,7 +262,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
       conflictResolution,
     );
     final file = File(resolved ?? filePath);
-    return DesktopFileSaverSink(
+    return IoFileSaverSink(
       sink: file.openWrite(),
       file: file,
       totalSize: totalSize,
