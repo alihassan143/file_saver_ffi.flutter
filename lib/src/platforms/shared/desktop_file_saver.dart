@@ -209,7 +209,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
   // ─────────────────────────────────────────────────────────────────────────
 
   @override
-  Future<FileSaverSink> openWrite({
+  Future<FileSaverSink?> openWrite({
     required String fileName,
     required FileType fileType,
     SaveLocation? saveLocation,
@@ -236,7 +236,8 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
       filePath,
       conflictResolution,
     );
-    final file = File(resolved ?? filePath);
+    if (resolved == null) return null;
+    final file = File(resolved);
     return IOFileSaverSink(
       sink: file.openWrite(),
       file: file,
@@ -245,7 +246,7 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
   }
 
   @override
-  Future<FileSaverSink> openWriteAs({
+  Future<FileSaverSink?> openWriteAs({
     required String fileName,
     required FileType fileType,
     required PickedDirectoryLocation saveLocation,
@@ -261,7 +262,8 @@ abstract class DesktopFileSaver extends FileSaverPlatform {
       filePath,
       conflictResolution,
     );
-    final file = File(resolved ?? filePath);
+    if (resolved == null) return null;
+    final file = File(resolved);
     return IOFileSaverSink(
       sink: file.openWrite(),
       file: file,

@@ -270,7 +270,7 @@ class FileSaverWeb extends FileSaverPlatform {
   /// ⚠ Web: `openWrite` without FSA always buffers to RAM.
   /// For zero-RAM streaming use [openWriteAs] with a [WebPickedDirectoryLocation].
   @override
-  Future<FileSaverSink> openWrite({
+  Future<FileSaverSink?> openWrite({
     required String fileName,
     required FileType fileType,
     SaveLocation? saveLocation,
@@ -291,7 +291,7 @@ class FileSaverWeb extends FileSaverPlatform {
   /// FSA mode when [saveLocation] is [WebPickedDirectoryLocation] — zero-RAM streaming.
   /// Falls back to buffer mode for browsers without FSA support.
   @override
-  Future<FileSaverSink> openWriteAs({
+  Future<FileSaverSink?> openWriteAs({
     required String fileName,
     required FileType fileType,
     required PickedDirectoryLocation saveLocation,
@@ -306,11 +306,10 @@ class FileSaverWeb extends FileSaverPlatform {
     if (saveLocation is WebPickedDirectoryLocation) {
       final handle = saveLocation.directoryHandle;
       final fileEntity = WebFileEntity(handle);
-      final resolvedName =
-          await ConflictResolver(
-            fileEntity,
-          ).resolve(fullName, conflictResolution) ??
-          fullName;
+      final resolvedName = await ConflictResolver(
+        fileEntity,
+      ).resolve(fullName, conflictResolution);
+      if (resolvedName == null) return null;
 
       final fileHandle =
           await handle

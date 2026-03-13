@@ -245,12 +245,14 @@ class FileSaver {
   ///   totalSize: expectedBytes,
   /// );
   ///
+  /// if (sink == null) return; // User cancelled or conflictResolution = ConflictResolution.skip.
+  ///
   /// sink.progress.listen((p) => setState(() => _progress = p));
   /// sink.add(chunk);           // non-blocking
   /// await sink.addStream(src); // back-pressure friendly
   /// final uri = await sink.close();
   /// ```
-  static Future<FileSaverSink> openWrite({
+  static Future<FileSaverSink?> openWrite({
     required String fileName,
     required FileType fileType,
     SaveLocation? saveLocation,
@@ -274,6 +276,8 @@ class FileSaver {
   ///
   /// If [saveLocation] is null, shows the directory picker first.
   /// Returns null if the picker is cancelled.
+  /// Returns null if [conflictResolution] is [ConflictResolution.skip] and the
+  /// target file already exists.
   ///
   /// Web: uses [FileSystemWritableFileStream] (FSA) when the browser supports it,
   /// falls back to in-memory buffering otherwise.

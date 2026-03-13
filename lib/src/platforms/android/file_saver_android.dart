@@ -506,7 +506,7 @@ class FileSaverAndroid extends FileSaverPlatform {
   }
 
   @override
-  Future<FileSaverSink> openWrite({
+  Future<FileSaverSink?> openWrite({
     required String fileName,
     required FileType fileType,
     SaveLocation? saveLocation,
@@ -576,7 +576,7 @@ class FileSaverAndroid extends FileSaverPlatform {
   }
 
   @override
-  Future<FileSaverSink> openWriteAs({
+  Future<FileSaverSink?> openWriteAs({
     required String fileName,
     required FileType fileType,
     required PickedDirectoryLocation saveLocation,

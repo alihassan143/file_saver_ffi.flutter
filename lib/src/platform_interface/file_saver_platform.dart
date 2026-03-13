@@ -136,9 +136,12 @@ abstract class FileSaverPlatform {
   /// Returns a [FileSaverSink] that accepts incremental chunks via [add].
   /// Call [FileSaverSink.close] to finalize and obtain the saved file [Uri].
   ///
+  /// Returns null if [conflictResolution] is [ConflictResolution.skip] and the
+  /// target file already exists.
+  ///
   /// [totalSize] is optional. When provided, [FileSaverSink.progress] emits
   /// per-chunk progress (0.0–1.0). [FileSaverSink.bytesWritten] always emits.
-  Future<FileSaverSink> openWrite({
+  Future<FileSaverSink?> openWrite({
     required String fileName,
     required FileType fileType,
     SaveLocation? saveLocation,
@@ -154,7 +157,10 @@ abstract class FileSaverPlatform {
   /// **Platforms:** Windows · Linux · Web (FSA) · Android · iOS · macOS
   ///
   /// [saveLocation] must be a [PickedDirectoryLocation] obtained via [pickDirectory].
-  Future<FileSaverSink> openWriteAs({
+  ///
+  /// Returns null if [conflictResolution] is [ConflictResolution.skip] and the
+  /// target file already exists.
+  Future<FileSaverSink?> openWriteAs({
     required String fileName,
     required FileType fileType,
     required PickedDirectoryLocation saveLocation,

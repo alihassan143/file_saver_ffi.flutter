@@ -515,7 +515,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
   }
 
   @override
-  Future<FileSaverSink> openWrite({
+  Future<FileSaverSink?> openWrite({
     required String fileName,
     required FileType fileType,
     SaveLocation? saveLocation,
@@ -582,7 +582,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
   }
 
   @override
-  Future<FileSaverSink> openWriteAs({
+  Future<FileSaverSink?> openWriteAs({
     required String fileName,
     required FileType fileType,
     required PickedDirectoryLocation saveLocation,

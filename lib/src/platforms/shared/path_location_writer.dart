@@ -176,7 +176,7 @@ abstract final class PathLocationWriter {
     });
   }
 
-  static Future<FileSaverSink> openWrite({
+  static Future<FileSaverSink?> openWrite({
     required String dirPath,
     String? subDir,
     required String baseName,
@@ -186,16 +186,13 @@ abstract final class PathLocationWriter {
   }) async {
     final targetDirPath = _resolveDirPath(dirPath, subDir);
     await Directory(targetDirPath).create(recursive: true);
-    // For SKIP in streaming write: open existing file (truncate), consistent
-    // with DesktopFileSaver's behavior when resolve() returns null.
-    final resolved =
-        await _resolveConflict(
-          targetDirPath,
-          baseName,
-          ext,
-          conflictResolution,
-        ) ??
-        p.join(targetDirPath, '$baseName.$ext');
+    final resolved = await _resolveConflict(
+      targetDirPath,
+      baseName,
+      ext,
+      conflictResolution,
+    );
+    if (resolved == null) return null;
     final file = File(resolved);
     return IOFileSaverSink(
       sink: file.openWrite(),
