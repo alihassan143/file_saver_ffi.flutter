@@ -53,10 +53,22 @@ First, follow the [package installation instructions](https://pub.dev/packages/f
 
 **Supported:** API 21+ (Android 5.0+)
 
-No configuration needed. The plugin automatically:
+For **Standard Save Locations** (Downloads, Pictures, etc.), no configuration is needed. The plugin automatically:
 - Declares `WRITE_EXTERNAL_STORAGE` permission (merged via manifest merger, only applies to API ≤ 28)
 - Requests runtime permission when needed (Android 9 and below)
 - Uses scoped storage on Android 10+ (no permission required)
+
+### Custom Paths (`PathLocation`)
+
+Saving to custom paths on **Android 11+** requires the `MANAGE_EXTERNAL_STORAGE` permission. 
+
+Add to `android/app/src/main/AndroidManifest.xml`:
+
+```xml
+<uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+```
+
+> **Important:** You must also request this permission at runtime using a package like `permission_handler` before calling any `FileSaver` API with a `PathLocation` or `file://` URI on Android 11+.
 
 ### Opening `file://` URIs (PathLocation)
 
@@ -300,6 +312,8 @@ Control where files are saved using platform-specific enum values:
 | `.documents` | -                               | **Documents/** (default) | **Documents/**              | **Documents/**                  | **~/Documents/**            |
 | `.photos`    | -                               | **Photos Library**       | -                           | -                               | -                           |
 
+> **Custom Paths (`PathLocation`):** You can also pass `PathLocation('/your/custom/path')` anywhere a `SaveLocation` is expected, to save files directly to specific filesystem directory paths across all platforms (except Web). **Note: On iOS, `PathLocation` only supports the app's document sandbox due to iOS system limitations.**
+
 > **Web:** Platform-specific `SaveLocation` enums are not available. The `saveLocation` parameter in `save`/`saveAsync` is ignored — the browser controls the download destination (usually the Downloads folder). To save to a specific directory, use `saveAs` with `pickDirectory()` (requires Chrome / Edge 86+).
 
 
@@ -394,7 +408,7 @@ if (location != null) {
 
 ## API Reference
 
-### Unified API (Recommended)
+### Unified API
 
 #### `save`
 Stream-based API for advanced control (cancellation, detailed events).
@@ -444,9 +458,36 @@ Future<Uri?> saveAsAsync({
   required SaveInput input,
   required String fileName,
   required FileType fileType,
-  PickedDirectoryLocation? saveLocation, // Null = Show Picker
+  PickedDirectoryLocation? saveLocation,
   ConflictResolution conflictResolution,
   Function(double)? onProgress,
+})
+```
+
+#### `openWrite`
+Opens a file for interactive streaming write operations, allowing iterative data chunks to be written. Returns a `FileSaverSink`.
+
+```dart
+Future<FileSaverSink> openWrite({
+  required SaveInput input,
+  required String fileName,
+  required FileType fileType,
+  SaveLocation? saveLocation,
+  String? subDir,
+  ConflictResolution conflictResolution,
+})
+```
+
+#### `openWriteAs`
+Interactive streaming write via system picker, allowing iterative data chunks to be written to a user-selected location. Returns a `FileSaverSink?`.
+
+```dart
+Future<FileSaverSink?> openWriteAs({
+  required SaveInput input,
+  required String fileName,
+  required FileType fileType,
+  PickedDirectoryLocation? saveLocation,
+  ConflictResolution conflictResolution,
 })
 ```
 
@@ -455,6 +496,20 @@ Open system picker to let user choose a folder.
 
 ```dart
 Future<PickedDirectoryLocation?> pickDirectory({bool shouldPersist = true})
+```
+
+#### `canOpenFile`
+Checks whether the file at `uri` is accessible for reading.
+
+```dart
+static Future<bool> canOpenFile(Uri uri)
+```
+
+#### `openFile`
+Opens a saved file with the appropriate system app.
+
+```dart
+static Future<void> openFile(Uri uri, {String? mimeType})
 ```
 
 ### Input Models
@@ -501,20 +556,6 @@ Stream API emits these sealed class events:
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Future Features
-
-* ~~File Input Methods~~
-* ~~Save from Network URL~~
-* ~~User-Selected Location Android (SAF), iOS (Document Picker)~~
-* Custom Path Support
-* ~~Progress Tracking~~
-* ~~Cancellation Support~~
-* ~~Save from File Path~~
-* ~~MacOS Support~~
-* ~~Windows Support~~
-* ~~Linux Support~~
-* ~~Web Support~~
 
 
 ## FAQ
