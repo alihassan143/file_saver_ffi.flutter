@@ -1,3 +1,22 @@
+## 0.9.0
+
+### Breaking Changes
+
+- **Renamed exceptions and locations:**
+  - `UserSelectedLocation` has been renamed to `PickedDirectoryLocation`.
+  - `WebSelectedLocation` has been renamed to `WebPickedDirectoryLocation`.
+  - `PlatformException` has been renamed to `NativePlatformException` to avoid conflict with the `PlatformException` from the Flutter SDK.
+
+### Added
+
+- **Stream-based incremental file writing**:
+  - `FileSaver.openWrite(SaveInput)`: Opens a file for incremental writing and returns a `FileSaverSink`.
+  - `FileSaver.openWriteAs(SaveInput)`: Opens a file for incremental writing via system directory picker and returns a `FileSaverSink`.
+- **Custom path support**:
+  - `PathLocation`: Allows saving files directly to specific filesystem directory paths.
+- **`file://` URI support**:
+  - `FileSaver.canOpenFile(Uri)` and `FileSaver.openFile(Uri)` now support `file://` URIs.
+
 ## 0.8.3
 
 ### Added
