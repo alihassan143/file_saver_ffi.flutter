@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Include this if you save to public external storage paths -->
+    <external-path name="external" path="." />
+</paths>

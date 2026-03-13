@@ -3,8 +3,8 @@ import 'dart:typed_data';
 
 import '../models/conflict_resolution.dart';
 import '../models/file_type.dart';
-import '../models/save_input.dart';
 import '../models/locations/save_location.dart';
+import '../models/save_input.dart';
 import '../models/save_progress.dart';
 import '../platform_interface/file_saver_platform.dart';
 
@@ -74,7 +74,7 @@ class _FileSaverStub extends FileSaverPlatform {
     required SaveInput input,
     required FileType fileType,
     required String fileName,
-    required UserSelectedLocation saveLocation,
+    required PickedDirectoryLocation saveLocation,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) => throw UnsupportedError('$className is not supported on this platform.');
 }

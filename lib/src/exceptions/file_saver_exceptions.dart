@@ -6,7 +6,7 @@ sealed class FileSaverException implements Exception {
 
   factory FileSaverException.fromObj(Object e) {
     if (e is! Exception) {
-      return PlatformException('Unexpected error: $e', 'PLATFORM_ERROR');
+      return NativePlatformException('Unexpected error: $e', 'PLATFORM_ERROR');
     }
 
     final msg = e.toString();
@@ -25,7 +25,7 @@ sealed class FileSaverException implements Exception {
       _ when contains('UNSUPPORTED_FORMAT') => UnsupportedFormatException(msg),
       _ when contains('STORAGE_FULL') => const StorageFullException(),
       _ when contains('FILE_IO_ERROR') => FileIOException(msg),
-      _ => PlatformException(msg, 'PLATFORM_ERROR'),
+      _ => NativePlatformException(msg, 'PLATFORM_ERROR'),
     };
   }
 
@@ -41,7 +41,7 @@ sealed class FileSaverException implements Exception {
       'UNSUPPORTED_FORMAT' => UnsupportedFormatException(message),
       'STORAGE_FULL' => const StorageFullException(),
       'FILE_IO_ERROR' => FileIOException(message),
-      _ => PlatformException(message, errorCode),
+      _ => NativePlatformException(message, errorCode),
     };
   }
 
@@ -101,17 +101,17 @@ final class StorageFullException extends FileSaverException {
 ///
 /// This exception wraps platform-specific errors from iOS or Android
 /// that don't fit into other exception categories.
-final class PlatformException extends FileSaverException {
-  const PlatformException(super.message, [super.code]);
+final class NativePlatformException extends FileSaverException {
+  const NativePlatformException(super.message, [super.code]);
 
   /// Creates a platform exception from native error details.
-  factory PlatformException.fromNative({
+  factory NativePlatformException.fromNative({
     required String message,
     String? code,
     String? details,
   }) {
     final fullMessage = details != null ? '$message: $details' : message;
-    return PlatformException(fullMessage, code);
+    return NativePlatformException(fullMessage, code);
   }
 }
 
@@ -206,4 +206,15 @@ final class NetworkException extends FileSaverException {
 /// - The operation is cancelled programmatically
 final class CancelledException extends FileSaverException {
   const CancelledException() : super('Operation cancelled', 'CANCELLED');
+}
+
+/// Write session error (openWrite / openWriteAs).
+///
+/// This exception is thrown when:
+/// - A write session is not found (invalid or already closed session ID)
+/// - A chunk write fails due to a native I/O error
+/// - The sink is used after [FileSaverSink.close] or [FileSaverSink.cancel]
+final class WriteSessionException extends FileSaverException {
+  const WriteSessionException(String reason)
+    : super('Write session error: $reason', 'WRITE_SESSION_ERROR');
 }

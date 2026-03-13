@@ -3,9 +3,10 @@ import 'package:flutter/foundation.dart';
 
 import '../exceptions/file_saver_exceptions.dart';
 import '../models/conflict_resolution.dart';
+import '../models/file_saver_sink.dart';
 import '../models/file_type.dart';
-import '../models/save_input.dart';
 import '../models/locations/save_location.dart';
+import '../models/save_input.dart';
 import '../models/save_progress.dart';
 
 /// Platform interface for file saver implementations.
@@ -108,36 +109,6 @@ abstract class FileSaverPlatform {
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   });
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // User-Selected Location
-  // ─────────────────────────────────────────────────────────────────────────
-
-  /// Shows the system directory picker.
-  ///
-  /// **Platforms:** Android · iOS · macOS · Windows · Linux · Web
-  ///
-  /// [shouldPersist] is Android-only: if true, calls takePersistableUriPermission
-  /// so the app can write to the selected directory across restarts without re-picking.
-  /// Ignored on all other platforms.
-  ///
-  /// Returns [UserSelectedLocation], or null if cancelled.
-  /// Throws [UnsupportedError] on browsers that do not support the File System Access API.
-  Future<UserSelectedLocation?> pickDirectory({
-    bool shouldPersist = true,
-  }) async {
-    try {
-      final location = await DirPicker.pick(
-        androidOptions: AndroidOptions(shouldPersist: shouldPersist),
-      );
-      if (location == null) return null;
-      return UserSelectedLocation(uri: location.uri!);
-    } on FileSaverException {
-      rethrow;
-    } catch (e) {
-      throw PlatformException('Pick directory failed: $e');
-    }
-  }
-
   /// Saves to a user-selected directory with progress streaming.
   ///
   /// **Platforms:** Android · iOS · macOS · Windows · Linux · Web
@@ -150,12 +121,109 @@ abstract class FileSaverPlatform {
     required SaveInput input,
     required FileType fileType,
     required String fileName,
-    required UserSelectedLocation saveLocation,
+    required PickedDirectoryLocation saveLocation,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   });
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Protected helpers for subclasses
+  // MARK: Session-based streaming write
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Opens a streaming write session to an auto-resolved location.
+  ///
+  /// **Platforms:** Windows · Linux · Web (buffer fallback) · Android · iOS · macOS
+  ///
+  /// Returns a [FileSaverSink] that accepts incremental chunks via [add].
+  /// Call [FileSaverSink.close] to finalize and obtain the saved file [Uri].
+  ///
+  /// Returns null if [conflictResolution] is [ConflictResolution.skip] and the
+  /// target file already exists.
+  ///
+  /// [totalSize] is optional. When provided, [FileSaverSink.progress] emits
+  /// per-chunk progress (0.0–1.0). [FileSaverSink.bytesWritten] always emits.
+  Future<FileSaverSink?> openWrite({
+    required String fileName,
+    required FileType fileType,
+    SaveLocation? saveLocation,
+    String? subDir,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) {
+    throw UnimplementedError('openWrite is not implemented on this platform');
+  }
+
+  /// Opens a streaming write session to a user-selected directory.
+  ///
+  /// **Platforms:** Windows · Linux · Web (FSA) · Android · iOS · macOS
+  ///
+  /// [saveLocation] must be a [PickedDirectoryLocation] obtained via [pickDirectory].
+  ///
+  /// Returns null if [conflictResolution] is [ConflictResolution.skip] and the
+  /// target file already exists.
+  Future<FileSaverSink?> openWriteAs({
+    required String fileName,
+    required FileType fileType,
+    required PickedDirectoryLocation saveLocation,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) {
+    throw UnimplementedError('openWriteAs is not implemented on this platform');
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // MARK:Directory picker and file opener
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Shows the system directory picker.
+  ///
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux · Web
+  ///
+  /// [shouldPersist] is Android-only: if true, calls takePersistableUriPermission
+  /// so the app can write to the selected directory across restarts without re-picking.
+  /// Ignored on all other platforms.
+  ///
+  /// Returns [PickedDirectoryLocation], or null if cancelled.
+  /// Throws [UnsupportedError] on browsers that do not support the File System Access API.
+  Future<PickedDirectoryLocation?> pickDirectory({
+    bool shouldPersist = true,
+  }) async {
+    try {
+      final location = await DirPicker.pick(
+        androidOptions: AndroidOptions(shouldPersist: shouldPersist),
+      );
+      if (location == null) return null;
+      return PickedDirectoryLocation(uri: location.uri!);
+    } on FileSaverException {
+      rethrow;
+    } catch (e) {
+      throw NativePlatformException('Pick directory failed: $e');
+    }
+  }
+
+  /// Checks whether the file at [uri] is accessible for reading.
+  ///
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux
+  /// **Web:** throws [UnsupportedError]
+  ///
+  /// Returns `false` if the file has been deleted or is no longer accessible.
+  Future<bool> canOpenFile(Uri uri) {
+    throw UnimplementedError('canOpenFile is not implemented on this platform');
+  }
+
+  /// Opens a saved file with the appropriate system app.
+  ///
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux
+  /// **Web:** throws [UnsupportedError] — files are already browser-downloaded.
+  ///
+  /// [uri] should be the [Uri] returned from [saveAsync] or [SaveProgressComplete.uri].
+  /// [mimeType] is optional. On Android, it is queried from ContentResolver automatically
+  /// if not provided.
+  Future<void> openFile(Uri uri, {String? mimeType}) {
+    throw UnimplementedError('openFile is not implemented on this platform');
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // MARK: Protected helpers for subclasses
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Validates input for [saveBytes] and [saveBytesAsync].
@@ -195,28 +263,6 @@ abstract class FileSaverPlatform {
     if (fileName.isEmpty) {
       throw const InvalidInputException('File name cannot be empty');
     }
-  }
-
-  /// Checks whether the file at [uri] is accessible for reading.
-  ///
-  /// **Platforms:** Android · iOS · macOS · Windows · Linux
-  /// **Web:** throws [UnsupportedError]
-  ///
-  /// Returns `false` if the file has been deleted or is no longer accessible.
-  Future<bool> canOpenFile(Uri uri) {
-    throw UnimplementedError('canOpenFile is not implemented on this platform');
-  }
-
-  /// Opens a saved file with the appropriate system app.
-  ///
-  /// **Platforms:** Android · iOS · macOS · Windows · Linux
-  /// **Web:** throws [UnsupportedError] — files are already browser-downloaded.
-  ///
-  /// [uri] should be the [Uri] returned from [saveAsync] or [SaveProgressComplete.uri].
-  /// [mimeType] is optional. On Android, it is queried from ContentResolver automatically
-  /// if not provided.
-  Future<void> openFile(Uri uri, {String? mimeType}) {
-    throw UnimplementedError('openFile is not implemented on this platform');
   }
 
   /// Checks if [SaveProgress] event is terminal.

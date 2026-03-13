@@ -8,12 +8,15 @@ import 'package:ffi/ffi.dart';
 
 import '../../exceptions/file_saver_exceptions.dart';
 import '../../models/conflict_resolution.dart';
+import '../../models/file_saver_sink.dart';
 import '../../models/file_type.dart';
-import '../../models/save_input.dart';
 import '../../models/locations/save_location.dart';
+import '../../models/save_input.dart';
 import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
+import '../shared/path_location_writer.dart';
 import 'bindings.g.dart';
+import 'darwin_file_saver_sink.dart';
 
 typedef NativeVoidFun = NativeFunction<Void Function(Pointer<Void>)>;
 
@@ -30,7 +33,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
     // Initialize Dart API DL for NativePort communication
     final initResult = _fileSaver.initDartApiDl(NativeApi.initializeApiDLData);
     if (initResult != 0) {
-      throw const PlatformException(
+      throw const NativePlatformException(
         'Failed to initialize Dart API DL',
         'INIT_FAILED',
       );
@@ -71,6 +74,17 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
     validateBytesInput(fileBytes, fileName);
+
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.saveBytes(
+        fileBytes: fileBytes,
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+      );
+    }
 
     return Stream.multi((controller) {
       final receivePort = ReceivePort();
@@ -139,6 +153,17 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
   }) {
     validateFilePathInput(filePath, fileName);
 
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.saveFile(
+        filePath: filePath,
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+      );
+    }
+
     return Stream.multi((controller) {
       final receivePort = ReceivePort();
       final arena = Arena();
@@ -205,6 +230,19 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
   }) {
     validateNetworkInput(url, fileName);
 
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.saveNetwork(
+        url: url,
+        headers: headers,
+        timeout: timeout,
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+      );
+    }
+
     return Stream.multi((controller) {
       final receivePort = ReceivePort();
       final arena = Arena();
@@ -269,7 +307,7 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
     required SaveInput input,
     required FileType fileType,
     required String fileName,
-    required UserSelectedLocation saveLocation,
+    required PickedDirectoryLocation saveLocation,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
     return switch (input) {
@@ -476,6 +514,127 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
     });
   }
 
+  @override
+  Future<FileSaverSink?> openWrite({
+    required String fileName,
+    required FileType fileType,
+    SaveLocation? saveLocation,
+    String? subDir,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) async {
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.openWrite(
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+        totalSize: totalSize,
+      );
+    }
+
+    final receivePort = ReceivePort();
+    final completer = Completer<int>();
+    receivePort.listen((message) {
+      receivePort.close();
+      final msg = message as List;
+      switch (msg[0] as int) {
+        case 3:
+          if (!completer.isCompleted) {
+            completer.complete(int.parse(msg[1] as String));
+          }
+        case 2:
+          if (!completer.isCompleted) {
+            completer.completeError(
+              FileSaverException.fromErrorResult(
+                msg[1] as String,
+                msg[2] as String,
+              ),
+            );
+          }
+      }
+    });
+    using((arena) {
+      final fileNameCStr = fileName.toNativeUtf8(allocator: arena);
+      final extCStr = fileType.ext.toNativeUtf8(allocator: arena);
+      final mimeCStr = fileType.mimeType.toNativeUtf8(allocator: arena);
+      final subDirCStr = subDir?.toNativeUtf8(allocator: arena);
+      _fileSaver.openWrite(
+        _saverInstance,
+        fileNameCStr.cast(),
+        extCStr.cast(),
+        mimeCStr.cast(),
+        _saveLocationToIndex(saveLocation),
+        subDirCStr?.cast() ?? nullptr,
+        conflictResolution.index,
+        totalSize ?? -1,
+        receivePort.sendPort.nativePort,
+      );
+    });
+    final sessionId = await completer.future;
+    if (sessionId == 0) return null;
+    return DarwinFileSaverSink(
+      fileSaver: _fileSaver,
+      sessionId: sessionId,
+      totalSize: totalSize,
+    );
+  }
+
+  @override
+  Future<FileSaverSink?> openWriteAs({
+    required String fileName,
+    required FileType fileType,
+    required PickedDirectoryLocation saveLocation,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) async {
+    final receivePort = ReceivePort();
+    final completer = Completer<int>();
+    receivePort.listen((message) {
+      receivePort.close();
+      final msg = message as List;
+      switch (msg[0] as int) {
+        case 3:
+          if (!completer.isCompleted) {
+            completer.complete(int.parse(msg[1] as String));
+          }
+        case 2:
+          if (!completer.isCompleted) {
+            completer.completeError(
+              FileSaverException.fromErrorResult(
+                msg[1] as String,
+                msg[2] as String,
+              ),
+            );
+          }
+      }
+    });
+    using((arena) {
+      final dirUriCStr = saveLocation.uri.toString().toNativeUtf8(
+        allocator: arena,
+      );
+      final fileNameCStr = fileName.toNativeUtf8(allocator: arena);
+      final extCStr = fileType.ext.toNativeUtf8(allocator: arena);
+      _fileSaver.openWriteAs(
+        _saverInstance,
+        dirUriCStr.cast(),
+        fileNameCStr.cast(),
+        extCStr.cast(),
+        conflictResolution.index,
+        totalSize ?? -1,
+        receivePort.sendPort.nativePort,
+      );
+    });
+    final sessionId = await completer.future;
+    if (sessionId == 0) return null;
+    return DarwinFileSaverSink(
+      fileSaver: _fileSaver,
+      sessionId: sessionId,
+      totalSize: totalSize,
+    );
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // Private Methods
   // ─────────────────────────────────────────────────────────────────────────
@@ -502,7 +661,10 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
   SaveProgress _parseMessage(dynamic message) {
     if (message is! List || message.isEmpty) {
       return SaveProgressError(
-        const PlatformException('Invalid message format', 'INVALID_MESSAGE'),
+        const NativePlatformException(
+          'Invalid message format',
+          'INVALID_MESSAGE',
+        ),
       );
     }
 
@@ -532,7 +694,10 @@ class FileSaverDarwin extends FileSaverPlatform implements Finalizable {
 
       default:
         return SaveProgressError(
-          PlatformException('Unknown message type: $type', 'UNKNOWN_TYPE'),
+          NativePlatformException(
+            'Unknown message type: $type',
+            'UNKNOWN_TYPE',
+          ),
         );
     }
   }

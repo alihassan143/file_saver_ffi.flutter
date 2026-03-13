@@ -3,6 +3,7 @@ import Foundation
 enum FileSaverError: Error {
     case permissionDenied(String)
     case fileExists(String)
+    case writeSessionSkipped
     case invalidInput(String)
     case unsupportedFormat(String, details: String? = nil)
     case storageFull(String)
@@ -17,6 +18,7 @@ enum FileSaverError: Error {
         switch self {
         case .permissionDenied: return Constants.errorPermissionDenied
         case .fileExists: return Constants.errorFileExists
+        case .writeSessionSkipped: return Constants.errorFileExists
         case .invalidInput: return Constants.errorInvalidInput
         case .unsupportedFormat: return Constants.errorUnsupportedFormat
         case .storageFull: return Constants.errorStorageFull
@@ -33,6 +35,7 @@ enum FileSaverError: Error {
         switch self {
         case .permissionDenied(let msg): return msg
         case .fileExists(let fileName): return "File already exists: \(fileName)"
+        case .writeSessionSkipped: return "Write session skipped: file already exists"
         case .invalidInput(let reason): return "Invalid input: \(reason)"
         case .unsupportedFormat(let format, let details):
             if let details = details {

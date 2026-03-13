@@ -251,4 +251,112 @@ void file_saver_open_file(const char* uri);
 /// @return true if the file is accessible, false otherwise
 bool file_saver_can_open_file(const char* uri);
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Streaming write sessions
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Opens a streaming write session to a platform save location.
+///
+/// iOS photos location: supported for images and videos only (chunks written to a temp file,
+/// committed to the Photos Library on close). Audio and custom types send an error.
+///
+/// Messages sent to native_port:
+/// - Session opened:  [3, sessionId]   (sessionId as string)
+/// - Error:           [2, errorCode, errorMessage]
+///
+/// @param instance    FileSaver instance from file_saver_init
+/// @param baseFileName File name without extension
+/// @param ext         File extension without dot
+/// @param mimeType    MIME type string
+/// @param saveLocation Save location index
+/// @param subDir      Optional subdirectory (can be NULL)
+/// @param conflictMode Conflict resolution mode (0-3)
+/// @param totalSize   Total expected bytes (-1 if unknown)
+/// @param native_port Dart NativePort for result delivery
+void file_saver_open_write(
+    void* instance,
+    const char* baseFileName,
+    const char* ext,
+    const char* mimeType,
+    int32_t saveLocation,
+    const char* subDir,
+    int32_t conflictMode,
+    int64_t totalSize,
+    int64_t native_port
+);
+
+/// Opens a streaming write session to a user-selected directory.
+///
+/// Messages sent to native_port:
+/// - Session opened:  [3, sessionId]   (sessionId as string)
+/// - Error:           [2, errorCode, errorMessage]
+///
+/// @param instance    FileSaver instance from file_saver_init
+/// @param directoryUri Directory URI from DirPicker.pick()
+/// @param baseFileName File name without extension
+/// @param ext         File extension without dot
+/// @param conflictMode Conflict resolution mode (0-3)
+/// @param totalSize   Total expected bytes (-1 if unknown)
+/// @param native_port Dart NativePort for result delivery
+void file_saver_open_write_as(
+    void* instance,
+    const char* directoryUri,
+    const char* baseFileName,
+    const char* ext,
+    int32_t conflictMode,
+    int64_t totalSize,
+    int64_t native_port
+);
+
+/// Writes a chunk of data to an open write session.
+///
+/// Messages sent to native_port:
+/// - Chunk ACK:  [1, bytesWritten]
+/// - Error:      [2, errorCode, errorMessage]
+///
+/// @param sessionId  Session ID from file_saver_open_write[_as]
+/// @param data       Byte array to write
+/// @param dataLength Length of data in bytes
+/// @param native_port Dart NativePort for result delivery
+void file_saver_write_chunk(
+    uint64_t sessionId,
+    const uint8_t* data,
+    int64_t dataLength,
+    int64_t native_port
+);
+
+/// Flushes write buffers for an open write session.
+///
+/// Messages sent to native_port:
+/// - Flush ACK:  [1, bytesWritten]
+/// - Error:      [2, errorCode, errorMessage]
+///
+/// @param sessionId  Session ID from file_saver_open_write[_as]
+/// @param native_port Dart NativePort for result delivery
+void file_saver_flush_write(
+    uint64_t sessionId,
+    int64_t native_port
+);
+
+/// Closes and finalizes an open write session.
+///
+/// Messages sent to native_port:
+/// - Success:  [3, fileUri]
+/// - Error:    [2, errorCode, errorMessage]
+///
+/// @param sessionId  Session ID from file_saver_open_write[_as]
+/// @param native_port Dart NativePort for result delivery
+void file_saver_close_write(
+    uint64_t sessionId,
+    int64_t native_port
+);
+
+/// Cancels and discards an open write session (fire-and-forget).
+///
+/// Closes the FileHandle and deletes the partial file.
+/// No callback — caller should complete with CancelledException.
+///
+/// @param sessionId  Session ID from file_saver_open_write[_as]
+void file_saver_cancel_write(uint64_t sessionId);
+
 #endif

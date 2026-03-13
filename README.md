@@ -58,6 +58,41 @@ No configuration needed. The plugin automatically:
 - Requests runtime permission when needed (Android 9 and below)
 - Uses scoped storage on Android 10+ (no permission required)
 
+### Opening `file://` URIs (PathLocation)
+
+If you save to a filesystem directory path (e.g. `PathLocation(...)`), the returned URI can be `file://...`.
+On Android, opening `file://` URIs requires a `FileProvider` (Android N+ blocks sharing raw `file://` URIs).
+
+Only add this if you call `FileSaver.openFile(uri)` with `file://...` URIs.
+
+Add to `android/app/src/main/AndroidManifest.xml`:
+
+```xml
+<provider
+    android:name="androidx.core.content.FileProvider"
+    android:authorities="${applicationId}.file_saver_ffi.fileprovider"
+    android:exported="false"
+    android:grantUriPermissions="true">
+    <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/file_saver_ffi_file_paths" />
+</provider>
+```
+
+Create `android/app/src/main/res/xml/file_saver_ffi_file_paths.xml`:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <files-path name="files" path="." />
+    <cache-path name="cache" path="." />
+    <external-files-path name="external_files" path="." />
+    <external-cache-path name="external_cache" path="." />
+    <!-- Include this if you save to public external storage paths -->
+    <external-path name="external" path="." />
+</paths>
+```
+
 </details>
 
 <details>
@@ -396,20 +431,20 @@ Stream<SaveProgress> saveAs({
   required SaveInput input,
   required String fileName,
   required FileType fileType,
-  UserSelectedLocation? saveLocation,
+  PickedDirectoryLocation? saveLocation,
   ConflictResolution conflictResolution,
 })
 ```
 
 #### `saveAsAsync`
-Interactive save (shows picker) or save to specific `UserSelectedLocation`.
+Interactive save (shows picker) or save to specific `PickedDirectoryLocation`.
 
 ```dart
 Future<Uri?> saveAsAsync({
   required SaveInput input,
   required String fileName,
   required FileType fileType,
-  UserSelectedLocation? saveLocation, // Null = Show Picker
+  PickedDirectoryLocation? saveLocation, // Null = Show Picker
   ConflictResolution conflictResolution,
   Function(double)? onProgress,
 })
@@ -419,7 +454,7 @@ Future<Uri?> saveAsAsync({
 Open system picker to let user choose a folder.
 
 ```dart
-Future<UserSelectedLocation?> pickDirectory({bool shouldPersist = true})
+Future<PickedDirectoryLocation?> pickDirectory({bool shouldPersist = true})
 ```
 
 ### Input Models
@@ -461,7 +496,7 @@ Stream API emits these sealed class events:
 | `ICloudDownloadException`     | iCloud download failed (iOS)            | `ICLOUD_DOWNLOAD_FAILED` |
 | `NetworkException`            | Network error occurred during download. | `NETWORK_ERROR`          |
 | `CancelledException`          | Operation cancelled by user             | `CANCELLED`              |
-| `PlatformException`           | Generic platform error                  | `PLATFORM_ERROR`         |
+| `NativePlatformException`           | Generic platform error                  | `PLATFORM_ERROR`         |
 
 ## Contributing
 

@@ -6,11 +6,14 @@ import 'package:jni/jni.dart';
 
 import '../../exceptions/file_saver_exceptions.dart';
 import '../../models/conflict_resolution.dart';
+import '../../models/file_saver_sink.dart';
 import '../../models/file_type.dart';
-import '../../models/save_input.dart';
 import '../../models/locations/save_location.dart';
+import '../../models/save_input.dart';
 import '../../models/save_progress.dart';
 import '../../platform_interface/file_saver_platform.dart';
+import '../shared/path_location_writer.dart';
+import 'android_file_saver_sink.dart';
 import 'bindings.g.dart' as bindings;
 
 class FileSaverAndroid extends FileSaverPlatform {
@@ -33,6 +36,17 @@ class FileSaverAndroid extends FileSaverPlatform {
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
     validateBytesInput(fileBytes, fileName);
+
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.saveBytes(
+        fileBytes: fileBytes,
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+      );
+    }
 
     return Stream.multi((controller) {
       bool cleanedUp = false;
@@ -102,6 +116,17 @@ class FileSaverAndroid extends FileSaverPlatform {
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
     validateFilePathInput(filePath, fileName);
+
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.saveFile(
+        filePath: filePath,
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+      );
+    }
 
     return Stream.multi((controller) {
       bool cleanedUp = false;
@@ -174,6 +199,19 @@ class FileSaverAndroid extends FileSaverPlatform {
   }) {
     validateNetworkInput(url, fileName);
 
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.saveNetwork(
+        url: url,
+        headers: headers,
+        timeout: timeout,
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+      );
+    }
+
     return Stream.multi((controller) {
       bool cleanedUp = false;
       late final bindings.ProgressCallback callback;
@@ -242,7 +280,7 @@ class FileSaverAndroid extends FileSaverPlatform {
     required SaveInput input,
     required FileType fileType,
     required String fileName,
-    required UserSelectedLocation saveLocation,
+    required PickedDirectoryLocation saveLocation,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) {
     return switch (input) {
@@ -467,6 +505,133 @@ class FileSaverAndroid extends FileSaverPlatform {
     _fileSaver.openFile(jUri, jMimeType);
   }
 
+  @override
+  Future<FileSaverSink?> openWrite({
+    required String fileName,
+    required FileType fileType,
+    SaveLocation? saveLocation,
+    String? subDir,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) async {
+    if (saveLocation is PathLocation) {
+      return PathLocationWriter.openWrite(
+        dirPath: saveLocation.path,
+        subDir: subDir,
+        baseName: fileName,
+        ext: fileType.ext,
+        conflictResolution: conflictResolution,
+        totalSize: totalSize,
+      );
+    }
+
+    final completer = Completer<int>();
+    bindings.ProgressCallback? callback;
+    callback = bindings.ProgressCallback.implement(
+      bindings.$ProgressCallback(
+        onEvent: (eventType, progress, jStr1, jStr2) {
+          switch (eventType) {
+            case 3:
+              final sessionIdStr =
+                  jStr1?.toDartString(releaseOriginal: true) ?? '0';
+              jStr2?.release();
+              if (!completer.isCompleted) {
+                completer.complete(int.parse(sessionIdStr));
+              }
+            case 2:
+              final code =
+                  jStr1?.toDartString(releaseOriginal: true) ?? 'UNKNOWN';
+              final msg = jStr2?.toDartString(releaseOriginal: true) ?? '';
+              if (!completer.isCompleted) {
+                completer.completeError(
+                  FileSaverException.fromErrorResult(code, msg),
+                );
+              }
+            default:
+              jStr1?.release();
+              jStr2?.release();
+          }
+          Future.microtask(() => callback?.release());
+        },
+        onEvent$async: true,
+      ),
+    );
+    _fileSaver.openWriteSession(
+      fileName.toJString(),
+      fileType.ext.toJString(),
+      fileType.mimeType.toJString(),
+      _saveLocationToIndex(saveLocation),
+      subDir?.toJString(),
+      conflictResolution.index,
+      totalSize ?? -1,
+      callback,
+    );
+    final sessionId = await completer.future;
+    if (sessionId == 0) return null;
+    return AndroidFileSaverSink(
+      fileSaver: _fileSaver,
+      sessionId: sessionId,
+      totalSize: totalSize,
+    );
+  }
+
+  @override
+  Future<FileSaverSink?> openWriteAs({
+    required String fileName,
+    required FileType fileType,
+    required PickedDirectoryLocation saveLocation,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) async {
+    final completer = Completer<int>();
+    bindings.ProgressCallback? callback;
+    callback = bindings.ProgressCallback.implement(
+      bindings.$ProgressCallback(
+        onEvent: (eventType, progress, jStr1, jStr2) {
+          switch (eventType) {
+            case 3:
+              final sessionIdStr =
+                  jStr1?.toDartString(releaseOriginal: true) ?? '0';
+              jStr2?.release();
+              if (!completer.isCompleted) {
+                completer.complete(int.parse(sessionIdStr));
+              }
+            case 2:
+              final code =
+                  jStr1?.toDartString(releaseOriginal: true) ?? 'UNKNOWN';
+              final msg = jStr2?.toDartString(releaseOriginal: true) ?? '';
+              if (!completer.isCompleted) {
+                completer.completeError(
+                  FileSaverException.fromErrorResult(code, msg),
+                );
+              }
+            default:
+              jStr1?.release();
+              jStr2?.release();
+          }
+          Future.microtask(() => callback?.release());
+        },
+        onEvent$async: true,
+      ),
+    );
+    _fileSaver.openWriteSessionAs(
+      saveLocation.uri.toString().toJString(),
+      fileName.toJString(),
+      fileType.ext.toJString(),
+      fileType.mimeType.toJString(),
+      conflictResolution.index,
+      totalSize ?? -1,
+      callback,
+    );
+    final sessionId = await completer.future;
+    if (sessionId == 0) return null;
+    return AndroidFileSaverSink(
+      fileSaver: _fileSaver,
+      sessionId: sessionId,
+      totalSize: totalSize,
+    );
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // Private Methods
   // ─────────────────────────────────────────────────────────────────────────
@@ -519,7 +684,10 @@ class FileSaverAndroid extends FileSaverPlatform {
 
       default:
         return SaveProgressError(
-          PlatformException('Unknown event type: $eventType', 'UNKNOWN_TYPE'),
+          NativePlatformException(
+            'Unknown event type: $eventType',
+            'UNKNOWN_TYPE',
+          ),
         );
     }
   }

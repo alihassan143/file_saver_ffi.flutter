@@ -49,7 +49,7 @@ class FileSaverWindows extends DesktopFileSaver {
     // returns Future<String?> (nullable). The null check is necessary at runtime.
     // ignore: unnecessary_null_comparison
     if (basePath == null || basePath.isEmpty) {
-      throw const PlatformException(
+      throw const NativePlatformException(
         'Could not resolve save directory',
         'PLATFORM_ERROR',
       );

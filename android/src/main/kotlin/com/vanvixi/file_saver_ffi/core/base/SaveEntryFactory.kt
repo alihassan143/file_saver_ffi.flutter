@@ -34,6 +34,18 @@ sealed class SaveEntryFactory {
     ): Pair<Uri, OutputStream>?
 
     /**
+     * Creates an entry for streaming write sessions.
+     * Throws instead of emitting to a ProducerScope — caller handles errors.
+     *
+     * @throws IOException if I/O error occurs
+     * @throws FileExistsException if file already exists and conflict resolution requires it
+     */
+    abstract suspend fun createEntryDirect(
+        context: Context,
+        conflictResolution: ConflictResolution,
+    ): Pair<Uri, OutputStream>
+
+    /**
      * Deletes an entry on error/cancellation.
      */
     abstract fun deleteEntry(context: Context, uri: Uri)
@@ -84,6 +96,12 @@ sealed class SaveEntryFactory {
                 null
             }
         }
+
+        override suspend fun createEntryDirect(
+            context: Context,
+            conflictResolution: ConflictResolution,
+        ): Pair<Uri, OutputStream> =
+            StoreHelper.createEntry(context, fileType, baseFileName, saveLocation, subDir, conflictResolution)
 
         override fun deleteEntry(context: Context, uri: Uri) {
             try {
@@ -141,6 +159,12 @@ sealed class SaveEntryFactory {
                 null
             }
         }
+
+        override suspend fun createEntryDirect(
+            context: Context,
+            conflictResolution: ConflictResolution,
+        ): Pair<Uri, OutputStream> =
+            SAFHelper.createFileInDirectory(context, treeUri, fileType, baseFileName, conflictResolution)
 
         override fun deleteEntry(context: Context, uri: Uri) {
             try {

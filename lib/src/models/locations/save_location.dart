@@ -155,9 +155,9 @@ enum LinuxSaveLocation implements SaveLocation {
 /// - **Android**: Storage Access Framework (ACTION_OPEN_DOCUMENT_TREE)
 /// - **iOS**: UIDocumentPickerViewController
 /// - **Windows**: IFileOpenDialog with FOS_PICKFOLDERS
-/// - **Web**: File System Access API — see [WebSelectedLocation]
+/// - **Web**: File System Access API — see [WebPickedDirectoryLocation]
 ///
-/// Use [FileSaver.pickDirectory] to obtain a [UserSelectedLocation], then
+/// Use [FileSaver.pickDirectory] to obtain a [PickedDirectoryLocation], then
 /// pass it to [FileSaver.saveAs] or [FileSaver.saveAsAsync].
 ///
 /// Example:
@@ -174,8 +174,8 @@ enum LinuxSaveLocation implements SaveLocation {
 ///   saveLocation: location,
 /// );
 /// ```
-class UserSelectedLocation implements SaveLocation {
-  const UserSelectedLocation({required this.uri});
+class PickedDirectoryLocation implements SaveLocation {
+  const PickedDirectoryLocation({required this.uri});
 
   /// Directory URI from the system picker.
   ///
@@ -185,6 +185,36 @@ class UserSelectedLocation implements SaveLocation {
   /// - **Linux**: File URL from file chooser (e.g., `file://...`)
   /// - **Windows**: File system path (e.g., `C:\Users\...`)
   /// - **Web**: Placeholder URI — browsers do not expose filesystem paths.
-  ///   Use [WebSelectedLocation] to access the [FileSystemDirectoryHandle].
+  ///   Use [WebPickedDirectoryLocation] to access the [FileSystemDirectoryHandle].
   final Uri uri;
+}
+
+/// Save to a specific filesystem directory path.
+///
+/// The plugin writes the file directly using `dart:io`. The caller is
+/// responsible for providing a valid, accessible path — the plugin only
+/// creates the directory (if absent) and writes the file.
+///
+/// **Getting a path:**
+/// ```dart
+/// // App Documents directory (all platforms)
+/// final docs = await getApplicationDocumentsDirectory();
+/// PathLocation(p.join(docs.path, 'my_recordings'))
+///
+/// // User-picked directory (macOS / Desktop / Android)
+/// final picked = await FilePicker.platform.getDirectoryPath();
+/// if (picked != null) PathLocation(picked)
+/// ```
+///
+/// **Platform notes:**
+/// - **iOS**: Only paths within the app sandbox are writable.
+/// - **macOS (sandboxed)**: Only paths inside the app container or picked via
+///   system picker are accessible. Opening via picker grants access.
+/// - **Android 11+**: Paths outside app storage (e.g., `/storage/emulated/0/`)
+///   require `MANAGE_EXTERNAL_STORAGE` permission.
+class PathLocation implements SaveLocation {
+  const PathLocation(this.path);
+
+  /// The filesystem directory path to save the file into.
+  final String path;
 }

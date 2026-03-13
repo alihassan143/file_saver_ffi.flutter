@@ -4,20 +4,21 @@ import 'package:flutter/foundation.dart';
 
 import 'src/exceptions/file_saver_exceptions.dart';
 import 'src/models/conflict_resolution.dart';
+import 'src/models/file_saver_sink.dart';
 import 'src/models/file_type.dart';
-import 'src/models/save_input.dart';
 import 'src/models/locations/save_location.dart';
+import 'src/models/save_input.dart';
 import 'src/models/save_progress.dart';
 import 'src/platform_interface/file_saver_platform.dart';
 
 // Public API
 export 'src/exceptions/file_saver_exceptions.dart';
 export 'src/models/conflict_resolution.dart';
+export 'src/models/file_saver_sink.dart';
 export 'src/models/file_type.dart';
-export 'src/models/save_input.dart';
 export 'src/models/locations/save_location.dart';
+export 'src/models/save_input.dart';
 export 'src/models/save_progress.dart';
-
 export 'src/platforms/io_platforms.dart'
     if (dart.library.html) 'src/platforms/io_stub.dart';
 export 'src/platforms/web/file_saver_web.dart'
@@ -127,53 +128,12 @@ class FileSaver {
     }
 
     if (result == null) {
-      throw const PlatformException(
+      throw const NativePlatformException(
         'Save operation did not complete',
         'INCOMPLETE',
       );
     }
     return result;
-  }
-
-  /// Checks whether the file at [uri] is accessible for reading.
-  ///
-  /// **Platforms:** Android · iOS · macOS · Windows · Linux
-  /// **Web:** throws [UnsupportedError]
-  ///
-  /// Use this before calling [openFile] or passing the URI to third-party
-  /// libraries to confirm the file has not been deleted.
-  ///
-  /// Returns `false` if the file has been deleted or is no longer accessible.
-  static Future<bool> canOpenFile(Uri uri) => _platform.canOpenFile(uri);
-
-  /// Opens a saved file with the appropriate system app.
-  ///
-  /// **Platforms:** Android · iOS · macOS · Windows · Linux
-  /// **Web:** throws [UnsupportedError] — files are already browser-downloaded.
-  ///
-  /// [uri] should be the [Uri] returned from [saveAsync] or [SaveProgressComplete.uri].
-  /// [mimeType] is optional. On Android, it is queried from ContentResolver automatically
-  /// if not provided.
-  ///
-  /// **Note (iOS):** `ph://` URIs (Photos Library assets) will open the Photos app
-  /// at its root level — deep-linking to a specific asset is not supported by iOS.
-  static Future<void> openFile(Uri uri, {String? mimeType}) =>
-      _platform.openFile(uri, mimeType: mimeType);
-
-  /// Shows the system directory picker.
-  ///
-  /// **Platforms:** Android · iOS · macOS · Windows · Linux · Web
-  ///
-  /// [shouldPersist] is Android-only: if true, calls takePersistableUriPermission
-  /// so the app can write to the selected directory across restarts without re-picking.
-  /// Ignored on all other platforms.
-  ///
-  /// Returns [UserSelectedLocation], or null if cancelled.
-  /// Throws [UnsupportedError] on browsers that do not support the File System Access API.
-  static Future<UserSelectedLocation?> pickDirectory({
-    bool shouldPersist = true,
-  }) {
-    return _platform.pickDirectory(shouldPersist: shouldPersist);
   }
 
   /// Saves to a user-selected directory with progress streaming.
@@ -188,10 +148,10 @@ class FileSaver {
     required SaveInput input,
     required FileType fileType,
     required String fileName,
-    UserSelectedLocation? saveLocation,
+    PickedDirectoryLocation? saveLocation,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
   }) async* {
-    UserSelectedLocation? resolvedLocation = saveLocation;
+    PickedDirectoryLocation? resolvedLocation = saveLocation;
     if (resolvedLocation == null) {
       try {
         final picked = await pickDirectory();
@@ -203,11 +163,11 @@ class FileSaver {
       } catch (e) {
         if (kIsWeb) {
           // Browser doesn't support FSA (Firefox / Safari).
-          // Pass a plain UserSelectedLocation so FileSaverWeb.saveAs()
+          // Pass a plain PickedDirectoryLocation so FileSaverWeb.saveAs()
           // falls through to its anchor-download fallback.
-          resolvedLocation = UserSelectedLocation(uri: Uri());
+          resolvedLocation = PickedDirectoryLocation(uri: Uri());
         } else {
-          yield SaveProgressError(PlatformException(e.toString()));
+          yield SaveProgressError(NativePlatformException(e.toString()));
           return;
         }
       }
@@ -232,7 +192,7 @@ class FileSaver {
     required SaveInput input,
     required FileType fileType,
     required String fileName,
-    UserSelectedLocation? saveLocation,
+    PickedDirectoryLocation? saveLocation,
     ConflictResolution conflictResolution = ConflictResolution.autoRename,
     void Function(double progress)? onProgress,
   }) async {
@@ -261,4 +221,139 @@ class FileSaver {
 
     return result;
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Session-based streaming write
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Opens a streaming write session to an auto-resolved location.
+  ///
+  /// **Platforms:** Windows · Linux · Web (buffer fallback) · Android · iOS · macOS
+  ///
+  /// Returns a [FileSaverSink] that accepts incremental chunks via [FileSaverSink.add].
+  /// Call [FileSaverSink.close] to finalize and obtain the saved file [Uri].
+  /// Call [FileSaverSink.cancel] to abort and delete the partial file.
+  ///
+  /// [totalSize] is optional. When provided, [FileSaverSink.progress] emits
+  /// per-chunk progress (0.0–1.0). [FileSaverSink.bytesWritten] always emits.
+  ///
+  /// Example:
+  /// ```dart
+  /// final sink = await FileSaver.openWrite(
+  ///   fileName: 'recording',
+  ///   fileType: CustomFileType('mp4', 'video/mp4'),
+  ///   totalSize: expectedBytes,
+  /// );
+  ///
+  /// if (sink == null) return; // User cancelled or conflictResolution = ConflictResolution.skip.
+  ///
+  /// sink.progress.listen((p) => setState(() => _progress = p));
+  /// sink.add(chunk);           // non-blocking
+  /// await sink.addStream(src); // back-pressure friendly
+  /// final uri = await sink.close();
+  /// ```
+  static Future<FileSaverSink?> openWrite({
+    required String fileName,
+    required FileType fileType,
+    SaveLocation? saveLocation,
+    String? subDir,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) {
+    return _platform.openWrite(
+      fileName: fileName,
+      fileType: fileType,
+      saveLocation: saveLocation,
+      subDir: subDir,
+      totalSize: totalSize,
+      conflictResolution: conflictResolution,
+    );
+  }
+
+  /// Opens a streaming write session to a user-selected directory.
+  ///
+  /// **Platforms:** Windows · Linux · Web (FSA) · Android · iOS · macOS
+  ///
+  /// If [saveLocation] is null, shows the directory picker first.
+  /// Returns null if the picker is cancelled.
+  /// Returns null if [conflictResolution] is [ConflictResolution.skip] and the
+  /// target file already exists.
+  ///
+  /// Web: uses [FileSystemWritableFileStream] (FSA) when the browser supports it,
+  /// falls back to in-memory buffering otherwise.
+  static Future<FileSaverSink?> openWriteAs({
+    required String fileName,
+    required FileType fileType,
+    PickedDirectoryLocation? saveLocation,
+    int? totalSize,
+    ConflictResolution conflictResolution = ConflictResolution.autoRename,
+  }) async {
+    PickedDirectoryLocation? resolvedLocation = saveLocation;
+    if (resolvedLocation == null) {
+      try {
+        final picked = await pickDirectory();
+        if (picked == null) return null;
+        resolvedLocation = picked;
+      } catch (e) {
+        if (kIsWeb) {
+          // Browser doesn't support FSA — fall through to buffer mode.
+          resolvedLocation = PickedDirectoryLocation(uri: Uri());
+        } else {
+          rethrow;
+        }
+      }
+    }
+    return _platform.openWriteAs(
+      fileName: fileName,
+      fileType: fileType,
+      saveLocation: resolvedLocation,
+      totalSize: totalSize,
+      conflictResolution: conflictResolution,
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Directory picker, file access, and open-in-app functionality
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Shows the system directory picker.
+  ///
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux · Web
+  ///
+  /// [shouldPersist] is Android-only: if true, calls takePersistableUriPermission
+  /// so the app can write to the selected directory across restarts without re-picking.
+  /// Ignored on all other platforms.
+  ///
+  /// Returns [PickedDirectoryLocation], or null if cancelled.
+  /// Throws [UnsupportedError] on browsers that do not support the File System Access API.
+  static Future<PickedDirectoryLocation?> pickDirectory({
+    bool shouldPersist = true,
+  }) {
+    return _platform.pickDirectory(shouldPersist: shouldPersist);
+  }
+
+  /// Checks whether the file at [uri] is accessible for reading.
+  ///
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux
+  /// **Web:** throws [UnsupportedError]
+  ///
+  /// Use this before calling [openFile] or passing the URI to third-party
+  /// libraries to confirm the file has not been deleted.
+  ///
+  /// Returns `false` if the file has been deleted or is no longer accessible.
+  static Future<bool> canOpenFile(Uri uri) => _platform.canOpenFile(uri);
+
+  /// Opens a saved file with the appropriate system app.
+  ///
+  /// **Platforms:** Android · iOS · macOS · Windows · Linux
+  /// **Web:** throws [UnsupportedError] — files are already browser-downloaded.
+  ///
+  /// [uri] should be the [Uri] returned from [saveAsync] or [SaveProgressComplete.uri].
+  /// [mimeType] is optional. On Android, it is queried from ContentResolver automatically
+  /// if not provided.
+  ///
+  /// **Note (iOS):** `ph://` URIs (Photos Library assets) will open the Photos app
+  /// at its root level — deep-linking to a specific asset is not supported by iOS.
+  static Future<void> openFile(Uri uri, {String? mimeType}) =>
+      _platform.openFile(uri, mimeType: mimeType);
 }

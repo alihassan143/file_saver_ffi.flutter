@@ -1,0 +1,60 @@
+import 'dart:async';
+
+/// A session-based streaming sink for writing file data incrementally.
+///
+/// Obtain via [FileSaver.openWrite] or [FileSaver.openWriteAs].
+///
+/// Call [add] to write chunks of bytes, then [close] to finalize the file
+/// and receive its [Uri] via [result]. Use [cancel] to abort and discard
+/// the partially written file.
+///
+/// [progress] emits 0.0–1.0 only if [totalSize] was provided at open time.
+/// [bytesWritten] always emits the cumulative byte count after each [add].
+///
+/// Example:
+/// ```dart
+/// final sink = await FileSaver.openWrite(
+///   fileName: 'recording',
+///   fileType: CustomFileType('mp4', 'video/mp4'),
+///   totalSize: expectedBytes,
+/// );
+///
+/// sink.progress.listen((p) => setState(() => _progress = p));
+///
+/// await sink.addStream(chunkStream);
+/// final uri = await sink.close();
+/// ```
+abstract interface class FileSaverSink implements StreamSink<List<int>> {
+  /// Emits fraction 0.0–1.0 after each [add] call.
+  ///
+  /// Only emits if [totalSize] was provided to [openWrite] or [openWriteAs].
+  /// The stream is broadcast — multiple listeners are allowed.
+  Stream<double> get progress;
+
+  /// Emits cumulative bytes written after each [add] call.
+  ///
+  /// Always emits regardless of whether [totalSize] was provided.
+  /// The stream is broadcast — multiple listeners are allowed.
+  Stream<int> get bytesWritten;
+
+  /// Flushes any buffered data to the underlying storage.
+  Future<void> flush();
+
+  /// Cancels the session, discarding any written data.
+  ///
+  /// The partially-written file is deleted on all platforms.
+  /// Subsequent calls to [add] will throw [StateError].
+  Future<void> cancel();
+
+  /// Resolves with the [Uri] of the saved file after [close] completes.
+  ///
+  /// Throws if the sink was cancelled or an error occurred.
+  Future<Uri> get result;
+
+  // Inherited from StreamSink<List<int>>:
+  //   void add(List<int> data)                        — write a chunk (non-blocking)
+  //   void addError(Object error, [StackTrace?])       — propagate an error
+  //   Future addStream(Stream<List<int>> stream)       — pipe a stream of chunks
+  //   Future close()                                   — finalize the file
+  //   Future get done                                  — completes when closed/errored
+}

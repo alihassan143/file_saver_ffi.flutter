@@ -111,7 +111,7 @@ await FileSaver.saveAsAsync(
 
 On browsers that do not support FSA (Firefox / Safari):
 
-- `pickDirectory()` throws a `PlatformException`.
+- `pickDirectory()` throws a `NativePlatformException`.
 - `saveAs()` (when called with `saveLocation: null`) catches this and falls back to a standard browser download.
 - The browser controls the save location; zero-RAM streaming is not available.
 

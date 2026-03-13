@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
+
 /// Base sealed class for save input types.
 ///
 /// Defines the source of data to be saved:
@@ -7,13 +9,11 @@ import 'dart:typed_data';
 /// - [SaveFileInput]: File path on disk
 /// - [SaveNetworkInput]: URL to download from network
 sealed class SaveInput {
-  const SaveInput();
+  factory SaveInput.bytes(Uint8List fileBytes) => SaveBytesInput(fileBytes);
 
-  static SaveBytesInput bytes(Uint8List fileBytes) => SaveBytesInput(fileBytes);
+  factory SaveInput.file(String filePath) => SaveFileInput(filePath);
 
-  static SaveFileInput file(String filePath) => SaveFileInput(filePath);
-
-  static SaveNetworkInput network({
+  factory SaveInput.network({
     required String url,
     Map<String, String>? headers,
     Duration timeout = const Duration(seconds: 60),
@@ -21,7 +21,7 @@ sealed class SaveInput {
 }
 
 /// Input from raw bytes in memory.
-final class SaveBytesInput extends SaveInput {
+final class SaveBytesInput implements SaveInput {
   const SaveBytesInput(this.fileBytes);
 
   /// The file content as bytes.
@@ -30,7 +30,7 @@ final class SaveBytesInput extends SaveInput {
 
 /// Input from a file path on disk.
 /// Does not support web, as browsers cannot access arbitrary file paths.
-final class SaveFileInput extends SaveInput {
+final class SaveFileInput implements SaveInput {
   const SaveFileInput(this.filePath);
 
   /// The source file path (file:// URI or content:// URI on Android).
@@ -40,7 +40,7 @@ final class SaveFileInput extends SaveInput {
 /// Input from a network URL.
 ///
 /// The file is downloaded natively to avoid double storage.
-final class SaveNetworkInput extends SaveInput {
+final class SaveNetworkInput implements SaveInput {
   const SaveNetworkInput({
     required this.url,
     this.headers,

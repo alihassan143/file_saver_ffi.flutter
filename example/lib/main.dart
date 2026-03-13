@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import 'screens/home_screen.dart';
 
 void main() {
+  debugProfileBuildsEnabled = true;
+  debugProfileBuildsEnabledUserWidgets = true;
+  debugProfileLayoutsEnabled = true;
+  debugProfilePaintsEnabled = true;
   runApp(const MyApp());
 }
 

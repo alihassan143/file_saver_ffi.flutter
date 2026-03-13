@@ -1,14 +1,29 @@
-import Foundation
 import DartApiDl
+import Foundation
 
-/// Reports progress events to Dart via NativePort.
+/// Reports async operation results to Dart via NativePort (`Dart_PostCObject_DL`).
 ///
-/// Message protocol:
-/// - Started:    [0]
-/// - Progress:   [1, progress]    // progress is 0.0 to 1.0
-/// - Error:      [2, errorCode, errorMessage]
-/// - Success:    [3, fileUri]
-/// - Cancelled:  [4]
+/// ## Message protocol
+///
+/// ### Used by `save()` / `saveAs()`
+/// | Message              | Array sent                          |
+/// |----------------------|-------------------------------------|
+/// | Started              | `[0]`                               |
+/// | Progress (0.0–1.0)   | `[1, Double]`  ← `sendProgress`     |
+/// | Error                | `[2, errorCode, errorMessage]`      |
+/// | Success              | `[3, fileUri]`                      |
+/// | Cancelled            | `[4]`                               |
+///
+/// ### Used by write-session methods (`openWrite`, `writeChunk`, `flushWrite`, `closeWrite`)
+/// | Message              | Array sent                          |
+/// |----------------------|-------------------------------------|
+/// | Chunk / flush ACK    | `[1, Int64(bytesWritten)]` ← `sendBytes` |
+/// | Error                | `[2, errorCode, errorMessage]`      |
+/// | Session opened       | `[3, sessionId]`                    |
+/// | Session closed       | `[3, fileUri]`                      |
+///
+/// **Note**: `sendProgress` clamps to 0.0–1.0 and sends `Double`.
+/// `sendBytes` sends raw `Int64` — Dart reads it as `(msg[1] as num).toInt()`.
 final class ProgressReporter {
     private let port: Int64
     private var isClosed = false
@@ -23,7 +38,8 @@ final class ProgressReporter {
         sendArray([createInt(0)])
     }
 
-    /// Send progress update (0.0 - 1.0)
+    /// Send progress update. Value is clamped to 0.0–1.0 and sent as `Double`.
+    /// Use `sendBytes` instead for write-session chunk/flush ACKs.
     func sendProgress(_ value: Double) {
         guard !isClosed else { return }
         let clampedValue = max(0.0, min(1.0, value))
@@ -37,11 +53,19 @@ final class ProgressReporter {
         isClosed = true
     }
 
-    /// Send success event with file URI
+    /// Send success event. For `save()`/`saveAs()`: `uri` is the file URI.
+    /// For write sessions: `uri` is the sessionId string (open) or file URI (close).
     func sendSuccess(uri: String) {
         guard !isClosed else { return }
         sendArray([createInt(3), createString(uri)])
         isClosed = true
+    }
+
+    /// Send chunk/flush ACK for streaming write sessions. Sends cumulative `bytesWritten` as `Int64`.
+    /// Dart reads this as `(msg[1] as num).toInt()`.
+    func sendBytes(_ bytes: Int64) {
+        guard !isClosed else { return }
+        sendArray([createInt(1), createInt(bytes)])
     }
 
     /// Send cancelled event
