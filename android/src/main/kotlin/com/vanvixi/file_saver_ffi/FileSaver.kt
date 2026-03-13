@@ -127,7 +127,9 @@ class FileSaver() {
      * - file:// (filesystem path): requires the host app to configure a FileProvider.
      *
      * @param uri Content URI or file URI string returned from save operations
-     * @param mimeType Optional MIME type. If null, queried from ContentResolver automatically.
+     * @param mimeType Optional MIME type.
+     *   - If null and uri is content://, queried from ContentResolver automatically.
+     *   - If null and uri is file://, inferred from file extension when possible.
      */
     fun openFile(uri: String, mimeType: String?) {
         val parsedUri = uri.toUri()

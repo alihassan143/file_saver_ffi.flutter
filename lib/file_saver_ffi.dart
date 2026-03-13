@@ -337,6 +337,9 @@ class FileSaver {
   /// **Platforms:** Android · iOS · macOS · Windows · Linux
   /// **Web:** throws [UnsupportedError]
   ///
+  /// On Android, both `content://` and `file://` URIs are supported.
+  /// On iOS, both `file://` and `ph://` (Photos assets) URIs are supported.
+  ///
   /// Use this before calling [openFile] or passing the URI to third-party
   /// libraries to confirm the file has not been deleted.
   ///
@@ -348,12 +351,20 @@ class FileSaver {
   /// **Platforms:** Android · iOS · macOS · Windows · Linux
   /// **Web:** throws [UnsupportedError] — files are already browser-downloaded.
   ///
-  /// [uri] should be the [Uri] returned from [saveAsync] or [SaveProgressComplete.uri].
-  /// [mimeType] is optional. On Android, it is queried from ContentResolver automatically
-  /// if not provided.
+  /// [uri] should be a [Uri] returned from a save operation (for example: [saveAsync],
+  /// [SaveProgressComplete.uri], or a write-session result like [FileSaverSink.result]).
   ///
-  /// **Note (iOS):** `ph://` URIs (Photos Library assets) will open the Photos app
-  /// at its root level — deep-linking to a specific asset is not supported by iOS.
+  /// [mimeType] is optional.
+  /// - Android: for `content://` URIs it is queried from ContentResolver if not provided.
+  ///   For `file://` URIs it is inferred from the file extension when possible.
+  /// - Other platforms may ignore this parameter.
+  ///
+  /// **Android note:** If [uri] is a `file://...` URI (for example, when saving via
+  /// `PathLocation`), opening it requires a `FileProvider` configuration in the host app.
+  /// See the "Android Configuration" section on pub.dev.
+  ///
+  /// **iOS note:** `ph://` URIs (Photos Library assets) are opened via an in-app
+  /// system preview (QuickLook).
   static Future<void> openFile(Uri uri, {String? mimeType}) =>
       _platform.openFile(uri, mimeType: mimeType);
 }

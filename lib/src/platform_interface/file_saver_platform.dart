@@ -205,6 +205,10 @@ abstract class FileSaverPlatform {
   /// **Platforms:** Android · iOS · macOS · Windows · Linux
   /// **Web:** throws [UnsupportedError]
   ///
+  /// Notes:
+  /// - Android supports `content://` and `file://` URIs.
+  /// - iOS supports `file://` and `ph://` (Photos assets) URIs.
+  ///
   /// Returns `false` if the file has been deleted or is no longer accessible.
   Future<bool> canOpenFile(Uri uri) {
     throw UnimplementedError('canOpenFile is not implemented on this platform');
@@ -215,9 +219,16 @@ abstract class FileSaverPlatform {
   /// **Platforms:** Android · iOS · macOS · Windows · Linux
   /// **Web:** throws [UnsupportedError] — files are already browser-downloaded.
   ///
-  /// [uri] should be the [Uri] returned from [saveAsync] or [SaveProgressComplete.uri].
-  /// [mimeType] is optional. On Android, it is queried from ContentResolver automatically
-  /// if not provided.
+  /// [uri] should be a [Uri] returned from a save operation (for example: [saveAsync],
+  /// [SaveProgressComplete.uri], or a write-session result like [FileSaverSink.result]).
+  ///
+  /// [mimeType] is optional. On Android, it is queried from ContentResolver for `content://`
+  /// URIs if not provided.
+  ///
+  /// **Android note:** If [uri] is a `file://...` URI, the host app may need to
+  /// configure a `FileProvider` to open it.
+  ///
+  /// **iOS note:** `ph://` URIs are opened via a system preview (QuickLook).
   Future<void> openFile(Uri uri, {String? mimeType}) {
     throw UnimplementedError('openFile is not implemented on this platform');
   }
