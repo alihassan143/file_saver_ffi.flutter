@@ -149,7 +149,7 @@ mixin DemoSaveScreenMixin<T extends StatefulWidget> on State<T> {
         return video?.path;
       case MediaCategory.audio:
       case MediaCategory.document:
-        final result = await FilePicker.platform.pickFiles();
+        final result = await FilePicker.pickFiles();
         return result?.files.first.path;
     }
   }

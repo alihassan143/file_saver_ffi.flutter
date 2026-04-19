@@ -1,0 +1,3 @@
+-dontwarn javax.xml.stream.XMLStreamException
+-dontwarn org.apache.tika.**
+-keep class org.apache.tika.** { *; }

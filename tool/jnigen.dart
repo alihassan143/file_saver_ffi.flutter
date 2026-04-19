@@ -18,14 +18,13 @@ void main(List<String> args) {
           structure: OutputStructure.singleFile,
         ),
       ),
-      sourcePath: [
-        packageRoot.resolve(
-          'android/src/main/kotlin/com/vanvixi/file_saver_ffi',
-        ),
-      ],
+      sourcePath: [packageRoot.resolve('android/src/main/kotlin')],
       classPath: [
         packageRoot.resolve(
           'example/build/file_saver_ffi/tmp/kotlin-classes/debug',
+        ),
+        packageRoot.resolve(
+          'example/build/file_saver_ffi/tmp/kotlin-classes/release',
         ),
       ],
       classes: [
